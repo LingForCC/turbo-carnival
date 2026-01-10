@@ -1,0 +1,19 @@
+{
+  "name": "turbo-carnival",
+  "version": "1.0.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && electron .",
+    "dev": "tsc && electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "An Electron app built with TypeScript",
+  "devDependencies": {
+    "@types/node": "^25.0.5",
+    "electron": "^39.2.7",
+    "typescript": "^5.9.3"
+  }
+}
