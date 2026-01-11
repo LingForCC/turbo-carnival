@@ -3,6 +3,9 @@ import * as path from 'path';
 
 let mainWindow: BrowserWindow | null = null;
 
+// Check if we're in development mode
+const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     height: 600,
@@ -11,14 +14,20 @@ function createWindow(): void {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      webSecurity: false, // Needed for Vite dev server
     },
   });
 
   // Load the index.html of the app
-  mainWindow.loadFile(path.join(__dirname, '../index.html'));
-
-  // Open the DevTools (optional)
-  // mainWindow.webContents.openDevTools();
+  if (isDev) {
+    // In development, load from the Vite dev server
+    mainWindow.loadURL('http://localhost:5173');
+    // Open DevTools in development
+    mainWindow.webContents.openDevTools();
+  } else {
+    // In production, load from the built file
+    mainWindow.loadFile(path.join(__dirname, '../index.html'));
+  }
 
   mainWindow.on('closed', () => {
     mainWindow = null;
