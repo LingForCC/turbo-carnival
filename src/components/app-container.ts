@@ -3,9 +3,9 @@
  * Main application container that manages layout and sidebar toggles using Tailwind CSS
  */
 export class AppContainer extends HTMLElement {
-  private leftPanel: any = null;
+  private projectPanel: any = null;
   private rightPanel: any = null;
-  private leftToggleBtn: HTMLElement | null = null;
+  private projectToggleBtn: HTMLElement | null = null;
   private rightToggleBtn: HTMLElement | null = null;
 
   constructor() {
@@ -20,9 +20,9 @@ export class AppContainer extends HTMLElement {
   private render(): void {
     this.innerHTML = `
       <div class="flex h-full w-full bg-gray-100">
-        <left-panel id="left-panel"></left-panel>
+        <project-panel id="project-panel"></project-panel>
 
-        <button id="toggle-left-btn" class="hidden flex-col items-center justify-center w-8 bg-gray-50 border-r border-gray-200 hover:bg-gray-100 cursor-pointer border-0" aria-label="Expand left panel">
+        <button id="toggle-project-btn" class="hidden flex-col items-center justify-center w-8 bg-gray-50 border-r border-gray-200 hover:bg-gray-100 cursor-pointer border-0" aria-label="Expand project panel">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
           </svg>
@@ -41,7 +41,7 @@ export class AppContainer extends HTMLElement {
     `;
 
     // Get panel references
-    this.leftPanel = this.querySelector('#left-panel');
+    this.projectPanel = this.querySelector('#project-panel');
     this.rightPanel = this.querySelector('#right-panel');
 
     // Re-attach event listeners after re-rendering
@@ -49,14 +49,14 @@ export class AppContainer extends HTMLElement {
   }
 
   private attachEventListeners(): void {
-    this.leftToggleBtn = this.querySelector('#toggle-left-btn');
+    this.projectToggleBtn = this.querySelector('#toggle-project-btn');
     this.rightToggleBtn = this.querySelector('#toggle-right-btn');
 
-    if (this.leftToggleBtn) {
-      const newBtn = this.leftToggleBtn.cloneNode(true);
-      this.leftToggleBtn.replaceWith(newBtn);
-      this.leftToggleBtn = newBtn as HTMLElement;
-      this.leftToggleBtn.addEventListener('click', () => this.toggleLeftPanel());
+    if (this.projectToggleBtn) {
+      const newBtn = this.projectToggleBtn.cloneNode(true);
+      this.projectToggleBtn.replaceWith(newBtn);
+      this.projectToggleBtn = newBtn as HTMLElement;
+      this.projectToggleBtn.addEventListener('click', () => this.toggleProjectPanel());
     }
 
     if (this.rightToggleBtn) {
@@ -75,13 +75,13 @@ export class AppContainer extends HTMLElement {
   }
 
   private handlePanelToggle(panel: string, collapsed: boolean): void {
-    if (panel === 'left' && this.leftToggleBtn) {
+    if (panel === 'left' && this.projectToggleBtn) {
       if (collapsed) {
-        this.leftToggleBtn.classList.remove('hidden');
-        this.leftToggleBtn.classList.add('flex');
+        this.projectToggleBtn.classList.remove('hidden');
+        this.projectToggleBtn.classList.add('flex');
       } else {
-        this.leftToggleBtn.classList.add('hidden');
-        this.leftToggleBtn.classList.remove('flex');
+        this.projectToggleBtn.classList.add('hidden');
+        this.projectToggleBtn.classList.remove('flex');
       }
     } else if (panel === 'right' && this.rightToggleBtn) {
       if (collapsed) {
@@ -94,9 +94,9 @@ export class AppContainer extends HTMLElement {
     }
   }
 
-  private toggleLeftPanel(): void {
-    if (this.leftPanel) {
-      this.leftPanel.expand();
+  private toggleProjectPanel(): void {
+    if (this.projectPanel) {
+      this.projectPanel.expand();
     }
   }
 

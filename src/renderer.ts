@@ -2,7 +2,7 @@
 import './styles.css';
 
 // Import Web Components
-import './components/left-panel';
+import './components/project-panel';
 import './components/right-panel';
 import './components/middle-panel';
 import './components/app-container';
