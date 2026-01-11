@@ -30,6 +30,7 @@ export interface AgentConfig {
   temperature?: number;            // Default: 0.7
   maxTokens?: number;              // Optional token limit
   topP?: number;                   // Optional nucleus sampling
+  apiConfig?: APIConfig;           // API configuration
 }
 
 /**
@@ -56,6 +57,25 @@ export interface AgentSettings {
   [key: string]: any;              // Flexible settings object
 }
 
+/**
+ * API configuration for OpenAI-compatible endpoints
+ */
+export interface APIConfig {
+  baseURL?: string;              // Custom API endpoint (e.g., "https://api.openai.com/v1")
+  apiKeyRef?: string;            // Reference to named API key in global storage
+  timeout?: number;              // Request timeout in milliseconds (default: 60000)
+}
+
+/**
+ * Named API key for global storage
+ */
+export interface APIKey {
+  name: string;                  // Unique identifier (e.g., "openai-main", "local-llm")
+  apiKey: string;                // The actual API key
+  baseURL?: string;              // Optional default endpoint for this key
+  createdAt: number;             // Timestamp
+}
+
 interface ElectronAPI {
   platform: string;
   openFolderDialog: () => Promise<string | null>;
@@ -68,6 +88,28 @@ interface ElectronAPI {
   addAgent: (projectPath: string, agent: Agent) => Promise<Agent[]>;
   removeAgent: (projectPath: string, agentName: string) => Promise<Agent[]>;
   updateAgent: (projectPath: string, agentName: string, agent: Agent) => Promise<Agent>;
+
+  // API key management
+  getAPIKeys: () => Promise<APIKey[]>;
+  addAPIKey: (apiKey: APIKey) => Promise<APIKey[]>;
+  removeAPIKey: (name: string) => Promise<APIKey[]>;
+
+  // Chat completion (non-streaming)
+  sendChatMessage: (
+    projectPath: string,
+    agentName: string,
+    message: string
+  ) => Promise<any>;
+
+  // Chat completion (streaming)
+  streamChatMessage: (
+    projectPath: string,
+    agentName: string,
+    message: string,
+    onChunk: (chunk: string) => void,
+    onComplete: () => void,
+    onError: (error: string) => void
+  ) => Promise<void>;
 }
 
 declare global {

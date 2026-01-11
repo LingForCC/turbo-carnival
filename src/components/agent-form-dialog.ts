@@ -29,6 +29,7 @@ export class AgentFormDialog extends HTMLElement {
 
     this.render();
     this.attachEventListeners();
+    this.loadAPIKeys();
   }
 
   private render(): void {
@@ -41,13 +42,20 @@ export class AgentFormDialog extends HTMLElement {
         <!-- Dialog -->
         <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
           <!-- Header -->
-          <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-xl font-semibold text-gray-800 m-0">
-              ${isEdit ? 'Edit Agent' : 'Create New Agent'}
-            </h2>
-            <p class="text-sm text-gray-500 mt-1 mb-0">
-              ${isEdit ? 'Update agent configuration and settings' : 'Configure your AI agent'}
-            </p>
+          <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <div>
+              <h2 class="text-xl font-semibold text-gray-800 m-0">
+                ${isEdit ? 'Edit Agent' : 'Create New Agent'}
+              </h2>
+              <p class="text-sm text-gray-500 mt-1 mb-0">
+                ${isEdit ? 'Update agent configuration and settings' : 'Configure your AI agent'}
+              </p>
+            </div>
+            <button id="close-x-btn" class="p-1 hover:bg-gray-100 rounded cursor-pointer border-0 bg-transparent">
+              <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
           </div>
 
           <!-- Form -->
@@ -151,6 +159,41 @@ export class AgentFormDialog extends HTMLElement {
               </div>
             </div>
 
+            <!-- API Configuration -->
+            <div class="space-y-4">
+              <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                API Configuration
+              </h3>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" for="api-key-ref">
+                  API Key
+                </label>
+                <select id="api-key-ref" name="apiKeyRef"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">No API key selected</option>
+                </select>
+                <div class="flex items-center gap-2 mt-1">
+                  <button type="button" id="manage-keys-btn" class="text-sm text-blue-500 hover:text-blue-600 cursor-pointer border-0 bg-transparent p-0">
+                    Manage API Keys
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" for="api-baseurl">
+                  Custom Base URL (Optional)
+                </label>
+                <input type="text" id="api-baseurl" name="baseURL"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="https://api.openai.com/v1"
+                       value="${this.escapeHtml(agent?.config?.apiConfig?.baseURL || '')}">
+                <p class="text-xs text-gray-500 mt-1 mb-0">
+                  Override the default API endpoint (e.g., for local LLMs or compatible services)
+                </p>
+              </div>
+            </div>
+
             <!-- Prompts -->
             <div class="space-y-4">
               <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">
@@ -199,6 +242,14 @@ export class AgentFormDialog extends HTMLElement {
     this.form = this.querySelector('#agent-form');
     const cancelBtn = this.querySelector('#cancel-btn');
 
+    // Close X button
+    const closeXBtn = this.querySelector('#close-x-btn');
+    if (closeXBtn) {
+      const newBtn = closeXBtn.cloneNode(true);
+      closeXBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.cancel());
+    }
+
     if (cancelBtn) {
       const newBtn = cancelBtn.cloneNode(true);
       cancelBtn.replaceWith(newBtn);
@@ -211,6 +262,14 @@ export class AgentFormDialog extends HTMLElement {
       this.form = newForm as HTMLFormElement;
 
       this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+    }
+
+    // Manage keys button
+    const manageKeysBtn = this.querySelector('#manage-keys-btn');
+    if (manageKeysBtn) {
+      const newBtn = manageKeysBtn.cloneNode(true);
+      manageKeysBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.openAPIKeysDialog());
     }
   }
 
@@ -231,6 +290,12 @@ export class AgentFormDialog extends HTMLElement {
         temperature: parseFloat(formData.get('temperature') as string) || 0.7,
         ...(formData.get('maxTokens') && { maxTokens: parseInt(formData.get('maxTokens') as string) }),
         ...(formData.get('topP') && { topP: parseFloat(formData.get('topP') as string) }),
+        ...(formData.get('apiKeyRef') || formData.get('baseURL') ? {
+          apiConfig: {
+            ...(formData.get('apiKeyRef') && { apiKeyRef: formData.get('apiKeyRef') as string }),
+            ...(formData.get('baseURL') && { baseURL: formData.get('baseURL') as string }),
+          }
+        } : {}),
       },
       prompts: {
         ...(formData.get('systemPrompt') && { system: formData.get('systemPrompt') as string }),
@@ -253,12 +318,49 @@ export class AgentFormDialog extends HTMLElement {
       bubbles: true,
       composed: true
     }));
+    this.remove();
   }
 
   private escapeHtml(text: string): string {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  private async loadAPIKeys(): Promise<void> {
+    if (!window.electronAPI) return;
+
+    try {
+      const apiKeys = await window.electronAPI.getAPIKeys();
+      const select = this.querySelector('#api-key-ref') as HTMLSelectElement;
+      if (!select) return;
+
+      // Get current value
+      const currentValue = this.agent?.config?.apiConfig?.apiKeyRef || '';
+
+      // Populate options
+      select.innerHTML = `
+        <option value="">No API key selected</option>
+        ${apiKeys.map(key => `
+          <option value="${this.escapeHtml(key.name)}" ${key.name === currentValue ? 'selected' : ''}>
+            ${this.escapeHtml(key.name)} ${key.baseURL ? `(${this.escapeHtml(key.baseURL)})` : ''}
+          </option>
+        `).join('')}
+      `;
+    } catch (error) {
+      console.error('Failed to load API keys:', error);
+    }
+  }
+
+  private openAPIKeysDialog(): void {
+    const dialog = document.createElement('api-keys-dialog');
+    document.body.appendChild(dialog);
+
+    dialog.addEventListener('api-keys-dialog-close', async () => {
+      dialog.remove();
+      // Reload API keys after dialog closes
+      await this.loadAPIKeys();
+    });
   }
 }
 

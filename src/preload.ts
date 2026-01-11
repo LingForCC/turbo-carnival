@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { Project, Agent } from './global.d.ts';
+import type { Project, Agent, APIKey } from './global.d.ts';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -35,4 +35,49 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Update an existing agent
   updateAgent: (projectPath: string, agentName: string, agent: Agent) =>
     ipcRenderer.invoke('agents:update', projectPath, agentName, agent),
+
+  // ============ API KEY METHODS ============
+
+  // Get all API keys
+  getAPIKeys: () => ipcRenderer.invoke('api-keys:get'),
+
+  // Add a new API key
+  addAPIKey: (apiKey: APIKey) => ipcRenderer.invoke('api-keys:add', apiKey),
+
+  // Remove an API key
+  removeAPIKey: (name: string) => ipcRenderer.invoke('api-keys:remove', name),
+
+  // ============ CHAT METHODS ============
+
+  // Send chat message (non-streaming)
+  sendChatMessage: (projectPath: string, agentName: string, message: string) =>
+    ipcRenderer.invoke('chat:sendMessage', projectPath, agentName, message),
+
+  // Stream chat message
+  streamChatMessage: (
+    projectPath: string,
+    agentName: string,
+    message: string,
+    onChunk: (chunk: string) => void,
+    onComplete: () => void,
+    onError: (error: string) => void
+  ) => {
+    // Set up IPC listeners for streaming events
+    const chunkListener = (_event: Electron.IpcRendererEvent, chunk: string) => onChunk(chunk);
+    const completeListener = () => onComplete();
+    const errorListener = (_event: Electron.IpcRendererEvent, error: string) => onError(error);
+
+    ipcRenderer.on('chat-chunk', chunkListener);
+    ipcRenderer.on('chat-complete', completeListener);
+    ipcRenderer.on('chat-error', errorListener);
+
+    // Invoke the streaming handler
+    return ipcRenderer.invoke('chat:streamMessage', projectPath, agentName, message)
+      .finally(() => {
+        // Clean up listeners
+        ipcRenderer.removeListener('chat-chunk', chunkListener);
+        ipcRenderer.removeListener('chat-complete', completeListener);
+        ipcRenderer.removeListener('chat-error', errorListener);
+      });
+  },
 });

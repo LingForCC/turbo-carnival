@@ -296,13 +296,14 @@ export class ProjectAgentDashboard extends HTMLElement {
         alert(`Failed to save agent: ${error.message}`);
       }
 
-      // Remove dialog
+      // Remove dialog on successful save
       dialog.remove();
     });
 
     // Listen for dialog cancellation
+    // Dialog removes itself on cancel
     dialog.addEventListener('agent-form-cancel', () => {
-      dialog.remove();
+      // Dialog handles its own removal
     });
   }
 

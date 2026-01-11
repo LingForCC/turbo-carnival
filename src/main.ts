@@ -136,6 +136,196 @@ function deleteAgent(projectPath: string, agentName: string): void {
   }
 }
 
+// ============ API KEY STORAGE HELPERS ============
+
+/**
+ * Get the file path for API keys storage
+ */
+function getAPIKeysPath(): string {
+  return path.join(app.getPath('userData'), 'api-keys.json');
+}
+
+/**
+ * Load all API keys from storage
+ */
+function loadAPIKeys(): any[] {
+  const keysPath = getAPIKeysPath();
+  if (fs.existsSync(keysPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(keysPath, 'utf-8'));
+      return data.keys || [];
+    } catch (error) {
+      console.error('Failed to load API keys:', error);
+      return [];
+    }
+  }
+  return [];
+}
+
+/**
+ * Save API keys to storage
+ */
+function saveAPIKeys(keys: any[]): void {
+  const keysPath = getAPIKeysPath();
+  const data = { keys };
+  try {
+    fs.writeFileSync(keysPath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Failed to save API keys:', error);
+  }
+}
+
+/**
+ * Get an API key by name
+ */
+function getAPIKeyByName(name: string): any | undefined {
+  const keys = loadAPIKeys();
+  return keys.find(k => k.name === name);
+}
+
+// ============ OPENAI API CLIENT ============
+
+interface OpenAIMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface OpenAIRequest {
+  messages: OpenAIMessage[];
+  model: string;
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  stream?: boolean;
+}
+
+/**
+ * Call OpenAI-compatible API (non-streaming)
+ */
+async function callOpenAICompatibleAPI(
+  messages: OpenAIMessage[],
+  config: any,
+  apiKey: string,
+  baseURL?: string
+): Promise<any> {
+  const endpoint = baseURL || 'https://api.openai.com/v1';
+  const url = `${endpoint}/chat/completions`;
+
+  const requestBody: OpenAIRequest = {
+    messages,
+    model: config.model,
+    temperature: config.temperature,
+    max_tokens: config.maxTokens,
+    top_p: config.topP,
+    stream: false,
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`API request failed (${response.status}): ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Call OpenAI-compatible API with streaming
+ */
+async function streamOpenAICompatibleAPI(
+  messages: OpenAIMessage[],
+  config: any,
+  apiKey: string,
+  baseURL: string | undefined,
+  webContents: Electron.WebContents,
+  timeout: number = 60000
+): Promise<void> {
+  const endpoint = baseURL || 'https://api.openai.com/v1';
+  const url = `${endpoint}/chat/completions`;
+
+  const requestBody: OpenAIRequest = {
+    messages,
+    model: config.model,
+    temperature: config.temperature,
+    max_tokens: config.maxTokens,
+    top_p: config.topP,
+    stream: true,
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API request failed (${response.status}): ${errorText}`);
+    }
+
+    if (!response.body) {
+      throw new Error('Response body is null');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine || trimmedLine === 'data: [DONE]') continue;
+        if (!trimmedLine.startsWith('data: ')) continue;
+
+        try {
+          const jsonStr = trimmedLine.slice(6);
+          const chunk = JSON.parse(jsonStr);
+
+          const content = chunk.choices?.[0]?.delta?.content;
+          if (content) {
+            webContents.send('chat-chunk', content);
+          }
+
+          const finishReason = chunk.choices?.[0]?.finish_reason;
+          if (finishReason) {
+            webContents.send('chat-complete');
+            return;
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse SSE chunk:', parseError);
+        }
+      }
+    }
+
+    webContents.send('chat-complete');
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 let mainWindow: BrowserWindow | null = null;
 
 // Check if we're in development mode
@@ -299,6 +489,189 @@ function registerIPCHandlers(): void {
     // Save updated agent
     saveAgent(projectPath, updatedAgent);
     return updatedAgent;
+  });
+
+  // ============ API KEY IPC HANDLERS ============
+
+  // Handler: Get all API keys
+  ipcMain.handle('api-keys:get', () => {
+    return loadAPIKeys();
+  });
+
+  // Handler: Add a new API key
+  ipcMain.handle('api-keys:add', async (_event, apiKey: any) => {
+    const keys = loadAPIKeys();
+
+    // Check for duplicate names
+    if (keys.some(k => k.name === apiKey.name)) {
+      throw new Error(`API key with name "${apiKey.name}" already exists`);
+    }
+
+    keys.push(apiKey);
+    saveAPIKeys(keys);
+    return keys;
+  });
+
+  // Handler: Remove an API key
+  ipcMain.handle('api-keys:remove', async (_event, name: string) => {
+    const keys = loadAPIKeys();
+    const filtered = keys.filter(k => k.name !== name);
+    saveAPIKeys(filtered);
+    return filtered;
+  });
+
+  // ============ CHAT COMPLETION IPC HANDLERS ============
+
+  // Handler: Send chat message (non-streaming)
+  ipcMain.handle('chat:sendMessage', async (event, projectPath: string, agentName: string, message: string) => {
+    // Load agent
+    const agents = loadAgents(projectPath);
+    const agent = agents.find(a => a.name === agentName);
+
+    if (!agent) {
+      throw new Error(`Agent "${agentName}" not found`);
+    }
+
+    // Get API key
+    const apiKeyName = agent.config.apiConfig?.apiKeyRef;
+    if (!apiKeyName) {
+      throw new Error('Agent does not have an API key configured');
+    }
+
+    const apiKeyEntry = getAPIKeyByName(apiKeyName);
+    if (!apiKeyEntry) {
+      throw new Error(`API key "${apiKeyName}" not found`);
+    }
+
+    // Build messages array
+    const messages: OpenAIMessage[] = [];
+
+    // Add system prompt if exists
+    if (agent.prompts?.system) {
+      messages.push({ role: 'system', content: agent.prompts.system });
+    }
+
+    // Add conversation history
+    if (agent.history && agent.history.length > 0) {
+      messages.push(...agent.history.map(msg => ({
+        role: msg.role as 'system' | 'user' | 'assistant',
+        content: msg.content
+      })));
+    }
+
+    // Add new user message
+    messages.push({ role: 'user', content: message });
+
+    // Call API
+    const response = await callOpenAICompatibleAPI(
+      messages,
+      agent.config,
+      apiKeyEntry.apiKey,
+      agent.config.apiConfig?.baseURL || apiKeyEntry.baseURL
+    );
+
+    // Extract assistant response
+    const assistantMessage = response.choices?.[0]?.message?.content;
+    if (!assistantMessage) {
+      throw new Error('No response content from API');
+    }
+
+    // Update agent history
+    const timestamp = Date.now();
+    agent.history = agent.history || [];
+    agent.history.push(
+      { role: 'user', content: message, timestamp },
+      { role: 'assistant', content: assistantMessage, timestamp }
+    );
+
+    // Save updated agent
+    saveAgent(projectPath, agent);
+
+    return response;
+  });
+
+  // Handler: Stream chat message
+  ipcMain.handle('chat:streamMessage', async (event, projectPath: string, agentName: string, message: string) => {
+    // Validate inputs first
+    const agents = loadAgents(projectPath);
+    const agent = agents.find(a => a.name === agentName);
+
+    if (!agent) {
+      throw new Error(`Agent "${agentName}" not found`);
+    }
+
+    const apiKeyName = agent.config.apiConfig?.apiKeyRef;
+    if (!apiKeyName) {
+      throw new Error('Agent does not have an API key configured');
+    }
+
+    const apiKeyEntry = getAPIKeyByName(apiKeyName);
+    if (!apiKeyEntry) {
+      throw new Error(`API key "${apiKeyName}" not found`);
+    }
+
+    // Build messages array
+    const messages: OpenAIMessage[] = [];
+
+    if (agent.prompts?.system) {
+      messages.push({ role: 'system', content: agent.prompts.system });
+    }
+
+    if (agent.history && agent.history.length > 0) {
+      messages.push(...agent.history.map(msg => ({
+        role: msg.role as 'system' | 'user' | 'assistant',
+        content: msg.content
+      })));
+    }
+
+    messages.push({ role: 'user', content: message });
+
+    // Collect full response for history
+    let fullResponse = '';
+
+    // Listen for chunks from the streamOpenAICompatibleAPI function
+    const chunkHandler = (_event: Electron.IpcMainEvent, chunk: string) => {
+      fullResponse += chunk;
+    };
+
+    // Listen for completion to save history
+    const completeHandler = () => {
+      // Update agent history
+      const timestamp = Date.now();
+      agent.history = agent.history || [];
+      agent.history.push(
+        { role: 'user', content: message, timestamp },
+        { role: 'assistant', content: fullResponse, timestamp }
+      );
+
+      // Save updated agent
+      saveAgent(projectPath, agent);
+
+      // Clean up listeners
+      ipcMain.removeListener('chat-chunk', chunkHandler);
+      ipcMain.removeListener('chat-complete', completeHandler);
+    };
+
+    // Listen for errors
+    const errorHandler = (_event: Electron.IpcMainEvent, error: string) => {
+      console.error('Streaming error:', error);
+      ipcMain.removeListener('chat-chunk', chunkHandler);
+      ipcMain.removeListener('chat-complete', completeHandler);
+      ipcMain.removeListener('chat-error', errorHandler);
+    };
+
+    ipcMain.on('chat-chunk', chunkHandler);
+    ipcMain.on('chat-complete', completeHandler);
+    ipcMain.on('chat-error', errorHandler);
+
+    // Start streaming
+    await streamOpenAICompatibleAPI(
+      messages,
+      agent.config,
+      apiKeyEntry.apiKey,
+      agent.config.apiConfig?.baseURL || apiKeyEntry.baseURL,
+      event.sender
+    );
   });
 }
 

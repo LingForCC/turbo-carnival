@@ -4,9 +4,10 @@
  */
 export class AppContainer extends HTMLElement {
   private projectPanel: any = null;
-  private rightPanel: any = null;
+  private dashboard: any = null;
+  private chatPanel: any = null;
   private projectToggleBtn: HTMLElement | null = null;
-  private rightToggleBtn: HTMLElement | null = null;
+  private showingChat: boolean = false;
 
   constructor() {
     super();
@@ -28,21 +29,16 @@ export class AppContainer extends HTMLElement {
           </svg>
         </button>
 
-        <project-agent-dashboard id="project-agent-dashboard" class="flex-1 transition-all duration-300 ease-in-out"></project-agent-dashboard>
-
-        <button id="toggle-right-btn" class="hidden flex-col items-center justify-center w-8 bg-gray-50 border-l border-gray-200 hover:bg-gray-100 cursor-pointer border-0" aria-label="Expand right panel">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          </svg>
-        </button>
-
-        <right-panel id="right-panel"></right-panel>
+        <!-- Center area: either dashboard or chat-panel -->
+        <project-agent-dashboard id="project-agent-dashboard" class="flex-1 transition-all duration-300 ease-in-out ${this.showingChat ? 'hidden' : ''}"></project-agent-dashboard>
+        <chat-panel id="chat-panel" class="flex-1 transition-all duration-300 ease-in-out ${!this.showingChat ? 'hidden' : ''}"></chat-panel>
       </div>
     `;
 
     // Get panel references
     this.projectPanel = this.querySelector('#project-panel');
-    this.rightPanel = this.querySelector('#right-panel');
+    this.dashboard = this.querySelector('#project-agent-dashboard');
+    this.chatPanel = this.querySelector('#chat-panel');
 
     // Re-attach event listeners after re-rendering
     this.attachEventListeners();
@@ -50,20 +46,12 @@ export class AppContainer extends HTMLElement {
 
   private attachEventListeners(): void {
     this.projectToggleBtn = this.querySelector('#toggle-project-btn');
-    this.rightToggleBtn = this.querySelector('#toggle-right-btn');
 
     if (this.projectToggleBtn) {
       const newBtn = this.projectToggleBtn.cloneNode(true);
       this.projectToggleBtn.replaceWith(newBtn);
       this.projectToggleBtn = newBtn as HTMLElement;
       this.projectToggleBtn.addEventListener('click', () => this.toggleProjectPanel());
-    }
-
-    if (this.rightToggleBtn) {
-      const newBtn = this.rightToggleBtn.cloneNode(true);
-      this.rightToggleBtn.replaceWith(newBtn);
-      this.rightToggleBtn = newBtn as HTMLElement;
-      this.rightToggleBtn.addEventListener('click', () => this.toggleRightPanel());
     }
 
     // Listen for panel toggle events from child components
@@ -86,6 +74,25 @@ export class AppContainer extends HTMLElement {
         }));
       }
     });
+
+    // Listen for agent-selected events - show chat panel
+    this.addEventListener('agent-selected', (event: Event) => {
+      const customEvent = event as CustomEvent;
+      this.showChatPanel();
+      // Forward to chat-panel
+      if (this.chatPanel) {
+        this.chatPanel.dispatchEvent(new CustomEvent('agent-selected', {
+          detail: customEvent.detail,
+          bubbles: false,
+          composed: true
+        }));
+      }
+    });
+
+    // Listen for chat-back events - show dashboard again
+    this.addEventListener('chat-back', () => {
+      this.showDashboard();
+    });
   }
 
   private handlePanelToggle(panel: string, collapsed: boolean): void {
@@ -97,14 +104,6 @@ export class AppContainer extends HTMLElement {
         this.projectToggleBtn.classList.add('hidden');
         this.projectToggleBtn.classList.remove('flex');
       }
-    } else if (panel === 'right' && this.rightToggleBtn) {
-      if (collapsed) {
-        this.rightToggleBtn.classList.remove('hidden');
-        this.rightToggleBtn.classList.add('flex');
-      } else {
-        this.rightToggleBtn.classList.add('hidden');
-        this.rightToggleBtn.classList.remove('flex');
-      }
     }
   }
 
@@ -114,10 +113,14 @@ export class AppContainer extends HTMLElement {
     }
   }
 
-  private toggleRightPanel(): void {
-    if (this.rightPanel) {
-      this.rightPanel.expand();
-    }
+  private showChatPanel(): void {
+    this.showingChat = true;
+    this.render();
+  }
+
+  private showDashboard(): void {
+    this.showingChat = false;
+    this.render();
   }
 }
 
