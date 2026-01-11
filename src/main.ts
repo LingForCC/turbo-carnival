@@ -26,7 +26,7 @@ function createWindow(): void {
     mainWindow.webContents.openDevTools();
   } else {
     // In production, load from the built file
-    mainWindow.loadFile(path.join(__dirname, '../index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../dist-renderer/index.html'));
   }
 
   mainWindow.on('closed', () => {
