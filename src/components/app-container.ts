@@ -28,7 +28,7 @@ export class AppContainer extends HTMLElement {
           </svg>
         </button>
 
-        <middle-panel id="middle-panel" class="flex-1 transition-all duration-300 ease-in-out"></middle-panel>
+        <project-agent-dashboard id="project-agent-dashboard" class="flex-1 transition-all duration-300 ease-in-out"></project-agent-dashboard>
 
         <button id="toggle-right-btn" class="hidden flex-col items-center justify-center w-8 bg-gray-50 border-l border-gray-200 hover:bg-gray-100 cursor-pointer border-0" aria-label="Expand right panel">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -71,6 +71,20 @@ export class AppContainer extends HTMLElement {
       const customEvent = event as CustomEvent;
       const { panel, collapsed } = customEvent.detail;
       this.handlePanelToggle(panel, collapsed);
+    });
+
+    // Listen for project-selected events and forward to project-agent-dashboard
+    this.addEventListener('project-selected', (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const dashboard = this.querySelector('#project-agent-dashboard');
+      if (dashboard) {
+        // Re-emit the event to project-agent-dashboard (don't bubble to prevent infinite loop)
+        dashboard.dispatchEvent(new CustomEvent('project-selected', {
+          detail: customEvent.detail,
+          bubbles: false,
+          composed: true
+        }));
+      }
     });
   }
 

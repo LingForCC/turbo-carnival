@@ -4,19 +4,9 @@ import './styles.css';
 // Import Web Components
 import './components/project-panel';
 import './components/right-panel';
-import './components/middle-panel';
+import './components/project-agent-dashboard';
 import './components/app-container';
-
-// Extend the Window interface to include our exposed API
-export {};
-
-declare global {
-  interface Window {
-    electronAPI: {
-      platform: string;
-    };
-  }
-}
+import './components/agent-form-dialog';
 
 // Initialize the application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -27,21 +17,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   console.log('Renderer process initialized with Web Components');
 
-  // Example: Listen for text changes from middle panel
-  const middlePanel = document.querySelector('middle-panel');
-  if (middlePanel) {
-    middlePanel.addEventListener('text-change', (event: Event) => {
-      const customEvent = event as CustomEvent;
-      console.log('Text changed:', customEvent.detail.value);
-    });
-  }
-
-  // Example: Listen for panel toggle events
+  // Example: Listen for agent selection events
   const appContainer = document.querySelector('app-container');
   if (appContainer) {
-    appContainer.addEventListener('panel-toggle', (event: Event) => {
+    appContainer.addEventListener('agent-selected', (event: Event) => {
       const customEvent = event as CustomEvent;
-      console.log('Panel toggled:', customEvent.detail);
+      console.log('Agent selected:', customEvent.detail);
     });
   }
 });
