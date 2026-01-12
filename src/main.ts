@@ -239,6 +239,7 @@ async function callOpenAICompatibleAPI(
 
 /**
  * Call OpenAI-compatible API with streaming
+ * Returns the complete accumulated response content
  */
 async function streamOpenAICompatibleAPI(
   messages: OpenAIMessage[],
@@ -247,7 +248,7 @@ async function streamOpenAICompatibleAPI(
   baseURL: string | undefined,
   webContents: Electron.WebContents,
   timeout: number = 60000
-): Promise<void> {
+): Promise<string> {
   const endpoint = baseURL || 'https://api.openai.com/v1';
   const url = `${endpoint}/chat/completions`;
 
@@ -286,6 +287,7 @@ async function streamOpenAICompatibleAPI(
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
+    let fullResponse = '';
 
     while (true) {
       const { done, value } = await reader.read();
@@ -306,13 +308,14 @@ async function streamOpenAICompatibleAPI(
 
           const content = chunk.choices?.[0]?.delta?.content;
           if (content) {
+            fullResponse += content;
             webContents.send('chat-chunk', content);
           }
 
           const finishReason = chunk.choices?.[0]?.finish_reason;
           if (finishReason) {
             webContents.send('chat-complete');
-            return;
+            return fullResponse;
           }
         } catch (parseError) {
           console.warn('Failed to parse SSE chunk:', parseError);
@@ -321,6 +324,7 @@ async function streamOpenAICompatibleAPI(
     }
 
     webContents.send('chat-complete');
+    return fullResponse;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -626,52 +630,27 @@ function registerIPCHandlers(): void {
 
     messages.push({ role: 'user', content: message });
 
-    // Collect full response for history
-    let fullResponse = '';
-
-    // Listen for chunks from the streamOpenAICompatibleAPI function
-    const chunkHandler = (_event: Electron.IpcMainEvent, chunk: string) => {
-      fullResponse += chunk;
-    };
-
-    // Listen for completion to save history
-    const completeHandler = () => {
-      // Update agent history
-      const timestamp = Date.now();
-      agent.history = agent.history || [];
-      agent.history.push(
-        { role: 'user', content: message, timestamp },
-        { role: 'assistant', content: fullResponse, timestamp }
-      );
-
-      // Save updated agent
-      saveAgent(projectPath, agent);
-
-      // Clean up listeners
-      ipcMain.removeListener('chat-chunk', chunkHandler);
-      ipcMain.removeListener('chat-complete', completeHandler);
-    };
-
-    // Listen for errors
-    const errorHandler = (_event: Electron.IpcMainEvent, error: string) => {
-      console.error('Streaming error:', error);
-      ipcMain.removeListener('chat-chunk', chunkHandler);
-      ipcMain.removeListener('chat-complete', completeHandler);
-      ipcMain.removeListener('chat-error', errorHandler);
-    };
-
-    ipcMain.on('chat-chunk', chunkHandler);
-    ipcMain.on('chat-complete', completeHandler);
-    ipcMain.on('chat-error', errorHandler);
-
-    // Start streaming
-    await streamOpenAICompatibleAPI(
+    // Start streaming and get the full response
+    const fullResponse = await streamOpenAICompatibleAPI(
       messages,
       agent.config,
       apiKeyEntry.apiKey,
       agent.config.apiConfig?.baseURL || apiKeyEntry.baseURL,
       event.sender
     );
+
+    // Update agent history with the conversation
+    const timestamp = Date.now();
+    agent.history = agent.history || [];
+    agent.history.push(
+      { role: 'user', content: message, timestamp },
+      { role: 'assistant', content: fullResponse, timestamp }
+    );
+
+    // Save updated agent
+    saveAgent(projectPath, agent);
+
+    return fullResponse;
   });
 }
 
