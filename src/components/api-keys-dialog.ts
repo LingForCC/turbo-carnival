@@ -157,20 +157,20 @@ export class APIKeysDialog extends HTMLElement {
       (newBtn as HTMLElement).addEventListener('click', () => this.showAddForm());
     }
 
-    // Cancel form button
-    const cancelFormBtn = this.querySelector('#cancel-form-btn');
-    if (cancelFormBtn) {
-      const newBtn = cancelFormBtn.cloneNode(true);
-      cancelFormBtn.replaceWith(newBtn);
-      (newBtn as HTMLElement).addEventListener('click', () => this.hideAddForm());
-    }
-
-    // Form submit
+    // Form submit (must be done before attaching listeners to buttons inside the form)
     const form = this.querySelector('#api-key-form');
     if (form) {
       const newForm = form.cloneNode(true);
       form.replaceWith(newForm);
       (newForm as HTMLFormElement).addEventListener('submit', (e) => this.handleSubmit(e));
+    }
+
+    // Cancel form button (must be attached AFTER form cloning since it's inside the form)
+    const cancelFormBtn = this.querySelector('#cancel-form-btn');
+    if (cancelFormBtn) {
+      const newBtn = cancelFormBtn.cloneNode(true);
+      cancelFormBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.hideAddForm());
     }
 
     // Delete buttons
@@ -203,6 +203,11 @@ export class APIKeysDialog extends HTMLElement {
     const form = this.querySelector('#add-key-form');
     if (form) {
       form.classList.add('hidden');
+      // Reset the form when hiding
+      const formElement = this.querySelector('#api-key-form') as HTMLFormElement;
+      if (formElement) {
+        formElement.reset();
+      }
     }
   }
 
@@ -222,6 +227,7 @@ export class APIKeysDialog extends HTMLElement {
     try {
       if (window.electronAPI) {
         this.apiKeys = await window.electronAPI.addAPIKey(newKey);
+        this.hideAddForm();
         this.render();
       }
     } catch (error: any) {

@@ -240,7 +240,6 @@ export class AgentFormDialog extends HTMLElement {
 
   private attachEventListeners(): void {
     this.form = this.querySelector('#agent-form');
-    const cancelBtn = this.querySelector('#cancel-btn');
 
     // Close X button
     const closeXBtn = this.querySelector('#close-x-btn');
@@ -250,12 +249,7 @@ export class AgentFormDialog extends HTMLElement {
       (newBtn as HTMLElement).addEventListener('click', () => this.cancel());
     }
 
-    if (cancelBtn) {
-      const newBtn = cancelBtn.cloneNode(true);
-      cancelBtn.replaceWith(newBtn);
-      (newBtn as HTMLElement).addEventListener('click', () => this.cancel());
-    }
-
+    // Form submit (must be done before attaching listeners to buttons inside the form)
     if (this.form) {
       const newForm = this.form.cloneNode(true);
       this.form.replaceWith(newForm);
@@ -264,7 +258,15 @@ export class AgentFormDialog extends HTMLElement {
       this.form.addEventListener('submit', (e) => this.handleSubmit(e));
     }
 
-    // Manage keys button
+    // Cancel button (must be attached AFTER form cloning since it's inside the form)
+    const cancelBtn = this.querySelector('#cancel-btn');
+    if (cancelBtn) {
+      const newBtn = cancelBtn.cloneNode(true);
+      cancelBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.cancel());
+    }
+
+    // Manage keys button (must be attached AFTER form cloning since it's inside the form)
     const manageKeysBtn = this.querySelector('#manage-keys-btn');
     if (manageKeysBtn) {
       const newBtn = manageKeysBtn.cloneNode(true);
