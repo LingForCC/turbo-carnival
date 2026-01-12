@@ -62,10 +62,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onComplete: () => void,
     onError: (error: string) => void
   ) => {
+    let completed = false;
+
     // Set up IPC listeners for streaming events
     const chunkListener = (_event: Electron.IpcRendererEvent, chunk: string) => onChunk(chunk);
-    const completeListener = () => onComplete();
-    const errorListener = (_event: Electron.IpcRendererEvent, error: string) => onError(error);
+    const completeListener = () => {
+      if (!completed) {
+        completed = true;
+        onComplete();
+        // Clean up all listeners after completion
+        ipcRenderer.removeListener('chat-chunk', chunkListener);
+        ipcRenderer.removeListener('chat-complete', completeListener);
+        ipcRenderer.removeListener('chat-error', errorListener);
+      }
+    };
+    const errorListener = (_event: Electron.IpcRendererEvent, error: string) => {
+      if (!completed) {
+        completed = true;
+        onError(error);
+        // Clean up all listeners after error
+        ipcRenderer.removeListener('chat-chunk', chunkListener);
+        ipcRenderer.removeListener('chat-complete', completeListener);
+        ipcRenderer.removeListener('chat-error', errorListener);
+      }
+    };
 
     ipcRenderer.on('chat-chunk', chunkListener);
     ipcRenderer.on('chat-complete', completeListener);
@@ -73,11 +93,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Invoke the streaming handler
     return ipcRenderer.invoke('chat:streamMessage', projectPath, agentName, message)
-      .finally(() => {
-        // Clean up listeners
-        ipcRenderer.removeListener('chat-chunk', chunkListener);
-        ipcRenderer.removeListener('chat-complete', completeListener);
-        ipcRenderer.removeListener('chat-error', errorListener);
+      .catch((error) => {
+        // Handle promise rejection (e.g., if the main process handler throws)
+        if (!completed) {
+          completed = true;
+          onError(error.message || String(error));
+          // Clean up all listeners
+          ipcRenderer.removeListener('chat-chunk', chunkListener);
+          ipcRenderer.removeListener('chat-complete', completeListener);
+          ipcRenderer.removeListener('chat-error', errorListener);
+        }
       });
   },
 });
