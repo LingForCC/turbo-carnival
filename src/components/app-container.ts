@@ -73,6 +73,10 @@ export class AppContainer extends HTMLElement {
           composed: true
         }));
       }
+      // If currently showing chat, switch back to dashboard view
+      if (this.showingChat) {
+        this.showDashboard();
+      }
     });
 
     // Listen for agent-selected events - show chat panel
@@ -115,12 +119,24 @@ export class AppContainer extends HTMLElement {
 
   private showChatPanel(): void {
     this.showingChat = true;
-    this.render();
+    // Toggle visibility instead of re-rendering to preserve component state
+    if (this.dashboard) {
+      this.dashboard.classList.add('hidden');
+    }
+    if (this.chatPanel) {
+      this.chatPanel.classList.remove('hidden');
+    }
   }
 
   private showDashboard(): void {
     this.showingChat = false;
-    this.render();
+    // Toggle visibility instead of re-rendering to preserve component state
+    if (this.chatPanel) {
+      this.chatPanel.classList.add('hidden');
+    }
+    if (this.dashboard) {
+      this.dashboard.classList.remove('hidden');
+    }
   }
 }
 
