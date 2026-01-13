@@ -47,6 +47,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Remove an API key
   removeAPIKey: (name: string) => ipcRenderer.invoke('api-keys:remove', name),
 
+  // ============ PROJECT DETAIL METHODS ============
+
+  // Get file tree for a project
+  getFileTree: (projectPath: string, options?: any) =>
+    ipcRenderer.invoke('project:getFileTree', projectPath, options),
+
   // ============ CHAT METHODS ============
 
   // Send chat message (non-streaming)

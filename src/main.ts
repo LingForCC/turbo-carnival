@@ -183,6 +183,99 @@ function getAPIKeyByName(name: string): any | undefined {
   return keys.find(k => k.name === name);
 }
 
+// ============ FILE TREE HELPERS ============
+
+/**
+ * Check if a file/directory name is hidden (starts with '.')
+ */
+function isHidden(name: string): boolean {
+  return name.startsWith('.');
+}
+
+/**
+ * Recursively read directory and build file tree
+ */
+function buildFileTree(
+  dirPath: string,
+  options: any = {},
+  currentDepth: number = 0
+): any[] {
+  // Check max depth limit
+  if (options.maxDepth !== undefined && currentDepth >= options.maxDepth) {
+    return [];
+  }
+
+  // Verify directory exists and is readable
+  if (!fs.existsSync(dirPath)) {
+    console.warn(`Directory does not exist: ${dirPath}`);
+    return [];
+  }
+
+  const stat = fs.statSync(dirPath);
+  if (!stat.isDirectory()) {
+    console.warn(`Path is not a directory: ${dirPath}`);
+    return [];
+  }
+
+  const nodes: any[] = [];
+
+  try {
+    // Read directory contents
+    const entries = fs.readdirSync(dirPath);
+
+    // Filter and process each entry
+    for (const entry of entries) {
+      // Skip hidden files if option is set
+      if (options.excludeHidden && isHidden(entry)) {
+        continue;
+      }
+
+      const fullPath = path.join(dirPath, entry);
+      const entryStat = fs.statSync(fullPath);
+
+      // Build node based on type
+      if (entryStat.isDirectory()) {
+        const node: any = {
+          name: entry,
+          path: fullPath,
+          type: 'directory',
+          expanded: false, // Default to collapsed
+          children: buildFileTree(fullPath, options, currentDepth + 1)
+        };
+        nodes.push(node);
+      } else if (entryStat.isFile()) {
+        // Filter by extension if specified
+        if (options.includeExtensions) {
+          const ext = path.extname(entry).toLowerCase();
+          if (!options.includeExtensions.includes(ext)) {
+            continue;
+          }
+        }
+
+        const node: any = {
+          name: entry,
+          path: fullPath,
+          type: 'file'
+        };
+        nodes.push(node);
+      }
+    }
+
+    // Sort: directories first, then files, both alphabetically
+    nodes.sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'directory' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+  } catch (error) {
+    console.error(`Failed to read directory ${dirPath}:`, error);
+  }
+
+  return nodes;
+}
+
 // ============ OPENAI API CLIENT ============
 
 interface OpenAIMessage {
@@ -651,6 +744,28 @@ function registerIPCHandlers(): void {
     saveAgent(projectPath, agent);
 
     return fullResponse;
+  });
+
+  // ============ PROJECT DETAIL IPC HANDLERS ============
+
+  /**
+   * Get file tree for a project directory
+   */
+  ipcMain.handle('project:getFileTree', async (_event, projectPath: string, options?: any) => {
+    // Default options
+    const fileTreeOptions: any = {
+      maxDepth: options?.maxDepth,
+      excludeHidden: options?.excludeHidden ?? true, // Default: exclude hidden files
+      includeExtensions: options?.includeExtensions
+    };
+
+    try {
+      const fileTree = buildFileTree(projectPath, fileTreeOptions);
+      return fileTree;
+    } catch (error) {
+      console.error('Failed to build file tree:', error);
+      throw error;
+    }
   });
 }
 

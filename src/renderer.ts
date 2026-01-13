@@ -8,6 +8,7 @@ import './components/project-agent-dashboard';
 import './components/app-container';
 import './components/agent-form-dialog';
 import './components/api-keys-dialog';
+import './components/project-detail-panel';
 
 // Initialize the application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {

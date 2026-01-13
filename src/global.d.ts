@@ -76,6 +76,31 @@ export interface APIKey {
   createdAt: number;             // Timestamp
 }
 
+/**
+ * File system node type discriminator
+ */
+export type FileType = 'file' | 'directory';
+
+/**
+ * Represents a node in the file tree (file or directory)
+ */
+export interface FileTreeNode {
+  name: string;              // File/directory name with extension
+  path: string;              // Full absolute path
+  type: FileType;            // 'file' or 'directory'
+  children?: FileTreeNode[]; // Only present for directories
+  expanded?: boolean;        // UI state: whether directory is expanded
+}
+
+/**
+ * Options for file tree traversal
+ */
+export interface FileTreeOptions {
+  maxDepth?: number;           // Maximum recursion depth (default: unlimited)
+  excludeHidden?: boolean;     // Filter out hidden files (default: true)
+  includeExtensions?: string[]; // Only include certain extensions (optional)
+}
+
 interface ElectronAPI {
   platform: string;
   openFolderDialog: () => Promise<string | null>;
@@ -110,6 +135,9 @@ interface ElectronAPI {
     onComplete: () => void,
     onError: (error: string) => void
   ) => Promise<void>;
+
+  // Project detail methods
+  getFileTree: (projectPath: string, options?: FileTreeOptions) => Promise<FileTreeNode[]>;
 }
 
 declare global {

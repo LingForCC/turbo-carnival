@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Turbo Carnival is an Electron desktop application built with TypeScript, using Web Components for the UI and Tailwind CSS v4 for styling. The app features a three-panel layout (project sidebar, center content area, right sidebar) with collapsible side panels. The left panel manages local folder projects that can be added/removed via the native folder picker dialog. Each project can be associated with multiple AI agents, which are stored as `agent-{name}.json` files in the project folder.
+Turbo Carnival is an Electron desktop application built with TypeScript, using Web Components for the UI and Tailwind CSS v4 for styling. The app features a three-panel layout (project sidebar, center content area, project detail sidebar) with collapsible side panels. The left panel manages local folder projects that can be added/removed via the native folder picker dialog. Each project can be associated with multiple AI agents, which are stored as `agent-{name}.json` files in the project folder.
 
-The app includes a **conversational AI interface** that allows users to chat with their configured agents using OpenAI-compatible APIs, with support for both streaming and non-streaming responses. It also includes **global API key management** for secure credential storage.
+The app includes a **conversational AI interface** that allows users to chat with their configured agents using OpenAI-compatible APIs, with support for both streaming and non-streaming responses. It also includes **global API key management** for secure credential storage, and a **project detail panel** that displays the file tree structure of selected projects.
 
 ## Build and Development Commands
 
@@ -20,7 +20,7 @@ The app includes a **conversational AI interface** that allows users to chat wit
 ### Electron Process Structure
 The app follows standard Electron architecture:
 
-- **Main Process** (`src/main.ts`) - Creates BrowserWindow, handles app lifecycle, and manages IPC handlers for project, agent, API key storage, and OpenAI API client
+- **Main Process** (`src/main.ts`) - Creates BrowserWindow, handles app lifecycle, and manages IPC handlers for project, agent, API key storage, file tree reading, and OpenAI API client
 - **Preload Script** (`src/preload.ts`) - Bridges main and renderer via contextBridge, exposes `window.electronAPI` with:
   - `platform` - Current platform (darwin/win32/linux)
   - `openFolderDialog()` - Opens native folder picker dialog
@@ -34,6 +34,7 @@ The app follows standard Electron architecture:
   - `getAPIKeys()` - Retrieves all stored API keys
   - `addAPIKey(apiKey)` - Adds a new API key
   - `removeAPIKey(name)` - Removes an API key by name
+  - `getFileTree(projectPath, options)` - Gets file tree structure for a project folder
   - `sendMessage(projectPath, agentName, message)` - Sends non-streaming chat message
   - `streamMessage(projectPath, agentName, message)` - Initiates streaming chat
   - `onChatChunk(callback)` - Listens for streaming response chunks
@@ -55,7 +56,7 @@ The renderer uses vanilla JavaScript Web Components (not Vue/React). Each compon
 - `project-panel` (`src/components/project-panel.ts`) - Collapsible left sidebar (264px wide when expanded) that manages local folder projects with add/remove/select functionality
 - `project-agent-dashboard` (`src/components/project-agent-dashboard.ts`) - Center content area that displays agents for the selected project in a grid layout with add/edit/delete functionality, handles dashboard/chat view switching
 - `chat-panel` (`src/components/chat-panel.ts`) - Interactive chat interface for AI agents with streaming/non-streaming support, message history, and back navigation
-- `right-panel` (`src/components/right-panel.ts`) - Collapsible right sidebar (264px wide when expanded)
+- `project-detail-panel` (`src/components/project-detail-panel.ts`) - Collapsible right sidebar (264px wide when expanded) that displays recursive file tree of selected project folder
 - `agent-form-dialog` (`src/components/agent-form-dialog.ts`) - Modal dialog for creating and editing agents
 - `api-keys-dialog` (`src/components/api-keys-dialog.ts`) - Modal dialog for managing global API keys with add/edit/delete functionality
 
@@ -69,11 +70,12 @@ All Web Components follow this pattern:
 
 #### Event Flow
 1. User clicks project in `project-panel` → emits `project-selected` event (bubbles, composed)
-2. `app-container` catches event → forwards to `project-agent-dashboard` with `bubbles: false` to prevent infinite loop
+2. `app-container` catches event → forwards to both `project-agent-dashboard` and `project-detail-panel` with `bubbles: false` to prevent infinite loop
 3. `project-agent-dashboard.handleProjectSelected()` loads agents via IPC
-4. User clicks agent card → `project-agent-dashboard` emits `agent-selected` event, switches to chat view
-5. `chat-panel` loads and displays conversation, connects to IPC for messaging
-6. User clicks back button → `chat-panel` emits `chat-back` event, returns to dashboard view
+4. `project-detail-panel.handleProjectSelected()` loads file tree via IPC
+5. User clicks agent card → `project-agent-dashboard` emits `agent-selected` event, switches to chat view
+6. `chat-panel` loads and displays conversation, connects to IPC for messaging
+7. User clicks back button → `chat-panel` emits `chat-back` event, returns to dashboard view
 
 #### Dashboard/Chat View Switching
 The `project-agent-dashboard` component has two display modes:
@@ -116,6 +118,50 @@ The app provides a complete chat interface for interacting with AI agents throug
 - Configurable model, temperature, maxTokens, topP per agent
 - Request timeout: 60 seconds
 - Server-Sent Events (SSE) for streaming responses
+
+### Project Detail Panel
+
+The app includes a file browser panel that displays the structure of selected project folders.
+
+**File Tree Features:**
+- **Recursive directory tree** - Shows all files and folders in project hierarchy
+- **Expand/collapse folders** - Click directory nodes to toggle visibility
+- **Visual distinction** - Blue folder icons, gray file icons for easy identification
+- **Hidden file filtering** - Automatically excludes files starting with '.'
+- **Alphabetical sorting** - Directories first, then files, both sorted A-Z
+- **16px indentation** - Visual hierarchy with proper nesting levels
+- **Empty state handling** - Graceful handling for no project selected or empty folders
+- **Panel toggle** - Collapse/expand with smooth transitions
+
+**File Tree UI:**
+- Hierarchical tree view with folder/file icons
+- Chevron indicators for expandable directories
+- Hover effects on tree nodes
+- Item count display
+- Responsive panel width (264px when expanded, 0px when collapsed)
+
+**File Tree Data Flow:**
+1. User selects project in `project-panel`
+2. `project-selected` event forwarded to `project-detail-panel`
+3. `project-detail-panel.handleProjectSelected()` calls `getFileTree()` IPC method
+4. Main process reads folder contents recursively via `buildFileTree()` helper
+5. File tree returned with `FileTreeNode[]` array structure
+6. Component renders tree recursively with `renderTreeNode()` method
+7. User interacts with tree via click events to expand/collapse directories
+
+**File Tree Implementation:**
+- `buildFileTree(dirPath, options, currentDepth)` - Recursive helper in main process
+- `isHidden(name)` - Filters files starting with '.'
+- `renderTreeNode(node, depth)` - Recursive rendering with proper indentation
+- `toggleDirectory(path)` - Manages expanded/collapsed state via `Set<string>`
+- `escapeHtml(text)` - XSS prevention for all file/folder names
+- Clone-and-replace pattern for event listeners to prevent duplicates
+
+**Security:**
+- All file names and folder names escaped via `escapeHtml()` to prevent XSS
+- File system operations wrapped in try-catch for graceful error handling
+- Permission errors logged as warnings, don't crash the app
+- Hidden files filtered by default to reduce clutter
 
 ### API Key Management
 
@@ -195,6 +241,9 @@ Each project can have multiple AI agents associated with it. Agents are stored a
   - `ConversationMessage` interface - Messages in conversation history with role, content, and timestamp
   - `AgentSettings` interface - Flexible settings object
   - `APIKey` interface - Global API key storage with name, key, baseURL, and addedAt
+  - `FileType` type - Discriminator union for file system nodes ('file' | 'directory')
+  - `FileTreeNode` interface - Represents a node in the file tree with name, path, type, children (for directories), and expanded state
+  - `FileTreeOptions` interface - Configuration for file tree traversal (maxDepth, excludeHidden, includeExtensions)
   - `ElectronAPI` interface - Defines the exposed API methods from the preload script
 
 ### TypeScript Configuration
@@ -221,6 +270,9 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - `api-keys:get` - Returns all stored API keys
 - `api-keys:add` - Adds a new API key (validates and saves to api-keys.json)
 - `api-keys:remove` - Removes an API key by name
+
+**Project Detail IPC Channels:**
+- `project:getFileTree` - Gets file tree structure for a project folder (recursive, filters hidden files)
 
 **Chat IPC Channels:**
 - `chat:sendMessage` - Sends non-streaming message, returns full response
@@ -250,6 +302,22 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 
 ### Event Listener Management
 Web Components use a unique pattern to prevent duplicate event listeners: after rendering, buttons are cloned and replaced before attaching new listeners. This is visible in all panel components.
+
+**Critical Implementation Detail:**
+The clone-and-replace pattern is essential for any interactive elements that are re-rendered. Without this pattern, event listeners accumulate on old DOM elements and new elements may not have listeners attached. This pattern is especially important for:
+- Panel toggle buttons
+- Tree node clicks (directory expansion/collapse)
+- Any dynamically generated interactive elements
+
+**Pattern:**
+```typescript
+// Clone the element to remove old listeners
+const newElement = element.cloneNode(true);
+// Replace the old element with the clone
+element.replaceWith(newElement);
+// Attach fresh listeners to the new element
+(newElement as HTMLElement).addEventListener('click', handler);
+```
 
 ### Event Bubbling Best Practices
 When forwarding events between components, use `bubbles: false` to prevent infinite loops:
