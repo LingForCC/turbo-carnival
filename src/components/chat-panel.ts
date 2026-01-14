@@ -12,6 +12,13 @@ export class ChatPanel extends HTMLElement {
   private isStreaming: boolean = false;
   private currentStreamedContent: string = '';
 
+  // File tagging state
+  private taggedFiles: Array<{ name: string; path: string }> = [];
+  private availableFiles: Array<{ name: string; path: string; extension: string }> = [];
+  private showAutocomplete: boolean = false;
+  private autocompleteQuery: string = '';
+  private autocompleteIndex: number = -1;
+
   constructor() {
     super();
   }
@@ -25,6 +32,18 @@ export class ChatPanel extends HTMLElement {
     this.addEventListener('agent-selected', (event: Event) => {
       const customEvent = event as CustomEvent;
       this.handleAgentSelected(customEvent.detail.agent, customEvent.detail.project);
+    });
+
+    // Close autocomplete when clicking outside
+    document.addEventListener('click', (e) => {
+      if (this.showAutocomplete) {
+        const autocomplete = this.querySelector('#file-autocomplete');
+        const textarea = this.querySelector('#chat-input');
+        if (autocomplete && !autocomplete.contains(e.target as Node) && textarea !== e.target) {
+          this.showAutocomplete = false;
+          this.render();
+        }
+      }
     });
   }
 
@@ -68,24 +87,48 @@ export class ChatPanel extends HTMLElement {
         <!-- Input Area -->
         ${this.currentAgent ? `
           <div class="p-4 border-t border-gray-200 shrink-0">
-            <div class="flex gap-2">
-              <textarea
-                id="chat-input"
-                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Type your message..."
-                rows="2"
-                ${this.isStreaming ? 'disabled' : ''}
-              ></textarea>
-              <button
-                id="send-btn"
-                class="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg cursor-pointer border-0 self-end"
-                ${this.isStreaming ? 'disabled' : ''}
-              >
-                ${this.isStreaming ?
-                  '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>' :
-                  '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>'
-                }
-              </button>
+            <!-- Tagged files display -->
+            ${this.taggedFiles.length > 0 ? `
+              <div id="tagged-files" class="flex flex-wrap gap-2 mb-3">
+                ${this.taggedFiles.map(file => `
+                  <div class="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded-md">
+                    <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span class="text-xs text-blue-700">${this.escapeHtml(file.name)}</span>
+                    <button class="remove-file-btn hover:bg-blue-100 rounded p-0.5 cursor-pointer border-0 bg-transparent" data-file-path="${this.escapeHtml(file.path)}">
+                      <svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                `).join('')}
+                <button id="clear-all-files-btn" class="text-xs text-blue-600 hover:text-blue-700 cursor-pointer border-0 bg-transparent p-0">Clear all</button>
+              </div>
+            ` : ''}
+
+            <div class="relative">
+              <!-- Autocomplete dropdown -->
+              ${this.renderAutocomplete()}
+              <div class="flex gap-2">
+                <textarea
+                  id="chat-input"
+                  class="flex-1 px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Type @ to mention files..."
+                  rows="2"
+                  ${this.isStreaming ? 'disabled' : ''}
+                ></textarea>
+                <button
+                  id="send-btn"
+                  class="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg cursor-pointer border-0 self-end"
+                  ${this.isStreaming ? 'disabled' : ''}
+                >
+                  ${this.isStreaming ?
+                    '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>' :
+                    '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>'
+                  }
+                </button>
+              </div>
             </div>
             <div class="flex items-center gap-2 mt-2">
               <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
@@ -174,7 +217,7 @@ export class ChatPanel extends HTMLElement {
       (newBtn as HTMLElement).addEventListener('click', () => this.clearChat());
     }
 
-    // Send button
+    // Send button and chat input
     const sendBtn = this.querySelector('#send-btn');
     const chatInput = this.querySelector('#chat-input') as HTMLTextAreaElement;
 
@@ -189,19 +232,73 @@ export class ChatPanel extends HTMLElement {
       // Send on button click
       (newBtn as HTMLElement).addEventListener('click', () => this.sendMessage());
 
-      // Send on Enter (Shift+Enter for new line)
+      // Input handler for @mention detection
+      actualInput.addEventListener('input', (e) => this.handleTextareaInput(e));
+
+      // Keydown handler for autocomplete navigation
       actualInput.addEventListener('keydown', (e) => {
+        // Handle autocomplete navigation first
+        if (this.showAutocomplete) {
+          this.handleTextareaKeydown(e);
+          return;
+        }
+
+        // Send on Enter (Shift+Enter for new line)
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
           this.sendMessage();
         }
       });
     }
+
+    // Remove file buttons
+    this.querySelectorAll('.remove-file-btn').forEach(btn => {
+      const filePath = btn.getAttribute('data-file-path');
+      if (!filePath) return;
+
+      const newBtn = btn.cloneNode(true);
+      btn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => {
+        this.taggedFiles = this.taggedFiles.filter(f => f.path !== filePath);
+        this.render();
+        const textarea = this.querySelector('#chat-input') as HTMLTextAreaElement;
+        textarea?.focus();
+      });
+    });
+
+    // Clear all files button
+    const clearAllBtn = this.querySelector('#clear-all-files-btn');
+    if (clearAllBtn) {
+      const newBtn = clearAllBtn.cloneNode(true);
+      clearAllBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => {
+        this.taggedFiles = [];
+        this.render();
+        const textarea = this.querySelector('#chat-input') as HTMLTextAreaElement;
+        textarea?.focus();
+      });
+    }
+
+    // Autocomplete option clicks
+    this.querySelectorAll('.file-option').forEach(option => {
+      const filePath = option.getAttribute('data-file-path');
+      const fileName = option.getAttribute('data-file-name');
+      if (!filePath || !fileName) return;
+
+      const newOption = option.cloneNode(true);
+      option.replaceWith(newOption);
+      (newOption as HTMLElement).addEventListener('click', () => {
+        this.selectFileForTagging(filePath, fileName);
+      });
+    });
   }
 
   private async handleAgentSelected(agent: Agent, project: Project): Promise<void> {
     this.currentAgent = agent;
     this.currentProject = project;
+
+    // Clear tagged files when switching agents
+    this.taggedFiles = [];
 
     // Load conversation history from agent
     this.chatHistory = (agent.history || [])
@@ -210,6 +307,9 @@ export class ChatPanel extends HTMLElement {
         role: msg.role as 'user' | 'assistant',
         content: msg.content
       }));
+
+    // Load available .txt and .md files
+    await this.loadAvailableFiles();
 
     this.render();
     this.scrollToBottom();
@@ -221,14 +321,17 @@ export class ChatPanel extends HTMLElement {
     const input = this.querySelector('#chat-input') as HTMLTextAreaElement;
     const message = input?.value.trim();
 
-    if (!message) return;
+    if (!message && this.taggedFiles.length === 0) return;
 
     // Get streaming preference
     const streamToggle = this.querySelector('#stream-toggle') as HTMLInputElement;
     const shouldStream = streamToggle?.checked ?? true;
 
+    // Collect file paths from tagged files
+    const filePaths = this.taggedFiles.map(f => f.path);
+
     // Add user message to UI immediately
-    this.chatHistory.push({ role: 'user', content: message });
+    this.chatHistory.push({ role: 'user', content: message || '' });
     this.render();
     this.scrollToBottom();
 
@@ -252,24 +355,28 @@ export class ChatPanel extends HTMLElement {
 
     try {
       if (shouldStream) {
-        await this.streamMessage(message);
+        await this.streamMessage(message, filePaths);
       } else {
-        await this.sendNonStreamingMessage(message);
+        await this.sendNonStreamingMessage(message, filePaths);
       }
     } catch (error: any) {
       this.showError(`Failed to send message: ${error.message}`);
       this.chatHistory.pop(); // Remove user message
       this.render();
     }
+
+    // Keep tagged files for the entire conversation session
+    this.render();
   }
 
-  private async sendNonStreamingMessage(userMessage: string): Promise<void> {
+  private async sendNonStreamingMessage(userMessage: string, filePaths: string[]): Promise<void> {
     if (!window.electronAPI || !this.currentProject || !this.currentAgent) return;
 
     const response = await window.electronAPI.sendChatMessage(
       this.currentProject.path,
       this.currentAgent.name,
-      userMessage
+      userMessage,
+      filePaths
     );
 
     const assistantMessage = response.choices?.[0]?.message?.content;
@@ -280,7 +387,7 @@ export class ChatPanel extends HTMLElement {
     }
   }
 
-  private async streamMessage(userMessage: string): Promise<void> {
+  private async streamMessage(userMessage: string, filePaths: string[]): Promise<void> {
     if (!window.electronAPI || !this.currentProject || !this.currentAgent) return;
 
     this.isStreaming = true;
@@ -294,6 +401,7 @@ export class ChatPanel extends HTMLElement {
       this.currentProject.path,
       this.currentAgent.name,
       userMessage,
+      filePaths,
       // onChunk
       (chunk: string) => {
         this.currentStreamedContent += chunk;
@@ -361,6 +469,153 @@ export class ChatPanel extends HTMLElement {
       bubbles: true,
       composed: true
     }));
+  }
+
+  // ============ FILE TAGGING METHODS ============
+
+  private async loadAvailableFiles(): Promise<void> {
+    if (!window.electronAPI || !this.currentProject) {
+      this.availableFiles = [];
+      return;
+    }
+
+    try {
+      const files = await window.electronAPI.listProjectFiles(this.currentProject.path, {
+        extensions: ['.txt', '.md'],
+        maxDepth: 10,
+        excludeHidden: true
+      });
+      this.availableFiles = files;
+    } catch (error) {
+      console.error('Failed to load project files:', error);
+      this.availableFiles = [];
+    }
+  }
+
+  private renderAutocomplete(): string {
+    if (!this.showAutocomplete || this.availableFiles.length === 0) {
+      return '';
+    }
+
+    const filteredFiles = this.autocompleteQuery
+      ? this.availableFiles.filter(file =>
+          file.name.toLowerCase().includes(this.autocompleteQuery.toLowerCase())
+        )
+      : this.availableFiles;
+
+    if (filteredFiles.length === 0) {
+      return `
+        <div id="file-autocomplete" class="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
+          <div class="p-3 text-sm text-gray-500 text-center">No matching files</div>
+        </div>
+      `;
+    }
+
+    return `
+      <div id="file-autocomplete" class="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
+        ${filteredFiles.map((file, index) => `
+          <div class="file-option px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center gap-2 ${index === this.autocompleteIndex ? 'bg-blue-50' : ''}" data-file-path="${this.escapeHtml(file.path)}" data-file-name="${this.escapeHtml(file.name)}">
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <span class="text-sm text-gray-700">${this.escapeHtml(file.name)}</span>
+            <span class="text-xs text-gray-400 ml-auto">${this.escapeHtml(file.extension)}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  private handleTextareaInput(event: Event): void {
+    const textarea = event.target as HTMLTextAreaElement;
+    const value = textarea.value;
+    const cursorPosition = textarea.selectionStart;
+    const textBeforeCursor = value.substring(0, cursorPosition);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+      if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
+        this.autocompleteQuery = textAfterAt;
+        this.showAutocomplete = true;
+        this.autocompleteIndex = -1;
+        this.render();
+        return;
+      }
+    }
+
+    if (this.showAutocomplete) {
+      this.showAutocomplete = false;
+      this.render();
+    }
+  }
+
+  private handleTextareaKeydown(event: KeyboardEvent): void {
+    if (!this.showAutocomplete) return;
+
+    const filteredFiles = this.autocompleteQuery
+      ? this.availableFiles.filter(file =>
+          file.name.toLowerCase().includes(this.autocompleteQuery.toLowerCase())
+        )
+      : this.availableFiles;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        this.autocompleteIndex = Math.min(this.autocompleteIndex + 1, filteredFiles.length - 1);
+        this.render();
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.autocompleteIndex = Math.max(this.autocompleteIndex - 1, 0);
+        this.render();
+        break;
+      case 'Enter':
+        if (this.autocompleteIndex >= 0 && this.autocompleteIndex < filteredFiles.length) {
+          event.preventDefault();
+          const selectedFile = filteredFiles[this.autocompleteIndex];
+          this.selectFileForTagging(selectedFile.path, selectedFile.name);
+        }
+        break;
+      case 'Escape':
+        event.preventDefault();
+        this.showAutocomplete = false;
+        this.autocompleteIndex = -1;
+        this.render();
+        break;
+    }
+  }
+
+  private selectFileForTagging(filePath: string, fileName: string): void {
+    if (this.taggedFiles.some(f => f.path === filePath)) {
+      this.showAutocomplete = false;
+      this.autocompleteIndex = -1;
+      this.render();
+      return;
+    }
+
+    this.taggedFiles.push({ name: fileName, path: filePath });
+
+    const textarea = this.querySelector('#chat-input') as HTMLTextAreaElement;
+    if (textarea) {
+      const value = textarea.value;
+      const cursorPosition = textarea.selectionStart;
+      const textBeforeCursor = value.substring(0, cursorPosition);
+      const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+      if (lastAtIndex !== -1) {
+        textarea.value = value.substring(0, lastAtIndex) + value.substring(cursorPosition);
+        textarea.setSelectionRange(lastAtIndex, lastAtIndex);
+      }
+    }
+
+    this.showAutocomplete = false;
+    this.autocompleteIndex = -1;
+    this.autocompleteQuery = '';
+    this.render();
+
+    const newTextarea = this.querySelector('#chat-input') as HTMLTextAreaElement;
+    newTextarea?.focus();
   }
 }
 

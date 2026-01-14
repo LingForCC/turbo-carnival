@@ -276,6 +276,74 @@ function buildFileTree(
   return nodes;
 }
 
+// ============ FILE LISTING HELPERS ============
+
+/**
+ * Recursively list all files in directory (flat array)
+ * Used for @mention file tagging in chat
+ */
+function listFilesRecursive(
+  dirPath: string,
+  options: any = {},
+  currentDepth: number = 0
+): any[] {
+  // Check max depth
+  if (options.maxDepth !== undefined && currentDepth >= options.maxDepth) {
+    return [];
+  }
+
+  // Verify directory exists
+  if (!fs.existsSync(dirPath)) {
+    console.warn(`Directory does not exist: ${dirPath}`);
+    return [];
+  }
+
+  const stat = fs.statSync(dirPath);
+  if (!stat.isDirectory()) {
+    console.warn(`Path is not a directory: ${dirPath}`);
+    return [];
+  }
+
+  const files: any[] = [];
+
+  try {
+    const entries = fs.readdirSync(dirPath);
+
+    for (const entry of entries) {
+      // Skip hidden files
+      if (options.excludeHidden && isHidden(entry)) {
+        continue;
+      }
+
+      const fullPath = path.join(dirPath, entry);
+      const entryStat = fs.statSync(fullPath);
+
+      if (entryStat.isDirectory()) {
+        // Recurse into subdirectories
+        files.push(...listFilesRecursive(fullPath, options, currentDepth + 1));
+      } else if (entryStat.isFile()) {
+        // Filter by extension
+        if (options.extensions) {
+          const ext = path.extname(entry).toLowerCase();
+          if (!options.extensions.includes(ext)) {
+            continue;
+          }
+        }
+
+        files.push({
+          name: entry,
+          path: fullPath,
+          extension: path.extname(entry).toLowerCase()
+        });
+      }
+    }
+  } catch (error) {
+    console.error(`Failed to read directory ${dirPath}:`, error);
+  }
+
+  return files.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 // ============ OPENAI API CLIENT ============
 
 interface OpenAIMessage {
@@ -620,7 +688,7 @@ function registerIPCHandlers(): void {
   // ============ CHAT COMPLETION IPC HANDLERS ============
 
   // Handler: Send chat message (non-streaming)
-  ipcMain.handle('chat:sendMessage', async (event, projectPath: string, agentName: string, message: string) => {
+  ipcMain.handle('chat:sendMessage', async (event, projectPath: string, agentName: string, message: string, filePaths?: string[]) => {
     // Load agent
     const agents = loadAgents(projectPath);
     const agent = agents.find(a => a.name === agentName);
@@ -646,6 +714,22 @@ function registerIPCHandlers(): void {
     // Add system prompt if exists
     if (agent.prompts?.system) {
       messages.push({ role: 'system', content: agent.prompts.system });
+    }
+
+    // Add file contents if provided
+    if (filePaths && filePaths.length > 0) {
+      for (const filePath of filePaths) {
+        try {
+          const fileContent = fs.readFileSync(filePath, 'utf-8');
+          const fileName = path.basename(filePath);
+          messages.push({
+            role: 'system',
+            content: `[File: ${fileName}]\n${fileContent}`
+          });
+        } catch (error) {
+          console.error(`Failed to read file ${filePath}:`, error);
+        }
+      }
     }
 
     // Add conversation history
@@ -688,7 +772,7 @@ function registerIPCHandlers(): void {
   });
 
   // Handler: Stream chat message
-  ipcMain.handle('chat:streamMessage', async (event, projectPath: string, agentName: string, message: string) => {
+  ipcMain.handle('chat:streamMessage', async (event, projectPath: string, agentName: string, message: string, filePaths?: string[]) => {
     // Validate inputs first
     const agents = loadAgents(projectPath);
     const agent = agents.find(a => a.name === agentName);
@@ -712,6 +796,22 @@ function registerIPCHandlers(): void {
 
     if (agent.prompts?.system) {
       messages.push({ role: 'system', content: agent.prompts.system });
+    }
+
+    // Add file contents if provided
+    if (filePaths && filePaths.length > 0) {
+      for (const filePath of filePaths) {
+        try {
+          const fileContent = fs.readFileSync(filePath, 'utf-8');
+          const fileName = path.basename(filePath);
+          messages.push({
+            role: 'system',
+            content: `[File: ${fileName}]\n${fileContent}`
+          });
+        } catch (error) {
+          console.error(`Failed to read file ${filePath}:`, error);
+        }
+      }
     }
 
     if (agent.history && agent.history.length > 0) {
@@ -766,6 +866,80 @@ function registerIPCHandlers(): void {
       console.error('Failed to build file tree:', error);
       throw error;
     }
+  });
+
+  // ============ FILE READING IPC HANDLERS ============
+
+  /**
+   * List all .txt and .md files in project
+   */
+  ipcMain.handle('files:list', async (_event, projectPath: string, options?: any) => {
+    const fileListOptions: any = {
+      extensions: options?.extensions || ['.txt', '.md'],
+      maxDepth: options?.maxDepth || 10, // Default: search 10 levels deep
+      excludeHidden: options?.excludeHidden ?? true
+    };
+
+    try {
+      const files = listFilesRecursive(projectPath, fileListOptions);
+      return files;
+    } catch (error) {
+      console.error('Failed to list files:', error);
+      throw error;
+    }
+  });
+
+  /**
+   * Read multiple files at once (batch operation)
+   */
+  ipcMain.handle('files:readContents', async (_event, filePaths: string[]) => {
+    const results: any[] = [];
+
+    for (const filePath of filePaths) {
+      try {
+        if (!fs.existsSync(filePath)) {
+          results.push({
+            path: filePath,
+            name: path.basename(filePath),
+            content: '',
+            size: 0,
+            error: 'File not found'
+          });
+          continue;
+        }
+
+        const stat = fs.statSync(filePath);
+        if (!stat.isFile()) {
+          results.push({
+            path: filePath,
+            name: path.basename(filePath),
+            content: '',
+            size: 0,
+            error: 'Path is not a file'
+          });
+          continue;
+        }
+
+        const content = fs.readFileSync(filePath, 'utf-8');
+        results.push({
+          path: filePath,
+          name: path.basename(filePath),
+          content: content,
+          size: stat.size
+        });
+      } catch (error: any) {
+        console.error(`Failed to read file ${filePath}:`, error);
+        results.push({
+          path: filePath,
+          name: path.basename(filePath),
+          content: '',
+          size: 0,
+          error: error.message || 'Failed to read file'
+        });
+      }
+    }
+
+    return results;
   });
 }
 

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Turbo Carnival is an Electron desktop application built with TypeScript, using Web Components for the UI and Tailwind CSS v4 for styling. The app features a three-panel layout (project sidebar, center content area, project detail sidebar) with collapsible side panels. The left panel manages local folder projects that can be added/removed via the native folder picker dialog. Each project can be associated with multiple AI agents, which are stored as `agent-{name}.json` files in the project folder.
 
-The app includes a **conversational AI interface** that allows users to chat with their configured agents using OpenAI-compatible APIs, with support for both streaming and non-streaming responses. It also includes **global API key management** for secure credential storage, and a **project detail panel** that displays the file tree structure of selected projects.
+The app includes a **conversational AI interface** that allows users to chat with their configured agents using OpenAI-compatible APIs, with support for both streaming and non-streaming responses. It also includes **global API key management** for secure credential storage, a **project detail panel** that displays the file tree structure of selected projects, and **file tagging** for including project files as context in conversations.
 
 ## Build and Development Commands
 
@@ -35,8 +35,10 @@ The app follows standard Electron architecture:
   - `addAPIKey(apiKey)` - Adds a new API key
   - `removeAPIKey(name)` - Removes an API key by name
   - `getFileTree(projectPath, options)` - Gets file tree structure for a project folder
-  - `sendMessage(projectPath, agentName, message)` - Sends non-streaming chat message
-  - `streamMessage(projectPath, agentName, message)` - Initiates streaming chat
+  - `listProjectFiles(projectPath, options)` - Lists all .txt and .md files in a project
+  - `readFileContents(filePaths)` - Reads multiple file contents at once
+  - `sendMessage(projectPath, agentName, message, filePaths)` - Sends non-streaming chat message with optional file context
+  - `streamMessage(projectPath, agentName, message, filePaths, ...)` - Initiates streaming chat with optional file context
   - `onChatChunk(callback)` - Listens for streaming response chunks
   - `onChatComplete(callback)` - Listens for streaming completion
   - `onChatError(callback)` - Listens for streaming errors
@@ -93,6 +95,7 @@ The app provides a complete chat interface for interacting with AI agents throug
 - **Non-streaming mode** - Full response at once (configurable via toggle)
 - **Conversation persistence** - Messages stored in agent `history` array
 - **Context awareness** - System prompt + full conversation history sent with each message
+- **File tagging** - Reference .txt and .md files from project folder as conversation context
 - **Error handling** - Graceful timeout and error message display
 - **Message management** - Clear chat with confirmation, automatic scroll to latest
 
@@ -100,15 +103,17 @@ The app provides a complete chat interface for interacting with AI agents throug
 - Message container with automatic scrolling
 - User and assistant message bubbles with different styling
 - Loading indicator during streaming
+- File tagging area with removable badges
+- Autocomplete dropdown for @mention file selection
 - Send button with keyboard shortcuts (Enter to send, Shift+Enter for new line)
 - Streaming toggle in chat header
 - Back button to return to agent dashboard
 
 **Message Flow:**
-1. User enters message in `chat-panel` text area
-2. `chat-panel` calls IPC method (`streamMessage` or `sendMessage`)
+1. User enters message in `chat-panel` text area (optionally tags files via @mention)
+2. `chat-panel` calls IPC method (`streamMessage` or `sendMessage`) with file paths
 3. Main process validates agent and API key
-4. Main process compiles messages: system prompt + conversation history + new message
+4. Main process compiles messages: system prompt + tagged file contents + conversation history + new message
 5. Main process calls OpenAI-compatible API with agent's model config
 6. Response chunks/events sent back via IPC events (`chat-chunk`, `chat-complete`, `chat-error`)
 7. `chat-panel` updates UI in real-time, saves completed messages to agent file
@@ -118,6 +123,57 @@ The app provides a complete chat interface for interacting with AI agents throug
 - Configurable model, temperature, maxTokens, topP per agent
 - Request timeout: 60 seconds
 - Server-Sent Events (SSE) for streaming responses
+
+### File Tagging in Chat
+
+The app allows users to tag .txt and .md files from the project folder to include them as context in AI conversations.
+
+**File Tagging Features:**
+- **@mention trigger** - Type `@` in chat input to open autocomplete dropdown
+- **File filtering** - Type after `@` to filter files by name
+- **Keyboard navigation** - Arrow keys to navigate, Enter to select, Escape to close
+- **Visual feedback** - Blue tag badges show attached files with file icons
+- **Easy removal** - X button on each tag or "Clear all" button
+- **Session persistence** - Tagged files persist across messages in same conversation
+- **Agent switching** - Tagged files cleared when switching agents
+
+**File Tagging UI:**
+- Autocomplete dropdown positioned above chat input
+- File list shows all .txt and .md files from project (recursive, max 10 levels deep)
+- Hidden files excluded by default
+- File badges display file name and extension
+- Hover effects on autocomplete options
+- Selected file highlighted in autocomplete
+
+**File Tagging Data Flow:**
+1. User types `@` in chat input
+2. `handleTextareaInput()` detects `@` and shows autocomplete
+3. `loadAvailableFiles()` fetches all .txt/.md files via IPC
+4. User selects file from dropdown (click or Enter key)
+5. `selectFileForTagging()` adds file to `taggedFiles` array, removes `@` from input
+6. When sending message, file paths passed to IPC
+7. Main process reads file contents and includes as system messages
+8. Tagged files persist for conversation until manually removed or agent switched
+
+**File Content Inclusion:**
+- Full file content included as system message with format: `[File: filename]\n{content}`
+- Multiple files included as separate system messages
+- File contents read at send time, not cached
+- Errors reading files logged but don't block message sending
+- No size limits on tagged files (per user requirements)
+
+**File Tagging State (chat-panel.ts):**
+- `taggedFiles` - Array of currently tagged files `{ name, path }`
+- `availableFiles` - All .txt/.md files in project `{ name, path, extension }`
+- `showAutocomplete` - Whether dropdown is visible
+- `autocompleteQuery` - Current filter text after `@`
+- `autocompleteIndex` - Selected index for keyboard navigation
+
+**Security:**
+- All file names escaped via `escapeHtml()` before rendering
+- File paths in data attributes also escaped
+- File system operations wrapped in try-catch
+- Only .txt and .md files can be tagged (configurable)
 
 ### Project Detail Panel
 
@@ -244,6 +300,9 @@ Each project can have multiple AI agents associated with it. Agents are stored a
   - `FileType` type - Discriminator union for file system nodes ('file' | 'directory')
   - `FileTreeNode` interface - Represents a node in the file tree with name, path, type, children (for directories), and expanded state
   - `FileTreeOptions` interface - Configuration for file tree traversal (maxDepth, excludeHidden, includeExtensions)
+  - `FileReference` interface - Represents a file reference for @mention with name, path, and extension
+  - `FileContent` interface - Represents file content with metadata (path, name, content, size, error)
+  - `FileListOptions` interface - Configuration for file listing (extensions, maxDepth, excludeHidden)
   - `ElectronAPI` interface - Defines the exposed API methods from the preload script
 
 ### TypeScript Configuration
@@ -274,9 +333,13 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 **Project Detail IPC Channels:**
 - `project:getFileTree` - Gets file tree structure for a project folder (recursive, filters hidden files)
 
+**File Reading IPC Channels:**
+- `files:list` - Lists all .txt and .md files in a project folder (recursive, up to 10 levels deep)
+- `files:readContents` - Reads multiple file contents at once (batch operation)
+
 **Chat IPC Channels:**
-- `chat:sendMessage` - Sends non-streaming message, returns full response
-- `chat:streamMessage` - Initiates streaming message exchange
+- `chat:sendMessage` - Sends non-streaming message with optional file paths, returns full response
+- `chat:streamMessage` - Initiates streaming message exchange with optional file paths
 - `chat-chunk` - Event emitted for each response chunk during streaming (via `webContents.send()`)
 - `chat-complete` - Event emitted when streaming completes successfully
 - `chat-error` - Event emitted when streaming encounters an error
@@ -372,12 +435,14 @@ The app uses graceful degradation for errors:
 
 ### OpenAI API Integration
 The main process includes a complete OpenAI-compatible API client (`src/main.ts`):
-- `compileMessages(agent)` - Builds message array from system prompt and conversation history
+- `compileMessages(agent)` - Builds message array from system prompt, file contents, and conversation history
 - `createChatCompletion()` - Makes non-streaming API requests
 - `streamChatCompletion()` - Makes streaming API requests with SSE parsing
+- `listFilesRecursive()` - Recursively lists files in project directory for @mention
 - Automatic agent file updates after each message exchange
 - 60-second timeout for API requests
 - Support for custom base URLs and API key references
+- File contents included as system messages with format: `[File: filename]\n{content}`
 
 ### Streaming Implementation
 Streaming responses use Server-Sent Events (SSE) parsing:

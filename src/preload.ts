@@ -53,17 +53,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getFileTree: (projectPath: string, options?: any) =>
     ipcRenderer.invoke('project:getFileTree', projectPath, options),
 
+  // List all .txt and .md files in project
+  listProjectFiles: (projectPath: string, options?: any) =>
+    ipcRenderer.invoke('files:list', projectPath, options),
+
+  // Read multiple files at once
+  readFileContents: (filePaths: string[]) =>
+    ipcRenderer.invoke('files:readContents', filePaths),
+
   // ============ CHAT METHODS ============
 
   // Send chat message (non-streaming)
-  sendChatMessage: (projectPath: string, agentName: string, message: string) =>
-    ipcRenderer.invoke('chat:sendMessage', projectPath, agentName, message),
+  sendChatMessage: (
+    projectPath: string,
+    agentName: string,
+    message: string,
+    filePaths?: string[]
+  ) => ipcRenderer.invoke('chat:sendMessage', projectPath, agentName, message, filePaths),
 
   // Stream chat message
   streamChatMessage: (
     projectPath: string,
     agentName: string,
     message: string,
+    filePaths: string[] | undefined,
     onChunk: (chunk: string) => void,
     onComplete: () => void,
     onError: (error: string) => void
@@ -98,7 +111,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('chat-error', errorListener);
 
     // Invoke the streaming handler
-    return ipcRenderer.invoke('chat:streamMessage', projectPath, agentName, message)
+    return ipcRenderer.invoke('chat:streamMessage', projectPath, agentName, message, filePaths)
       .catch((error) => {
         // Handle promise rejection (e.g., if the main process handler throws)
         if (!completed) {

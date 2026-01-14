@@ -101,6 +101,35 @@ export interface FileTreeOptions {
   includeExtensions?: string[]; // Only include certain extensions (optional)
 }
 
+/**
+ * File reference for @mention in chat
+ */
+export interface FileReference {
+  name: string;        // File name (e.g., "README.md")
+  path: string;        // Full absolute path
+  extension: string;   // File extension (e.g., ".md", ".txt")
+}
+
+/**
+ * File content with metadata
+ */
+export interface FileContent {
+  path: string;        // Full absolute path
+  name: string;        // File name
+  content: string;     // File content as text
+  size: number;        // File size in bytes
+  error?: string;      // Error message if read failed
+}
+
+/**
+ * Options for file listing
+ */
+export interface FileListOptions {
+  extensions?: string[];  // Filter by extensions (e.g., ['.txt', '.md'])
+  maxDepth?: number;      // Maximum directory depth to search
+  excludeHidden?: boolean; // Exclude hidden files (default: true)
+}
+
 interface ElectronAPI {
   platform: string;
   openFolderDialog: () => Promise<string | null>;
@@ -123,7 +152,8 @@ interface ElectronAPI {
   sendChatMessage: (
     projectPath: string,
     agentName: string,
-    message: string
+    message: string,
+    filePaths?: string[]
   ) => Promise<any>;
 
   // Chat completion (streaming)
@@ -131,6 +161,7 @@ interface ElectronAPI {
     projectPath: string,
     agentName: string,
     message: string,
+    filePaths: string[] | undefined,
     onChunk: (chunk: string) => void,
     onComplete: () => void,
     onError: (error: string) => void
@@ -138,6 +169,11 @@ interface ElectronAPI {
 
   // Project detail methods
   getFileTree: (projectPath: string, options?: FileTreeOptions) => Promise<FileTreeNode[]>;
+
+  // File reading methods
+  listProjectFiles: (projectPath: string, options?: FileListOptions) => Promise<FileReference[]>;
+  readFileContent: (filePath: string) => Promise<FileContent>;
+  readFileContents: (filePaths: string[]) => Promise<FileContent[]>;
 }
 
 declare global {
