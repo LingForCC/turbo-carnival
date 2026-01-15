@@ -77,6 +77,53 @@ export interface APIKey {
 }
 
 /**
+ * JSON Schema definition for tool parameters and return values
+ * Follows JSON Schema draft-07 specification
+ */
+export interface JSONSchema {
+  type: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
+  description?: string;
+  properties?: Record<string, JSONSchema>;
+  required?: string[];
+  items?: JSONSchema;
+  enum?: (string | number | boolean | null)[];
+  [key: string]: any; // Allow additional JSON Schema keywords
+}
+
+/**
+ * Custom Tool that can be invoked by AI agents
+ */
+export interface Tool {
+  name: string;                    // Unique tool identifier
+  description: string;             // Human-readable description (shown to agent in system prompt)
+  code: string;                    // JavaScript code to execute (must export function named "tool" or "run")
+  parameters: JSONSchema;          // JSON Schema for input parameter validation
+  returns?: JSONSchema;            // JSON Schema for output structure (shown to agent)
+  timeout?: number;                // Execution timeout in milliseconds (default: 30000)
+  enabled: boolean;                // Whether tool is enabled for use
+  createdAt: number;               // Timestamp when created
+  updatedAt?: number;              // Timestamp when last updated
+}
+
+/**
+ * Tool execution request
+ */
+export interface ToolExecutionRequest {
+  toolName: string;
+  parameters: Record<string, any>;
+}
+
+/**
+ * Tool execution result
+ */
+export interface ToolExecutionResult {
+  success: boolean;
+  result: any;                     // Return value from tool execution
+  error?: string;                  // Error message if failed
+  executionTime: number;           // Execution time in milliseconds
+}
+
+/**
  * File system node type discriminator
  */
 export type FileType = 'file' | 'directory';
@@ -147,6 +194,13 @@ interface ElectronAPI {
   getAPIKeys: () => Promise<APIKey[]>;
   addAPIKey: (apiKey: APIKey) => Promise<APIKey[]>;
   removeAPIKey: (name: string) => Promise<APIKey[]>;
+
+  // Tool management
+  getTools: () => Promise<Tool[]>;
+  addTool: (tool: Tool) => Promise<Tool[]>;
+  updateTool: (toolName: string, tool: Tool) => Promise<Tool>;
+  removeTool: (toolName: string) => Promise<Tool[]>;
+  executeTool: (request: ToolExecutionRequest) => Promise<ToolExecutionResult>;
 
   // Chat completion (non-streaming)
   sendChatMessage: (

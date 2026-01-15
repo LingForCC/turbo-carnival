@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { Project, Agent, APIKey } from './global.d.ts';
+import type { Project, Agent, APIKey, Tool, ToolExecutionRequest } from './global.d.ts';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -46,6 +46,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Remove an API key
   removeAPIKey: (name: string) => ipcRenderer.invoke('api-keys:remove', name),
+
+  // ============ TOOL METHODS ============
+
+  // Get all tools
+  getTools: () => ipcRenderer.invoke('tools:get'),
+
+  // Add a new tool
+  addTool: (tool: Tool) => ipcRenderer.invoke('tools:add', tool),
+
+  // Update an existing tool
+  updateTool: (toolName: string, tool: Tool) =>
+    ipcRenderer.invoke('tools:update', toolName, tool),
+
+  // Remove a tool
+  removeTool: (toolName: string) => ipcRenderer.invoke('tools:remove', toolName),
+
+  // Execute a tool
+  executeTool: (request: ToolExecutionRequest) =>
+    ipcRenderer.invoke('tools:execute', request),
 
   // ============ PROJECT DETAIL METHODS ============
 

@@ -41,6 +41,21 @@ export default defineConfig({
             }
           }
         }
+      },
+      {
+        // Tool worker entry point
+        entry: 'src/tool-worker.ts',
+        onstart(args) {
+          args.reload();
+        },
+        vite: {
+          build: {
+            outDir: 'dist',
+            rollupOptions: {
+              external: ['electron']
+            }
+          }
+        }
       }
     ]),
     renderer()
