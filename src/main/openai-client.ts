@@ -4,7 +4,8 @@ import * as fs from 'fs';
 import type { Agent } from '../global.d.ts';
 import { loadAgents, saveAgent } from './agent-management';
 import { getAPIKeyByName } from './apiKey-management';
-import { loadTools, getToolByName, validateJSONSchema } from '../main';
+import { loadTools, getToolByName, validateJSONSchema } from './tool-management';
+import { executeToolInWorker } from './tool-worker-executor';
 
 // ============ OPENAI API TYPES ============
 
@@ -229,78 +230,6 @@ function parseToolCalls(response: string): any[] {
   return toolCalls;
 }
 
-// ============ TOOL WORKER EXECUTION ============
-
-/**
- * Execute tool code in a separate worker process
- * This provides isolation and prevents tool code from crashing the main process
- */
-export async function executeToolInWorker(tool: any, parameters: Record<string, any>): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const workerPath = path.join(__dirname, '../tool-worker.js');
-    const timeout = tool.timeout || 30000;
-
-    try {
-      // Spawn worker process
-      const worker = require('child_process').fork(workerPath, {
-        silent: true, // Don't share stdio
-        env: {
-          ...process.env,
-          NODE_ENV: process.env.NODE_ENV || 'production'
-        }
-      });
-
-      let responseReceived = false;
-
-      // Listen for messages from worker (responses)
-      worker.on('message', (response: any) => {
-        if (responseReceived) return; // Ignore duplicate messages
-        responseReceived = true;
-
-        if (response.success) {
-          resolve(response);
-        } else {
-          reject(new Error(response.error || 'Tool execution failed'));
-        }
-
-        // Clean up worker
-        worker.kill();
-      });
-
-      // Listen for errors from worker
-      worker.on('error', (error: Error) => {
-        if (responseReceived) return;
-        responseReceived = true;
-        reject(new Error(`Worker error: ${error.message}`));
-        worker.kill();
-      });
-
-      // Handle worker exit
-      worker.on('exit', (code: number) => {
-        if (!responseReceived) {
-          responseReceived = true;
-          if (code !== 0) {
-            reject(new Error(`Worker process exited with code ${code}`));
-          } else {
-            reject(new Error('Worker exited without sending response'));
-          }
-        }
-      });
-
-      // Send execution request to worker
-      worker.send({
-        type: 'execute',
-        code: tool.code,
-        parameters,
-        timeout
-      });
-
-    } catch (error: any) {
-      reject(new Error(`Failed to spawn worker: ${error.message}`));
-    }
-  });
-}
-
 // ============ CHAT IPC HANDLERS ============
 
 /**
@@ -431,7 +360,6 @@ export function registerOpenAIClientIPCHandlers(): void {
 
       // Add tool results as system messages
       for (const result of toolResults) {
-        messages.push({ role: 'assistant', content: assistantMessage });
         messages.push({ role: 'system', content: result });
       }
 
@@ -552,6 +480,8 @@ export function registerOpenAIClientIPCHandlers(): void {
         { role: 'assistant', content: fullResponse, timestamp: Date.now() }
       );
 
+      console.log('fullResponse', fullResponse);
+
       // Execute each tool and collect results
       const toolResults: string[] = [];
       for (const toolCall of toolCalls) {
@@ -581,7 +511,6 @@ export function registerOpenAIClientIPCHandlers(): void {
 
       // Add tool results as system messages
       for (const result of toolResults) {
-        messages.push({ role: 'assistant', content: fullResponse });
         messages.push({ role: 'system', content: result });
       }
 
@@ -593,6 +522,8 @@ export function registerOpenAIClientIPCHandlers(): void {
         agent.config.apiConfig?.baseURL || apiKeyEntry.baseURL,
         event.sender
       );
+
+      console.log('finalMessage', finalMessage);
 
       // Save final AI response to history
       agent.history.push({ role: 'assistant', content: finalMessage, timestamp: Date.now() });

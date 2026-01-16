@@ -336,6 +336,13 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - `api-keys:add` - Adds a new API key (validates and saves to api-keys.json)
 - `api-keys:remove` - Removes an API key by name
 
+**Tool IPC Channels:**
+- `tools:get` - Returns all stored tools
+- `tools:add` - Adds a new tool (validates name, description, code, and parameters; validates code syntax)
+- `tools:update` - Updates an existing tool (preserves createdAt, sets updatedAt)
+- `tools:remove` - Removes a tool by name
+- `tools:execute` - Executes a tool in an isolated worker process (validates parameters against JSON Schema)
+
 **Project Detail IPC Channels:**
 - `project:getFileTree` - Gets file tree structure for a project folder (recursive, filters hidden files)
 
@@ -366,6 +373,12 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - API keys stored in `app.getPath('userData')/api-keys.json`
 - Storage helpers (`getAPIKeysPath()`, `loadAPIKeys()`, `saveAPIKeys()`, `getAPIKeyByName()`) and IPC handlers are located in `src/main/apiKey-management.ts`
 - Keys referenced by agents via `config.apiKeyRef` property name
+
+**Tool Storage:**
+- Tools stored in `app.getPath('userData')/tools.json`
+- Each tool contains: `name`, `description`, `code`, `parameters` (JSON Schema), `returns` (optional), `timeout` (default 30000ms), `enabled` (default true), `createdAt`, and `updatedAt`
+- Storage helpers (`getToolsPath()`, `loadTools()`, `saveTools()`, `getToolByName()`), JSON Schema validator (`validateJSONSchema()`), and IPC handlers are located in `src/main/tool-management.ts`
+- Tools executed in isolated worker processes for security (see Tool Worker Execution section)
 
 ## Development Notes
 
@@ -481,18 +494,20 @@ Streaming responses use Server-Sent Events (SSE) parsing:
 
 ### Main Process Module Organization
 The main process code is organized into dedicated modules for better maintainability:
-- `src/main.ts` - Core application setup, window creation, app lifecycle, and non-domain-specific IPC handlers. Exports shared helpers (`loadTools`, `getToolByName`, `validateJSONSchema`) for use by other modules.
+- `src/main.ts` - Core application setup, window creation, app lifecycle, and non-domain-specific IPC handlers
 - `src/main/agent-management.ts` - Agent storage helpers and IPC handlers (CRUD operations)
 - `src/main/apiKey-management.ts` - API key storage helpers and IPC handlers (CRUD operations)
 - `src/main/openai-client.ts` - OpenAI API client, tool functions, tool worker execution, and chat IPC handlers
+- `src/main/tool-management.ts` - Tool storage helpers, JSON Schema validator, and tool IPC handlers (CRUD operations, execution, validation)
 
 **Module Dependencies:**
-- `openai-client.ts` imports from: `agent-management.ts` (loadAgents, saveAgent), `apiKey-management.ts` (getAPIKeyByName), and `main.ts` (loadTools, getToolByName, validateJSONSchema)
-- `main.ts` imports from: `openai-client.ts` (registerOpenAIClientIPCHandlers, executeToolInWorker)
+- `openai-client.ts` imports from: `agent-management.ts` (loadAgents, saveAgent), `apiKey-management.ts` (getAPIKeyByName), and `tool-management.ts` (loadTools, getToolByName, validateJSONSchema)
+- `tool-management.ts` imports from: `openai-client.ts` (executeToolInWorker)
+- `main.ts` imports from: `openai-client.ts` (registerOpenAIClientIPCHandlers, executeToolInWorker) and `tool-management.ts` (registerToolIPCHandlers)
 
 **Pattern for Creating New Modules:**
 1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)
 2. Export storage/helper functions and a `registerFeatureIPCHandlers()` function
 3. Import and call the registration function in `src/main.ts` within `registerIPCHandlers()`
-4. If the module needs functions from `main.ts`, export them from `main.ts` and import in the new module
+4. If the module needs functions from another module, import them directly from that module
 5. Update CLAUDE.md to document the new module
