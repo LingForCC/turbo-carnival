@@ -20,9 +20,10 @@ The app includes a **conversational AI interface** that allows users to chat wit
 ### Electron Process Structure
 The app follows standard Electron architecture:
 
-- **Main Process** (`src/main.ts`) - Creates BrowserWindow, handles app lifecycle, and manages IPC handlers for project, file tree reading, tool management, and OpenAI API client
+- **Main Process** (`src/main.ts`) - Creates BrowserWindow, handles app lifecycle, and manages IPC handlers for project, file tree reading, and tool management. Exports shared helper functions (`loadTools`, `getToolByName`, `validateJSONSchema`) for use by other modules.
 - **Agent Management Module** (`src/main/agent-management.ts`) - Dedicated module for agent CRUD operations, including storage helpers (`loadAgents`, `saveAgent`, `deleteAgent`, `sanitizeAgentName`, `getAgentFilePath`) and IPC handler registration (`registerAgentIPCHandlers`)
 - **API Key Management Module** (`src/main/apiKey-management.ts`) - Dedicated module for API key CRUD operations, including storage helpers (`getAPIKeysPath`, `loadAPIKeys`, `saveAPIKeys`, `getAPIKeyByName`) and IPC handler registration (`registerApiKeyIPCHandlers`)
+- **OpenAI Client Module** (`src/main/openai-client.ts`) - Dedicated module for OpenAI API integration, including API client functions (`callOpenAICompatibleAPI`, `streamOpenAICompatibleAPI`), tool helper functions (`formatToolDescriptions`, `parseToolCalls`), tool worker execution (`executeToolInWorker`), and chat IPC handlers (`chat:sendMessage`, `chat:streamMessage`)
 - **Preload Script** (`src/preload.ts`) - Bridges main and renderer via contextBridge, exposes `window.electronAPI` with:
   - `platform` - Current platform (darwin/win32/linux)
   - `openFolderDialog()` - Opens native folder picker dialog
@@ -97,6 +98,7 @@ The app provides a complete chat interface for interacting with AI agents throug
 - **Non-streaming mode** - Full response at once (configurable via toggle)
 - **Conversation persistence** - Messages stored in agent `history` array
 - **Context awareness** - System prompt + full conversation history sent with each message
+- **Tool calling** - AI agents can call custom tools during conversations (enabled via `formatToolDescriptions`)
 - **File tagging** - Reference .txt and .md files from project folder as conversation context
 - **Error handling** - Graceful timeout and error message display
 - **Message management** - Clear chat with confirmation, automatic scroll to latest
@@ -114,11 +116,12 @@ The app provides a complete chat interface for interacting with AI agents throug
 **Message Flow:**
 1. User enters message in `chat-panel` text area (optionally tags files via @mention)
 2. `chat-panel` calls IPC method (`streamMessage` or `sendMessage`) with file paths
-3. Main process validates agent and API key
-4. Main process compiles messages: system prompt + tagged file contents + conversation history + new message
-5. Main process calls OpenAI-compatible API with agent's model config
-6. Response chunks/events sent back via IPC events (`chat-chunk`, `chat-complete`, `chat-error`)
-7. `chat-panel` updates UI in real-time, saves completed messages to agent file
+3. OpenAI client module (`openai-client.ts`) validates agent and API key
+4. OpenAI client compiles messages: system prompt + tool descriptions + tagged file contents + conversation history + new message
+5. OpenAI client calls OpenAI-compatible API with agent's model config
+6. For tool-enabled agents, OpenAI client detects tool calls, executes them via worker processes, and makes follow-up API call
+7. Response chunks/events sent back via IPC events (`chat-chunk`, `chat-complete`, `chat-error`)
+8. `chat-panel` updates UI in real-time, saves completed messages to agent file via OpenAI client module
 
 **API Integration:**
 - Supports OpenAI and compatible APIs (via custom `baseURL`)
@@ -437,15 +440,36 @@ The app uses graceful degradation for errors:
 - Chat errors (timeouts, API failures) display user-friendly messages
 
 ### OpenAI API Integration
-The main process includes a complete OpenAI-compatible API client (`src/main.ts`):
-- `compileMessages(agent)` - Builds message array from system prompt, file contents, and conversation history
-- `createChatCompletion()` - Makes non-streaming API requests
-- `streamChatCompletion()` - Makes streaming API requests with SSE parsing
-- `listFilesRecursive()` - Recursively lists files in project directory for @mention
+The OpenAI client module provides a complete OpenAI-compatible API client (`src/main/openai-client.ts`):
+- **API Client Functions**:
+  - `callOpenAICompatibleAPI()` - Makes non-streaming API requests
+  - `streamOpenAICompatibleAPI()` - Makes streaming API requests with SSE parsing, detects tool calls during streaming
+- **Tool Functions**:
+  - `formatToolDescriptions()` - Formats available tools for inclusion in system prompt
+  - `parseToolCalls()` - Parses tool call markers from AI responses
+  - `executeToolInWorker()` - Executes tool code in isolated worker process for security
+- **Chat IPC Handlers**:
+  - `chat:sendMessage` - Handles non-streaming chat with tool support
+  - `chat:streamMessage` - Handles streaming chat with tool support
 - Automatic agent file updates after each message exchange
 - 60-second timeout for API requests
 - Support for custom base URLs and API key references
 - File contents included as system messages with format: `[File: filename]\n{content}`
+- Tool call detection during streaming stops chunk delivery to renderer, executes tools, then makes second API call with results
+
+### Tool Worker Execution
+The app uses isolated worker processes for secure tool execution:
+- **Worker File**: `src/tool-worker.ts` (built to `dist/tool-worker.js`)
+- **Worker Path**: Resolved as `../tool-worker.js` from `openai-client.ts` (accounting for module location in `dist/main/`)
+- **Execution Model**: Each tool execution spawns a fresh worker process via `child_process.fork()`
+- **Timeout Handling**: Configurable timeout per tool (default 30 seconds), enforced by worker
+- **Isolation**: Tool code runs in separate process, preventing crashes in main process
+- **Communication**: Worker receives execution request via IPC, returns result or error
+- **Lifecycle**: Worker exits after execution (single-use, no persistent state)
+
+**Worker Communication Protocol:**
+- **Request**: `{ type: 'execute', code: string, parameters: any, timeout: number }`
+- **Response**: `{ success: boolean, result?: any, error?: string, executionTime: number }`
 
 ### Streaming Implementation
 Streaming responses use Server-Sent Events (SSE) parsing:
@@ -457,13 +481,18 @@ Streaming responses use Server-Sent Events (SSE) parsing:
 
 ### Main Process Module Organization
 The main process code is organized into dedicated modules for better maintainability:
-- `src/main.ts` - Core application setup, window creation, app lifecycle, and non-domain-specific IPC handlers
+- `src/main.ts` - Core application setup, window creation, app lifecycle, and non-domain-specific IPC handlers. Exports shared helpers (`loadTools`, `getToolByName`, `validateJSONSchema`) for use by other modules.
 - `src/main/agent-management.ts` - Agent storage helpers and IPC handlers (CRUD operations)
 - `src/main/apiKey-management.ts` - API key storage helpers and IPC handlers (CRUD operations)
-- Additional domain-specific logic can be extracted into separate modules under `src/main/` as needed
+- `src/main/openai-client.ts` - OpenAI API client, tool functions, tool worker execution, and chat IPC handlers
+
+**Module Dependencies:**
+- `openai-client.ts` imports from: `agent-management.ts` (loadAgents, saveAgent), `apiKey-management.ts` (getAPIKeyByName), and `main.ts` (loadTools, getToolByName, validateJSONSchema)
+- `main.ts` imports from: `openai-client.ts` (registerOpenAIClientIPCHandlers, executeToolInWorker)
 
 **Pattern for Creating New Modules:**
 1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)
 2. Export storage/helper functions and a `registerFeatureIPCHandlers()` function
 3. Import and call the registration function in `src/main.ts` within `registerIPCHandlers()`
-4. Update CLAUDE.md to document the new module
+4. If the module needs functions from `main.ts`, export them from `main.ts` and import in the new module
+5. Update CLAUDE.md to document the new module
