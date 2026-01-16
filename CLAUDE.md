@@ -20,8 +20,9 @@ The app includes a **conversational AI interface** that allows users to chat wit
 ### Electron Process Structure
 The app follows standard Electron architecture:
 
-- **Main Process** (`src/main.ts`) - Creates BrowserWindow, handles app lifecycle, and manages IPC handlers for project, API key storage, file tree reading, and OpenAI API client
+- **Main Process** (`src/main.ts`) - Creates BrowserWindow, handles app lifecycle, and manages IPC handlers for project, file tree reading, tool management, and OpenAI API client
 - **Agent Management Module** (`src/main/agent-management.ts`) - Dedicated module for agent CRUD operations, including storage helpers (`loadAgents`, `saveAgent`, `deleteAgent`, `sanitizeAgentName`, `getAgentFilePath`) and IPC handler registration (`registerAgentIPCHandlers`)
+- **API Key Management Module** (`src/main/apiKey-management.ts`) - Dedicated module for API key CRUD operations, including storage helpers (`getAPIKeysPath`, `loadAPIKeys`, `saveAPIKeys`, `getAPIKeyByName`) and IPC handler registration (`registerApiKeyIPCHandlers`)
 - **Preload Script** (`src/preload.ts`) - Bridges main and renderer via contextBridge, exposes `window.electronAPI` with:
   - `platform` - Current platform (darwin/win32/linux)
   - `openFolderDialog()` - Opens native folder picker dialog
@@ -360,7 +361,7 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 
 **API Key Storage:**
 - API keys stored in `app.getPath('userData')/api-keys.json`
-- `loadAPIKeys()`, `saveAPIKey()`, `deleteAPIKey()` helpers in main process
+- Storage helpers (`getAPIKeysPath()`, `loadAPIKeys()`, `saveAPIKeys()`, `getAPIKeyByName()`) and IPC handlers are located in `src/main/apiKey-management.ts`
 - Keys referenced by agents via `config.apiKeyRef` property name
 
 ## Development Notes
@@ -458,6 +459,7 @@ Streaming responses use Server-Sent Events (SSE) parsing:
 The main process code is organized into dedicated modules for better maintainability:
 - `src/main.ts` - Core application setup, window creation, app lifecycle, and non-domain-specific IPC handlers
 - `src/main/agent-management.ts` - Agent storage helpers and IPC handlers (CRUD operations)
+- `src/main/apiKey-management.ts` - API key storage helpers and IPC handlers (CRUD operations)
 - Additional domain-specific logic can be extracted into separate modules under `src/main/` as needed
 
 **Pattern for Creating New Modules:**

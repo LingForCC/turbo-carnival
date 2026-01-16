@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import type { Project, Agent } from './global.d.ts';
 import { registerAgentIPCHandlers, loadAgents, saveAgent } from './main/agent-management';
+import { registerApiKeyIPCHandlers, getAPIKeyByName } from './main/apiKey-management';
 
 // Storage helpers
 function getProjectsPath(): string {
@@ -31,53 +32,6 @@ function saveProjects(projects: Project[]): void {
   } catch (error) {
     console.error('Failed to save projects:', error);
   }
-}
-
-// ============ API KEY STORAGE HELPERS ============
-
-/**
- * Get the file path for API keys storage
- */
-function getAPIKeysPath(): string {
-  return path.join(app.getPath('userData'), 'api-keys.json');
-}
-
-/**
- * Load all API keys from storage
- */
-function loadAPIKeys(): any[] {
-  const keysPath = getAPIKeysPath();
-  if (fs.existsSync(keysPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(keysPath, 'utf-8'));
-      return data.keys || [];
-    } catch (error) {
-      console.error('Failed to load API keys:', error);
-      return [];
-    }
-  }
-  return [];
-}
-
-/**
- * Save API keys to storage
- */
-function saveAPIKeys(keys: any[]): void {
-  const keysPath = getAPIKeysPath();
-  const data = { keys };
-  try {
-    fs.writeFileSync(keysPath, JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error('Failed to save API keys:', error);
-  }
-}
-
-/**
- * Get an API key by name
- */
-function getAPIKeyByName(name: string): any | undefined {
-  const keys = loadAPIKeys();
-  return keys.find(k => k.name === name);
 }
 
 // ============ TOOL STORAGE HELPERS ============
@@ -554,33 +508,7 @@ function registerIPCHandlers(): void {
   registerAgentIPCHandlers();
 
   // ============ API KEY IPC HANDLERS ============
-
-  // Handler: Get all API keys
-  ipcMain.handle('api-keys:get', () => {
-    return loadAPIKeys();
-  });
-
-  // Handler: Add a new API key
-  ipcMain.handle('api-keys:add', async (_event, apiKey: any) => {
-    const keys = loadAPIKeys();
-
-    // Check for duplicate names
-    if (keys.some(k => k.name === apiKey.name)) {
-      throw new Error(`API key with name "${apiKey.name}" already exists`);
-    }
-
-    keys.push(apiKey);
-    saveAPIKeys(keys);
-    return keys;
-  });
-
-  // Handler: Remove an API key
-  ipcMain.handle('api-keys:remove', async (_event, name: string) => {
-    const keys = loadAPIKeys();
-    const filtered = keys.filter(k => k.name !== name);
-    saveAPIKeys(filtered);
-    return filtered;
-  });
+  registerApiKeyIPCHandlers();
 
   // ============ JSON SCHEMA VALIDATOR ============
 
