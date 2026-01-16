@@ -19,6 +19,8 @@ export class AppContainer extends HTMLElement {
   }
 
   connectedCallback(): void {
+    // Add flex column layout to the app-container
+    this.className = 'flex flex-col h-full w-full overflow-hidden';
     this.render();
     this.attachEventListeners();
   }
@@ -26,7 +28,7 @@ export class AppContainer extends HTMLElement {
   private render(): void {
     this.innerHTML = `
       <!-- Header -->
-      <header class="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+      <header class="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between flex-shrink-0">
         <h1 class="text-lg font-semibold text-gray-800 m-0">Turbo Carnival</h1>
         <div class="flex items-center gap-2">
           <button id="tools-btn" class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 rounded cursor-pointer border-0 bg-transparent">
@@ -39,7 +41,7 @@ export class AppContainer extends HTMLElement {
         </div>
       </header>
 
-      <div class="flex h-full w-full bg-gray-100">
+      <div class="flex flex-1 w-full bg-gray-100 overflow-hidden">
         <project-panel id="project-panel"></project-panel>
 
         <button id="toggle-project-btn" class="hidden flex-col items-center justify-center w-8 bg-gray-50 border-r border-gray-200 hover:bg-gray-100 cursor-pointer border-0" aria-label="Expand project panel">

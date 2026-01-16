@@ -18,8 +18,8 @@ const isDev = process.env.NODE_ENV === 'development' ||
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    height: 600,
-    width: 800,
+    height: 800,
+    width: 1200,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
