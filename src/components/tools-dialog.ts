@@ -362,25 +362,40 @@ export class ToolsDialog extends HTMLElement {
   }
 
   private async testTool(): Promise<void> {
+    // Collect current form data
     const code = (this.querySelector('#tool-code') as HTMLTextAreaElement).value;
-    const parameters = (this.querySelector('#tool-parameters') as HTMLTextAreaElement).value;
+    const parametersText = (this.querySelector('#tool-parameters') as HTMLTextAreaElement).value;
+    const name = (this.querySelector('#tool-name') as HTMLInputElement)?.value || 'Test Tool';
+    const description = (this.querySelector('#tool-description') as HTMLInputElement)?.value || '';
+    const timeout = (this.querySelector('#tool-timeout') as HTMLInputElement)?.value || '30000';
 
+    // Validate and parse tool data
+    let toolData: Tool;
     try {
-      JSON.parse(parameters); // Validate parameters schema
-      new Function('params', `"use strict"; ${code}`); // Validate code syntax
-
-      // Try to execute with empty params
-      const testFn = new Function('params', `"use strict"; ${code}; return typeof tool === 'function' || typeof run === 'function';`);
-      const hasExport = testFn({});
-
-      if (hasExport) {
-        alert('✓ Code syntax is valid and exports a function named "tool" or "run"');
-      } else {
-        alert('⚠ Code must export a function named "tool" or "run"');
-      }
+      const parameters = JSON.parse(parametersText);
+      toolData = {
+        name,
+        description,
+        code,
+        parameters,
+        timeout: parseInt(timeout) || 30000,
+        enabled: true,
+        createdAt: Date.now()
+      };
     } catch (error: any) {
-      alert(`✗ Validation error: ${error.message}`);
+      alert(`Invalid JSON in parameters field: ${error.message}`);
+      return;
     }
+
+    // Open test dialog
+    const dialog = document.createElement('tool-test-dialog') as HTMLElement;
+    dialog.dataset.tool = JSON.stringify(toolData);
+    document.body.appendChild(dialog);
+
+    // Listen for dialog close
+    dialog.addEventListener('tool-test-dialog-close', () => {
+      dialog.remove();
+    });
   }
 
   private close(): void {

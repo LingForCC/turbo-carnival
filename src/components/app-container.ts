@@ -1,5 +1,6 @@
 import './project-detail-panel';
 import './tools-dialog';
+import './tool-test-dialog';
 
 /**
  * AppContainer Web Component
