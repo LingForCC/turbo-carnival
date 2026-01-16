@@ -20,7 +20,8 @@ The app includes a **conversational AI interface** that allows users to chat wit
 ### Electron Process Structure
 The app follows standard Electron architecture:
 
-- **Main Process** (`src/main.ts`) - Creates BrowserWindow, handles app lifecycle, and manages IPC handlers for project, agent, API key storage, file tree reading, and OpenAI API client
+- **Main Process** (`src/main.ts`) - Creates BrowserWindow, handles app lifecycle, and manages IPC handlers for project, API key storage, file tree reading, and OpenAI API client
+- **Agent Management Module** (`src/main/agent-management.ts`) - Dedicated module for agent CRUD operations, including storage helpers (`loadAgents`, `saveAgent`, `deleteAgent`, `sanitizeAgentName`, `getAgentFilePath`) and IPC handler registration (`registerAgentIPCHandlers`)
 - **Preload Script** (`src/preload.ts`) - Bridges main and renderer via contextBridge, exposes `window.electronAPI` with:
   - `platform` - Current platform (darwin/win32/linux)
   - `openFolderDialog()` - Opens native folder picker dialog
@@ -280,6 +281,7 @@ Each project can have multiple AI agents associated with it. Agents are stored a
 - Agent selection emits `agent-selected` event with `{ agent, project }` detail
 - Agent conversation history persisted automatically in agent file
 - Agents can reference global API keys by name
+- All agent CRUD operations handled by `src/main/agent-management.ts` module
 
 ### Styling
 - **Tailwind CSS v4** with PostCSS - See `postcss.config.js` and `src/styles.css`
@@ -354,7 +356,7 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - Agents are stored as individual JSON files in project folders: `agent-{sanitized-name}.json`
 - Agent names are sanitized for filenames (lowercase, special chars removed, spaces to hyphens)
 - Each agent file contains complete agent metadata including conversation history
-- `loadAgents()`, `saveAgent()`, `deleteAgent()`, `sanitizeAgentName()` helpers in main process
+- Storage helpers (`loadAgents()`, `saveAgent()`, `deleteAgent()`, `sanitizeAgentName()`, `getAgentFilePath()`) and IPC handlers are located in `src/main/agent-management.ts`
 
 **API Key Storage:**
 - API keys stored in `app.getPath('userData')/api-keys.json`
@@ -451,3 +453,15 @@ Streaming responses use Server-Sent Events (SSE) parsing:
 - Final accumulated content saved to agent history
 - Real-time UI updates via IPC events sent to renderer
 - Error handling for malformed chunks and network failures
+
+### Main Process Module Organization
+The main process code is organized into dedicated modules for better maintainability:
+- `src/main.ts` - Core application setup, window creation, app lifecycle, and non-domain-specific IPC handlers
+- `src/main/agent-management.ts` - Agent storage helpers and IPC handlers (CRUD operations)
+- Additional domain-specific logic can be extracted into separate modules under `src/main/` as needed
+
+**Pattern for Creating New Modules:**
+1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)
+2. Export storage/helper functions and a `registerFeatureIPCHandlers()` function
+3. Import and call the registration function in `src/main.ts` within `registerIPCHandlers()`
+4. Update CLAUDE.md to document the new module
