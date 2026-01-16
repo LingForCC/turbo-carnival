@@ -480,8 +480,6 @@ export function registerOpenAIClientIPCHandlers(): void {
         { role: 'assistant', content: fullResponse, timestamp: Date.now() }
       );
 
-      console.log('fullResponse', fullResponse);
-
       // Execute each tool and collect results
       const toolResults: string[] = [];
       for (const toolCall of toolCalls) {
@@ -522,8 +520,6 @@ export function registerOpenAIClientIPCHandlers(): void {
         agent.config.apiConfig?.baseURL || apiKeyEntry.baseURL,
         event.sender
       );
-
-      console.log('finalMessage', finalMessage);
 
       // Save final AI response to history
       agent.history.push({ role: 'assistant', content: finalMessage, timestamp: Date.now() });

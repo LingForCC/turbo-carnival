@@ -20,7 +20,8 @@ The app includes a **conversational AI interface** that allows users to chat wit
 ### Electron Process Structure
 The app follows standard Electron architecture:
 
-- **Main Process** (`src/main.ts`) - Creates BrowserWindow, handles app lifecycle, and manages IPC handlers for project, file tree reading, and tool management. Exports shared helper functions (`loadTools`, `getToolByName`, `validateJSONSchema`) for use by other modules.
+- **Main Process** (`src/main.ts`) - Creates BrowserWindow, handles app lifecycle, and coordinates all IPC handler registrations.
+- **Project Management Module** (`src/main/project-management.ts`) - Dedicated module for project CRUD operations, including storage helpers (`getProjectsPath`, `loadProjects`, `saveProjects`), file tree helpers (`isHidden`, `buildFileTree`), file listing helpers (`listFilesRecursive`), and IPC handler registration (`registerProjectIPCHandlers`)
 - **Agent Management Module** (`src/main/agent-management.ts`) - Dedicated module for agent CRUD operations, including storage helpers (`loadAgents`, `saveAgent`, `deleteAgent`, `sanitizeAgentName`, `getAgentFilePath`) and IPC handler registration (`registerAgentIPCHandlers`)
 - **API Key Management Module** (`src/main/apiKey-management.ts`) - Dedicated module for API key CRUD operations, including storage helpers (`getAPIKeysPath`, `loadAPIKeys`, `saveAPIKeys`, `getAPIKeyByName`) and IPC handler registration (`registerApiKeyIPCHandlers`)
 - **OpenAI Client Module** (`src/main/openai-client.ts`) - Dedicated module for OpenAI API integration, including API client functions (`callOpenAICompatibleAPI`, `streamOpenAICompatibleAPI`), tool helper functions (`formatToolDescriptions`, `parseToolCalls`), tool worker execution (`executeToolInWorker`), and chat IPC handlers (`chat:sendMessage`, `chat:streamMessage`)
@@ -205,14 +206,15 @@ The app includes a file browser panel that displays the structure of selected pr
 1. User selects project in `project-panel`
 2. `project-selected` event forwarded to `project-detail-panel`
 3. `project-detail-panel.handleProjectSelected()` calls `getFileTree()` IPC method
-4. Main process reads folder contents recursively via `buildFileTree()` helper
+4. Project management module reads folder contents recursively via `buildFileTree()` helper
 5. File tree returned with `FileTreeNode[]` array structure
 6. Component renders tree recursively with `renderTreeNode()` method
 7. User interacts with tree via click events to expand/collapse directories
 
 **File Tree Implementation:**
-- `buildFileTree(dirPath, options, currentDepth)` - Recursive helper in main process
+- `buildFileTree(dirPath, options, currentDepth)` - Recursive helper in `src/main/project-management.ts`
 - `isHidden(name)` - Filters files starting with '.'
+- `listFilesRecursive(dirPath, options, currentDepth)` - Lists files for @mention tagging
 - `renderTreeNode(node, depth)` - Recursive rendering with proper indentation
 - `toggleDirectory(path)` - Manages expanded/collapsed state via `Set<string>`
 - `escapeHtml(text)` - XSS prevention for all file/folder names
@@ -361,7 +363,7 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - Projects are stored as JSON in `app.getPath('userData')/projects.json`
 - Each project contains: `path` (absolute path), `name` (folder name), `addedAt` (timestamp)
 - Projects persist across app restarts
-- `loadProjects()` and `saveProjects()` helpers in main process handle serialization
+- Storage helpers (`getProjectsPath()`, `loadProjects()`, `saveProjects()`), file tree helpers (`isHidden()`, `buildFileTree()`), file listing helpers (`listFilesRecursive()`), and IPC handlers are located in `src/main/project-management.ts`
 
 **Agent Storage:**
 - Agents are stored as individual JSON files in project folders: `agent-{sanitized-name}.json`
@@ -423,7 +425,7 @@ target.dispatchEvent(new CustomEvent('event-name', {
 The app uses `contextIsolation: true` and `nodeIntegration: false` for security. All communication between main and renderer goes through the preload script's `contextBridge.exposeInMainWorld()`.
 
 ### Dev Mode Detection
-In `src/main.ts:145-146`, development mode is detected via:
+In `src/main.ts:16-17`, development mode is detected via:
 ```javascript
 const isDev = process.env.NODE_ENV === 'development' ||
               (!app.isPackaged && !fs.existsSync(path.join(__dirname, '../dist-renderer/index.html')));
@@ -494,7 +496,8 @@ Streaming responses use Server-Sent Events (SSE) parsing:
 
 ### Main Process Module Organization
 The main process code is organized into dedicated modules for better maintainability:
-- `src/main.ts` - Core application setup, window creation, app lifecycle, and non-domain-specific IPC handlers
+- `src/main.ts` - Core application setup, window creation, app lifecycle, and coordination of all IPC handler registrations
+- `src/main/project-management.ts` - Project storage helpers, file tree helpers, file listing helpers, and project-related IPC handlers (CRUD operations, file tree, file reading)
 - `src/main/agent-management.ts` - Agent storage helpers and IPC handlers (CRUD operations)
 - `src/main/apiKey-management.ts` - API key storage helpers and IPC handlers (CRUD operations)
 - `src/main/openai-client.ts` - OpenAI API client, tool functions, tool worker execution, and chat IPC handlers
@@ -503,7 +506,7 @@ The main process code is organized into dedicated modules for better maintainabi
 **Module Dependencies:**
 - `openai-client.ts` imports from: `agent-management.ts` (loadAgents, saveAgent), `apiKey-management.ts` (getAPIKeyByName), and `tool-management.ts` (loadTools, getToolByName, validateJSONSchema)
 - `tool-management.ts` imports from: `openai-client.ts` (executeToolInWorker)
-- `main.ts` imports from: `openai-client.ts` (registerOpenAIClientIPCHandlers, executeToolInWorker) and `tool-management.ts` (registerToolIPCHandlers)
+- `main.ts` imports from: `project-management.ts` (registerProjectIPCHandlers), `openai-client.ts` (registerOpenAIClientIPCHandlers), and `tool-management.ts` (registerToolIPCHandlers)
 
 **Pattern for Creating New Modules:**
 1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)
