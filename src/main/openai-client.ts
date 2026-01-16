@@ -121,6 +121,13 @@ async function streamOpenAICompatibleAPI(
     let buffer = '';
     let fullResponse = '';
     let detectedToolCalls = false;
+    let sendBuffer = ''; // Buffer for chunks to be sent to renderer
+
+    // Helper to check for partial tool call marker
+    const hasPartialToolCallMarker = (text: string): boolean => {
+      const partialPrefixes = ['<', '<t', '<to', '<too', '<tool', '<tool_', '<tool_c', '<tool_ca', '<tool_cal', '<tool_call'];
+      return partialPrefixes.some(prefix => text.endsWith(prefix));
+    };
 
     while (true) {
       const { done, value } = await reader.read();
@@ -143,19 +150,36 @@ async function streamOpenAICompatibleAPI(
           if (content) {
             fullResponse += content;
 
-            // Check if response contains tool call marker
-            // Tool call format: <tool_call>tool_name|{"param":"value"}</tool_call>
-            if (fullResponse.includes('<tool_call>')) {
-              // Tool call detected - stop sending chunks to renderer
+            // If we already detected tool calls, skip all sending logic
+            if (detectedToolCalls) {
+              continue;
+            }
+
+            sendBuffer += content;
+
+            // Check if buffer contains tool call marker
+            if (sendBuffer.includes('<tool_call>')) {
+              // Tool call detected - stop sending chunks
               detectedToolCalls = true;
-            } else if (!detectedToolCalls) {
-              // Only send chunks if we haven't detected tool calls yet
-              webContents.send('chat-chunk', content);
+              sendBuffer = ''; // Clear buffer, don't send
+            } else if (hasPartialToolCallMarker(sendBuffer)) {
+              // Might be start of tool call marker - wait for more chunks
+              continue;
+            } else {
+              // Safe to send
+              if (sendBuffer.length > 0) {
+                webContents.send('chat-chunk', sendBuffer);
+                sendBuffer = '';
+              }
             }
           }
 
           const finishReason = chunk.choices?.[0]?.finish_reason;
           if (finishReason) {
+            // Send any remaining safe buffer before returning
+            if (!detectedToolCalls && sendBuffer.length > 0) {
+              webContents.send('chat-chunk', sendBuffer);
+            }
             // Don't send chat-complete here - let the caller handle it
             // This allows for post-processing (like tool detection) before completion
             return { content: fullResponse, hasToolCalls: detectedToolCalls };
@@ -164,6 +188,11 @@ async function streamOpenAICompatibleAPI(
           console.warn('Failed to parse SSE chunk:', parseError);
         }
       }
+    }
+
+    // Send any remaining safe buffer on loop completion
+    if (!detectedToolCalls && sendBuffer.length > 0) {
+      webContents.send('chat-chunk', sendBuffer);
     }
 
     // Don't send chat-complete here - let the caller handle it
@@ -191,7 +220,8 @@ function formatToolDescriptions(tools: any[]): string {
   }
 
   let descriptions = '\n\nAvailable Tools:\n';
-  descriptions += 'You can call tools using this format: <tool_call>tool_name|{"param":"value"}</tool_call>\n\n';
+  descriptions += 'When you need to use a tool, output ONLY the tool call marker in this exact format:\n';
+  descriptions += '<tool_call>tool_name|{"param":"value"}</tool_call>\n\n';
 
   for (const tool of enabledTools) {
     descriptions += `- ${tool.name}: ${tool.description}\n`;
@@ -201,6 +231,10 @@ function formatToolDescriptions(tools: any[]): string {
     }
     descriptions += '\n';
   }
+
+  descriptions += 'IMPORTANT: When calling a tool, output ONLY the tool call marker. ';
+  descriptions += 'Do not include any explanatory text before or after the marker. ';
+  descriptions += 'The marker must be on its own without additional commentary.\n';
 
   return descriptions;
 }
