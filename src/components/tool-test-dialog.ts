@@ -1,4 +1,5 @@
 import type { Tool, ToolExecutionResult, JSONSchema } from '../global.d.ts';
+import { executeToolInBrowser } from '../renderer/browser-tool-executor';
 
 /**
  * ToolTestDialog Web Component
@@ -366,11 +367,23 @@ export class ToolTestDialog extends HTMLElement {
         throw new Error('Tool name not specified');
       }
 
-      const result = await window.electronAPI!.executeTool({
-        toolName: this.tool.name,
-        parameters,
-        tool: this.tool  // Pass full tool data for direct execution
-      });
+      const environment = this.tool.environment || 'node';
+      const timeout = this.tool.timeout || 30000;
+
+      let result: ToolExecutionResult;
+
+      if (environment === 'browser') {
+        // Execute browser tools directly in renderer
+        const browserResult = await executeToolInBrowser(this.tool.code, parameters, timeout);
+        result = browserResult;
+      } else {
+        // Execute Node.js tools via main process
+        result = await window.electronAPI!.executeTool({
+          toolName: this.tool.name,
+          parameters,
+          tool: this.tool  // Pass full tool data for direct execution
+        });
+      }
 
       this.executionResult = result;
     } catch (error: any) {

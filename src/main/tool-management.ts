@@ -186,7 +186,7 @@ export function registerToolIPCHandlers(): void {
   });
 
   // Handler: Execute a tool
-  ipcMain.handle('tools:execute', async (_event, request: any) => {
+  ipcMain.handle('tools:execute', async (event, request: any) => {
     let tool;
 
     // If full tool data provided, use it directly (for testing unsaved tools)
@@ -211,8 +211,47 @@ export function registerToolIPCHandlers(): void {
       throw new Error(`Parameter validation failed: ${validationError}`);
     }
 
-    // Execute tool in worker process
-    const result = await executeToolInWorker(tool, request.parameters);
-    return result;
+    // Route execution based on environment
+    const environment = tool.environment || 'node';
+
+    if (environment === 'browser') {
+      // Browser tools: Forward to renderer process
+      return new Promise((resolve, reject) => {
+        const timeout = tool.timeout || 30000;
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error(`Browser tool execution timed out after ${timeout}ms`));
+        }, timeout);
+
+        // One-time listener for browser tool result
+        const responseHandler = (_event: any, result: any) => {
+          cleanup();
+          if (result.success) {
+            resolve(result);
+          } else {
+            reject(new Error(result.error || 'Browser tool execution failed'));
+          }
+        };
+
+        const cleanup = () => {
+          clearTimeout(timer);
+          ipcMain.removeListener('tools:browserResult', responseHandler);
+        };
+
+        // Use on() instead of once() so we can properly clean up
+        ipcMain.on('tools:browserResult', responseHandler);
+
+        // Send execution request to renderer
+        event.sender.send('tools:executeBrowser', {
+          code: tool.code,
+          parameters: request.parameters,
+          timeout
+        });
+      });
+    } else {
+      // Node.js tools: Execute in worker process (existing behavior)
+      const result = await executeToolInWorker(tool, request.parameters);
+      return result;
+    }
   });
 }

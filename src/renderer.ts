@@ -10,11 +10,29 @@ import './components/agent-form-dialog';
 import './components/api-keys-dialog';
 import './components/project-detail-panel';
 
+// Import browser tool executor
+import { executeToolInBrowser } from './renderer/browser-tool-executor';
+
 // Initialize the application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   // Access the exposed API from the preload script (if available)
   if (window.electronAPI) {
     console.log(`Running on: ${window.electronAPI.platform}`);
+
+    // Set up browser tool execution handler
+    window.electronAPI.onBrowserToolExecution?.((request) => {
+      executeToolInBrowser(request.code, request.parameters, request.timeout)
+        .then(result => {
+          window.electronAPI?.sendBrowserToolResult?.(result);
+        })
+        .catch(error => {
+          window.electronAPI?.sendBrowserToolResult?.({
+            success: false,
+            error: error.message || String(error),
+            executionTime: 0
+          });
+        });
+    });
   }
 
   console.log('Renderer process initialized with Web Components');

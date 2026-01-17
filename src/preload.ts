@@ -66,6 +66,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   executeTool: (request: ToolExecutionRequest) =>
     ipcRenderer.invoke('tools:execute', request),
 
+  // Listen for browser tool execution requests from main process
+  onBrowserToolExecution: (callback: (request: { code: string; parameters: Record<string, any>; timeout: number }) => void) => {
+    ipcRenderer.on('tools:executeBrowser', (_event, request) => callback(request));
+  },
+
+  // Send browser tool execution result back to main process
+  sendBrowserToolResult: (result: { success: boolean; result?: any; error?: string; executionTime: number }) => {
+    ipcRenderer.send('tools:browserResult', result);
+  },
+
   // ============ PROJECT DETAIL METHODS ============
 
   // Get file tree for a project

@@ -71,12 +71,30 @@ export class ToolsDialog extends HTMLElement {
                            placeholder="e.g., calculate_distance">
                   </div>
                   <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" for="tool-environment">
+                      Execution Environment
+                    </label>
+                    <select id="tool-environment" name="environment"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="node">Node.js (File system, child processes, etc.)</option>
+                      <option value="browser">Browser (Fetch, localStorage, DOM, etc.)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1" for="tool-timeout">
                       Timeout (ms)
                     </label>
                     <input type="number" id="tool-timeout" name="timeout" value="30000" min="1000" max="300000"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                            placeholder="30000">
+                  </div>
+                  <div class="flex items-end">
+                    <p class="text-xs text-gray-500 pb-2.5 m-0">
+                      Node.js tools run in isolated process. Browser tools run in renderer.
+                    </p>
                   </div>
                 </div>
 
@@ -164,7 +182,13 @@ export class ToolsDialog extends HTMLElement {
       `;
     }
 
-    return this.tools.map(tool => `
+    return this.tools.map(tool => {
+      const environment = tool.environment || 'node';
+      const envBadgeClass = environment === 'browser'
+        ? 'bg-blue-100 text-blue-700'
+        : 'bg-purple-100 text-purple-700';
+
+      return `
       <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 ${!tool.enabled ? 'opacity-60' : ''}">
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
@@ -172,10 +196,13 @@ export class ToolsDialog extends HTMLElement {
             <span class="text-xs px-2 py-0.5 rounded ${tool.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
               ${tool.enabled ? 'Enabled' : 'Disabled'}
             </span>
+            <span class="text-xs px-2 py-0.5 rounded ${envBadgeClass}">
+              ${environment === 'browser' ? 'Browser' : 'Node'}
+            </span>
           </div>
           <p class="text-sm text-gray-600 mt-1 truncate">${this.escapeHtml(tool.description)}</p>
           <p class="text-xs text-gray-400 mt-0.5 m-0">
-            Timeout: ${tool.timeout || 30000}ms • Created: ${new Date(tool.createdAt).toLocaleDateString()}
+            Environment: ${environment} • Timeout: ${tool.timeout || 30000}ms • Created: ${new Date(tool.createdAt).toLocaleDateString()}
           </p>
         </div>
         <div class="flex gap-1">
@@ -193,7 +220,8 @@ export class ToolsDialog extends HTMLElement {
           </button>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   private attachEventListeners(): void {
@@ -300,6 +328,7 @@ export class ToolsDialog extends HTMLElement {
       (formElement.elements.namedItem('parameters') as HTMLTextAreaElement).value = JSON.stringify(tool.parameters, null, 2);
       (formElement.elements.namedItem('returns') as HTMLTextAreaElement).value = tool.returns ? JSON.stringify(tool.returns, null, 2) : '';
       (formElement.elements.namedItem('timeout') as HTMLInputElement).value = String(tool.timeout || 30000);
+      (formElement.elements.namedItem('environment') as HTMLSelectElement).value = tool.environment || 'node';
       (formElement.elements.namedItem('enabled') as HTMLInputElement).checked = tool.enabled;
     }
   }
@@ -328,6 +357,7 @@ export class ToolsDialog extends HTMLElement {
         parameters,
         returns,
         timeout: parseInt(formData.get('timeout') as string) || 30000,
+        environment: (formData.get('environment') as string) || 'node',
         enabled: (formData.get('enabled') as string) === 'on',
         createdAt: this.editingTool?.createdAt || Date.now(),
         updatedAt: this.editingTool ? Date.now() : undefined
@@ -368,6 +398,7 @@ export class ToolsDialog extends HTMLElement {
     const name = (this.querySelector('#tool-name') as HTMLInputElement)?.value || 'Test Tool';
     const description = (this.querySelector('#tool-description') as HTMLInputElement)?.value || '';
     const timeout = (this.querySelector('#tool-timeout') as HTMLInputElement)?.value || '30000';
+    const environment = (this.querySelector('#tool-environment') as HTMLSelectElement)?.value || 'node';
 
     // Validate and parse tool data
     let toolData: Tool;
@@ -379,6 +410,7 @@ export class ToolsDialog extends HTMLElement {
         code,
         parameters,
         timeout: parseInt(timeout) || 30000,
+        environment: environment as 'node' | 'browser',
         enabled: true,
         createdAt: Date.now()
       };

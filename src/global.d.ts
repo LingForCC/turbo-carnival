@@ -101,6 +101,7 @@ export interface Tool {
   returns?: JSONSchema;            // JSON Schema for output structure (shown to agent)
   timeout?: number;                // Execution timeout in milliseconds (default: 30000)
   enabled: boolean;                // Whether tool is enabled for use
+  environment?: 'node' | 'browser'; // Execution environment (default: 'node')
   createdAt: number;               // Timestamp when created
   updatedAt?: number;              // Timestamp when last updated
 }
