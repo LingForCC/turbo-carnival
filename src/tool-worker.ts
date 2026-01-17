@@ -25,6 +25,17 @@ interface WorkerResponse {
   executionTime: number;
 }
 
+/**
+ * Helper function to send response and ensure IPC delivery before exiting
+ * This prevents race conditions where the process exits before the message is delivered
+ */
+function sendResponseAndExit(response: WorkerResponse): void {
+  process.send(response, (err: Error | null) => {
+    // Only exit after the message is confirmed sent
+    process.exit(err ? 1 : 0);
+  });
+}
+
 // Listen for messages from parent process
 process.on('message', (message: WorkerMessage) => {
   if (message.type !== 'execute') {
@@ -33,7 +44,7 @@ process.on('message', (message: WorkerMessage) => {
       error: 'Unknown message type',
       executionTime: 0
     };
-    process.send(response);
+    sendResponseAndExit(response);
     return;
   }
 
@@ -66,8 +77,7 @@ process.on('message', (message: WorkerMessage) => {
           error: `Tool execution timed out after ${timeout}ms`,
           executionTime: timeout
         };
-        process.send(timeoutResponse);
-        process.exit(1);
+        sendResponseAndExit(timeoutResponse);
       }, timeout);
 
       // Execute the function (may return a Promise for async functions)
@@ -89,7 +99,7 @@ process.on('message', (message: WorkerMessage) => {
         result,
         executionTime
       };
-      process.send(successResponse);
+      sendResponseAndExit(successResponse);
 
     } catch (error: any) {
       const executionTime = Date.now() - startTime;
@@ -98,10 +108,7 @@ process.on('message', (message: WorkerMessage) => {
         error: error.message || String(error),
         executionTime
       };
-      process.send(errorResponse);
+      sendResponseAndExit(errorResponse);
     }
-
-    // Exit worker after execution completes (moved inside async wrapper)
-    process.exit(0);
   })();
 });
