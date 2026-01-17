@@ -38,6 +38,13 @@ The app follows standard Electron architecture:
   - `getAPIKeys()` - Retrieves all stored API keys
   - `addAPIKey(apiKey)` - Adds a new API key
   - `removeAPIKey(name)` - Removes an API key by name
+  - `getTools()` - Retrieves all stored tools
+  - `addTool(tool)` - Adds a new tool
+  - `updateTool(toolName, tool)` - Updates an existing tool
+  - `removeTool(toolName)` - Removes a tool by name
+  - `executeTool(request)` - Executes a tool (routes based on environment)
+  - `onBrowserToolExecution(callback)` - Listens for browser tool execution requests from main process
+  - `sendBrowserToolResult(result)` - Sends browser tool execution result back to main process
   - `getFileTree(projectPath, options)` - Gets file tree structure for a project folder
   - `listProjectFiles(projectPath, options)` - Lists all .txt and .md files in a project
   - `readFileContents(filePaths)` - Reads multiple file contents at once
@@ -46,7 +53,7 @@ The app follows standard Electron architecture:
   - `onChatChunk(callback)` - Listens for streaming response chunks
   - `onChatComplete(callback)` - Listens for streaming completion
   - `onChatError(callback)` - Listens for streaming errors
-- **Renderer Process** (`src/renderer.ts`) - Web Components UI, runs in browser context
+- **Renderer Process** (`src/renderer.ts`) - Web Components UI, runs in browser context, includes browser tool execution handler that listens for `tools:executeBrowser` events and executes tools via `browser-tool-executor.ts`
 
 ### Build System
 The project uses **Vite** as the sole build tool (`vite.config.mjs`):
@@ -65,6 +72,8 @@ The renderer uses vanilla JavaScript Web Components (not Vue/React). Each compon
 - `project-detail-panel` (`src/components/project-detail-panel.ts`) - Collapsible right sidebar (264px wide when expanded) that displays recursive file tree of selected project folder
 - `agent-form-dialog` (`src/components/agent-form-dialog.ts`) - Modal dialog for creating and editing agents
 - `api-keys-dialog` (`src/components/api-keys-dialog.ts`) - Modal dialog for managing global API keys with add/edit/delete functionality
+- `tools-dialog` (`src/components/tools-dialog.ts`) - Modal dialog for managing custom tools with add/edit/delete/test functionality, includes environment selector (Node.js vs Browser) and color-coded badges
+- `tool-test-dialog` (`src/components/tool-test-dialog.ts`) - Modal dialog for testing tool execution with dynamic form generation based on JSON Schema parameters, routes execution based on tool's environment setting
 
 #### Component Patterns
 All Web Components follow this pattern:
@@ -305,13 +314,16 @@ Each project can have multiple AI agents associated with it. Agents are stored a
   - `ConversationMessage` interface - Messages in conversation history with role, content, and timestamp
   - `AgentSettings` interface - Flexible settings object
   - `APIKey` interface - Global API key storage with name, key, baseURL, and addedAt
+  - `Tool` interface - Custom tool definition with `name`, `description`, `code`, `parameters` (JSON Schema), `returns` (optional), `timeout`, `environment` ('node' | 'browser'), `enabled`, `createdAt`, and `updatedAt`
+  - `ToolExecutionRequest` interface - Request for tool execution with `toolName`, `parameters`, and optional `tool` (full tool data)
+  - `ToolExecutionResult` interface - Result from tool execution with `success`, `result`, `error`, and `executionTime`
   - `FileType` type - Discriminator union for file system nodes ('file' | 'directory')
   - `FileTreeNode` interface - Represents a node in the file tree with name, path, type, children (for directories), and expanded state
   - `FileTreeOptions` interface - Configuration for file tree traversal (maxDepth, excludeHidden, includeExtensions)
   - `FileReference` interface - Represents a file reference for @mention with name, path, and extension
   - `FileContent` interface - Represents file content with metadata (path, name, content, size, error)
   - `FileListOptions` interface - Configuration for file listing (extensions, maxDepth, excludeHidden)
-  - `ElectronAPI` interface - Defines the exposed API methods from the preload script
+  - `ElectronAPI` interface - Defines the exposed API methods from the preload script, including tool management methods and browser tool event handlers (`onBrowserToolExecution`, `sendBrowserToolResult`)
 
 ### TypeScript Configuration
 - Target: ES2020, Module: CommonJS
@@ -343,7 +355,9 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - `tools:add` - Adds a new tool (validates name, description, code, and parameters; validates code syntax)
 - `tools:update` - Updates an existing tool (preserves createdAt, sets updatedAt)
 - `tools:remove` - Removes a tool by name
-- `tools:execute` - Executes a tool in an isolated worker process (validates parameters against JSON Schema)
+- `tools:execute` - Executes a tool (routes to worker or renderer based on tool's environment setting)
+- `tools:executeBrowser` - Event sent to renderer to execute browser-based tools
+- `tools:browserResult` - Event sent from renderer with browser tool execution result
 
 **Project Detail IPC Channels:**
 - `project:getFileTree` - Gets file tree structure for a project folder (recursive, filters hidden files)
@@ -378,9 +392,11 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 
 **Tool Storage:**
 - Tools stored in `app.getPath('userData')/tools.json`
-- Each tool contains: `name`, `description`, `code`, `parameters` (JSON Schema), `returns` (optional), `timeout` (default 30000ms), `enabled` (default true), `createdAt`, and `updatedAt`
+- Each tool contains: `name`, `description`, `code`, `parameters` (JSON Schema), `returns` (optional), `timeout` (default 30000ms), `environment` ('node' or 'browser', default 'node'), `enabled` (default true), `createdAt`, and `updatedAt`
 - Storage helpers (`getToolsPath()`, `loadTools()`, `saveTools()`, `getToolByName()`), JSON Schema validator (`validateJSONSchema()`), and IPC handlers are located in `src/main/tool-management.ts`
-- Tools executed in isolated worker processes for security (see Tool Worker Execution section)
+- Tools execute in different environments based on `environment` setting:
+  - **Node.js tools**: Execute in isolated worker processes with access to Node.js APIs (fs, path, child_process, etc.)
+  - **Browser tools**: Execute in renderer process with access to browser APIs (fetch, localStorage, DOM, etc.)
 
 ## Development Notes
 
@@ -473,7 +489,10 @@ The OpenAI client module provides a complete OpenAI-compatible API client (`src/
 - Tool call detection during streaming stops chunk delivery to renderer, executes tools, then makes second API call with results
 
 ### Tool Worker Execution
-The app uses isolated worker processes for secure tool execution:
+The app supports dual execution environments for tools:
+
+#### Node.js Tool Execution (Worker Process)
+Node.js tools execute in isolated worker processes for security:
 - **Worker File**: `src/tool-worker.ts` (built to `dist/tool-worker.js`)
 - **Worker Path**: Resolved as `../tool-worker.js` from `openai-client.ts` (accounting for module location in `dist/main/`)
 - **Execution Model**: Each tool execution spawns a fresh worker process via `child_process.fork()`
@@ -481,10 +500,53 @@ The app uses isolated worker processes for secure tool execution:
 - **Isolation**: Tool code runs in separate process, preventing crashes in main process
 - **Communication**: Worker receives execution request via IPC, returns result or error
 - **Lifecycle**: Worker exits after execution (single-use, no persistent state)
+- **Available APIs**: Node.js APIs (fs, path, child_process, etc.)
 
 **Worker Communication Protocol:**
 - **Request**: `{ type: 'execute', code: string, parameters: any, timeout: number }`
 - **Response**: `{ success: boolean, result?: any, error?: string, executionTime: number }`
+
+#### Browser Tool Execution (Renderer Process)
+Browser tools execute directly in the renderer process:
+- **Executor Module**: `src/renderer/browser-tool-executor.ts`
+- **Execution Model**: Tool code executed via `new Function()` in renderer context
+- **Timeout Handling**: Configurable timeout per tool, enforced via Promise.race()
+- **Communication**: Main process sends `tools:executeBrowser` event to renderer, renderer sends back `tools:browserResult` event
+- **Available APIs**: Browser APIs (fetch, localStorage, sessionStorage, IndexedDB, DOM, etc.)
+- **Use Cases**: HTTP requests, local storage manipulation, DOM operations, Web APIs
+
+**Browser Tool Communication Protocol:**
+- **Request (main → renderer)**: `{ code: string, parameters: any, timeout: number }` via `tools:executeBrowser`
+- **Response (renderer → main)**: `{ success: boolean, result?: any, error?: string, executionTime: number }` via `tools:browserResult`
+
+**Execution Routing:**
+When `tools:execute` is invoked, the main process checks the tool's `environment` field:
+- If `'browser'`: Routes to renderer process for browser execution
+- If `'node'` (or missing, defaults to `'node'`): Routes to worker process for Node.js execution
+- Main process sets up Promise-based listener for result (for browser tools) or executes directly (for Node.js tools)
+
+#### Tool Environment UI/UX
+The tools dialog provides visual indicators and controls for execution environment:
+
+**Environment Selector:**
+- Dropdown in tool creation/edit form with two options:
+  - "Node.js (File system, child processes, etc.)"
+  - "Browser (Fetch, localStorage, DOM, etc.)"
+- Helper text explains execution context differences
+- Default value is 'node' for backward compatibility
+
+**Visual Badges:**
+- Color-coded badges in tool list:
+  - **Blue badge** labeled "Browser" for browser tools
+  - **Purple badge** labeled "Node" for Node.js tools
+  - **Green/Gray badge** for Enabled/Disabled status
+- Environment displayed in tool metadata: "Environment: browser • Timeout: 30000ms • Created: ..."
+
+**Testing Behavior:**
+- Test dialog routes execution based on tool's environment setting:
+  - Browser tools: Execute directly in renderer via `executeToolInBrowser()`
+  - Node.js tools: Execute via main process IPC to worker
+- Execution time displayed for both environments
 
 ### Streaming Implementation
 Streaming responses use Server-Sent Events (SSE) parsing:
@@ -501,7 +563,8 @@ The main process code is organized into dedicated modules for better maintainabi
 - `src/main/agent-management.ts` - Agent storage helpers and IPC handlers (CRUD operations)
 - `src/main/apiKey-management.ts` - API key storage helpers and IPC handlers (CRUD operations)
 - `src/main/openai-client.ts` - OpenAI API client, tool functions, tool worker execution, and chat IPC handlers
-- `src/main/tool-management.ts` - Tool storage helpers, JSON Schema validator, and tool IPC handlers (CRUD operations, execution, validation)
+- `src/main/tool-management.ts` - Tool storage helpers, JSON Schema validator, and tool IPC handlers (CRUD operations, execution routing based on environment, validation)
+- `src/renderer/browser-tool-executor.ts` - Browser tool execution module for running tools in renderer context with access to browser APIs
 
 **Module Dependencies:**
 - `openai-client.ts` imports from: `agent-management.ts` (loadAgents, saveAgent), `apiKey-management.ts` (getAPIKeyByName), and `tool-management.ts` (loadTools, getToolByName, validateJSONSchema)
