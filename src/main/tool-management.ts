@@ -187,10 +187,17 @@ export function registerToolIPCHandlers(): void {
 
   // Handler: Execute a tool
   ipcMain.handle('tools:execute', async (_event, request: any) => {
-    // Load tool
-    const tool = getToolByName(request.toolName);
-    if (!tool) {
-      throw new Error(`Tool "${request.toolName}" not found`);
+    let tool;
+
+    // If full tool data provided, use it directly (for testing unsaved tools)
+    if (request.tool) {
+      tool = request.tool;
+    } else {
+      // Otherwise, load from storage by name (for normal tool execution)
+      tool = getToolByName(request.toolName);
+      if (!tool) {
+        throw new Error(`Tool "${request.toolName}" not found`);
+      }
     }
 
     // Check if tool is enabled

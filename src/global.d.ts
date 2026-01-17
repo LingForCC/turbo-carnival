@@ -111,6 +111,7 @@ export interface Tool {
 export interface ToolExecutionRequest {
   toolName: string;
   parameters: Record<string, any>;
+  tool?: Tool;  // Optional: Full tool data for direct execution (e.g., testing unsaved tools)
 }
 
 /**

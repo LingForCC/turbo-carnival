@@ -368,7 +368,8 @@ export class ToolTestDialog extends HTMLElement {
 
       const result = await window.electronAPI!.executeTool({
         toolName: this.tool.name,
-        parameters
+        parameters,
+        tool: this.tool  // Pass full tool data for direct execution
       });
 
       this.executionResult = result;
