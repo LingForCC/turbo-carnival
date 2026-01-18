@@ -587,6 +587,42 @@ The main process code is organized into dedicated modules for better maintainabi
 
 The project uses **Jest** with **ts-jest** for testing TypeScript code.
 
+### Automated Testing Requirements
+
+When making code changes, you MUST run relevant tests to ensure nothing breaks:
+
+**When to Run Tests:**
+- **After any code change**: Run tests for the affected module(s)
+- **Before considering work complete**: Ensure all tests pass
+- **After adding new features**: Run full test suite with coverage
+
+**Test Commands:**
+
+For **fastest feedback during development**:
+```bash
+npm run test:no-coverage
+```
+
+For **comprehensive validation with coverage**:
+```bash
+npm test
+```
+
+For **continuous testing during active development**:
+```bash
+npm run test:watch
+```
+
+**Test First Approach:**
+- When adding new features, write or update tests first
+- Ensure existing tests still pass after changes
+- Use `npm run test:watch` for continuous testing during active development
+
+**Priority Order:**
+1. Run tests without coverage for fastest feedback during development
+2. Run with coverage only when validating completeness of work
+3. Use watch mode when actively developing on a feature
+
 ### Test Commands
 - `npm test` - Run all tests once **with coverage report** (coverage table shown at end)
 - `npm run test:no-coverage` - Run all tests once **without coverage** (faster, no report)
