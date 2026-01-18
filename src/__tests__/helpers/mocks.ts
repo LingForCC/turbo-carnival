@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import type { Project, Agent } from '../../global.d';
 
 /**
