@@ -14,9 +14,10 @@ The app includes a **conversational AI interface** that allows users to chat wit
 - `npm run build` - Full production build using Vite
 - `npm start` - Build and launch the Electron app
 - `npm run preview` - Preview Vite production build
-- `npm test` - Run all tests once
+- `npm test` - Run all tests once **with coverage report** (coverage table shown at end)
+- `npm run test:no-coverage` - Run all tests once **without coverage** (faster, no report)
 - `npm run test:watch` - Run tests in watch mode
-- `npm run test:coverage` - Run tests with coverage report
+- `npm run test:coverage` - Run tests with coverage report (same as `npm test`)
 - `npm run test:verbose` - Run tests with verbose output
 
 ## Architecture
@@ -587,9 +588,10 @@ The main process code is organized into dedicated modules for better maintainabi
 The project uses **Jest** with **ts-jest** for testing TypeScript code.
 
 ### Test Commands
-- `npm test` - Run all tests once
+- `npm test` - Run all tests once **with coverage report** (coverage table shown at end)
+- `npm run test:no-coverage` - Run all tests once **without coverage** (faster, no report)
 - `npm run test:watch` - Run tests in watch mode
-- `npm run test:coverage` - Run tests with coverage report
+- `npm run test:coverage` - Run tests with coverage report (same as `npm test`)
 - `npm run test:verbose` - Run tests with verbose output
 
 ### Test Configuration
@@ -672,7 +674,11 @@ Located in `src/__tests__/helpers/`:
 
 ### Test Structure
 Tests are organized in `src/__tests__/` by feature:
-- `src/__tests__/project-management/` - Project storage and file tree tests
+- `src/__tests__/project-management/` - Project storage, file tree, file listing, and IPC handler tests
+  - `projects.test.ts` - Storage helper tests (getProjectsPath, loadProjects, saveProjects)
+  - `file-tree.test.ts` - File tree helper tests (isHidden, buildFileTree)
+  - `file-listing.test.ts` - File listing helper tests (listFilesRecursive)
+  - `ipc-handlers.test.ts` - IPC handler tests (projects:add, projects:remove, project:getFileTree, files:list, files:readContents)
 - `src/__tests__/agent-management/` - Agent CRUD operation tests
 - `src/__tests__/helpers/` - Shared test utilities and mocks
 
@@ -729,3 +735,4 @@ describe('Project Management', () => {
 - Each test should be independent and not rely on state from other tests
 - Use `setupMockFS({})` to create a clean file system for each test
 - Always call `cleanup()` from `setupMockFS()` in `afterEach()` if needed
+
