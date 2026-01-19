@@ -204,6 +204,22 @@ interface ElectronAPI {
   removeTool: (toolName: string) => Promise<Tool[]>;
   executeTool: (request: ToolExecutionRequest) => Promise<ToolExecutionResult>;
 
+  // Browser tool execution events
+  onBrowserToolExecution: (
+    callback: (request: {
+      code: string;
+      parameters: Record<string, any>;
+      timeout: number
+    }) => void
+  ) => void;
+
+  sendBrowserToolResult: (result: {
+    success: boolean;
+    result?: any;
+    error?: string;
+    executionTime: number
+  }) => void;
+
   // Chat completion (non-streaming)
   sendChatMessage: (
     projectPath: string,
