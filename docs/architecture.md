@@ -1,0 +1,231 @@
+# Architecture
+
+## Electron Process Structure
+
+The app follows standard Electron architecture:
+
+### Main Process (`src/main.ts`)
+- Creates BrowserWindow
+- Handles app lifecycle
+- Coordinates all IPC handler registrations
+
+### Module Organization
+The main process is organized into dedicated modules:
+
+**`src/main/project-management.ts`**
+- Project CRUD operations
+- Storage helpers: `getProjectsPath`, `loadProjects`, `saveProjects`
+- File tree helpers: `isHidden`, `buildFileTree`
+- File listing helpers: `listFilesRecursive`
+- IPC handler registration: `registerProjectIPCHandlers`
+
+**`src/main/agent-management.ts`**
+- Agent CRUD operations
+- Storage helpers: `loadAgents`, `saveAgent`, `deleteAgent`, `sanitizeAgentName`, `getAgentFilePath`
+- IPC handler registration: `registerAgentIPCHandlers`
+
+**`src/main/apiKey-management.ts`**
+- API key CRUD operations
+- Storage helpers: `getAPIKeysPath`, `loadAPIKeys`, `saveAPIKeys`, `getAPIKeyByName`
+- IPC handler registration: `registerApiKeyIPCHandlers`
+
+**`src/main/openai-client.ts`**
+- OpenAI API integration
+- API client functions: `callOpenAICompatibleAPI`, `streamOpenAICompatibleAPI`
+- Tool helper functions: `formatToolDescriptions`, `parseToolCalls`
+- Tool worker execution: `executeToolInWorker`
+- Chat IPC handlers: `chat:sendMessage`, `chat:streamMessage`
+
+**`src/main/tool-management.ts`**
+- Tool CRUD operations
+- Storage helpers: `getToolsPath`, `loadTools`, `saveTools`, `getToolByName`
+- JSON Schema validator: `validateJSONSchema`
+- IPC handlers: CRUD operations, execution routing based on environment, validation
+
+**`src/renderer/browser-tool-executor.ts`**
+- Browser tool execution module
+- Runs tools in renderer context with access to browser APIs
+
+### Module Dependencies
+- `openai-client.ts` imports from: `agent-management.ts`, `apiKey-management.ts`, `tool-management.ts`
+- `tool-management.ts` imports from: `openai-client.ts` (executeToolInWorker)
+- `main.ts` imports from: `project-management.ts`, `openai-client.ts`, `tool-management.ts`
+
+### Pattern for Creating New Modules
+1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)
+2. Export storage/helper functions and a `registerFeatureIPCHandlers()` function
+3. Import and call the registration function in `src/main.ts` within `registerIPCHandlers()`
+4. If the module needs functions from another module, import them directly from that module
+5. Update CLAUDE.md to document the new module
+
+### Preload Script (`src/preload.ts`)
+- Bridges main and renderer via contextBridge
+- Exposes `window.electronAPI` with:
+  - `platform` - Current platform (darwin/win32/linux)
+  - `openFolderDialog()` - Opens native folder picker dialog
+  - `getProjects()`, `addProject(path)`, `removeProject(path)` - Project operations
+  - `getAgents(projectPath)`, `addAgent(...)`, `removeAgent(...)`, `updateAgent(...)` - Agent operations
+  - `getAPIKeys()`, `addAPIKey(...)`, `removeAPIKey(name)` - API key operations
+  - `getTools()`, `addTool(...)`, `updateTool(...)`, `removeTool(toolName)` - Tool operations
+  - `executeTool(request)` - Executes a tool (routes based on environment)
+  - `onBrowserToolExecution(callback)` - Listens for browser tool execution requests
+  - `sendBrowserToolResult(result)` - Sends browser tool execution result back
+  - `getFileTree(projectPath, options)` - Gets file tree structure
+  - `listProjectFiles(projectPath, options)` - Lists .txt and .md files
+  - `readFileContents(filePaths)` - Reads multiple file contents
+  - `sendMessage(...)` - Sends non-streaming chat message
+  - `streamMessage(...)` - Initiates streaming chat
+  - `onChatChunk(callback)`, `onChatComplete(callback)`, `onChatError(callback)` - Stream events
+
+### Renderer Process (`src/renderer.ts`)
+- Web Components UI, runs in browser context
+- Includes browser tool execution handler
+- Listens for `tools:executeBrowser` events and executes tools via `browser-tool-executor.ts`
+
+## Build System
+
+The project uses **Vite** as the sole build tool (`vite.config.mjs`):
+
+- `vite-plugin-electron` - Bundles main process and preload script
+- `vite-plugin-electron-renderer` - Handles renderer process
+- Outputs to `dist/` (main/preload) and `dist-renderer/` (renderer)
+
+## UI Architecture: Web Components
+
+The renderer uses vanilla JavaScript Web Components (not Vue/React). Each component is a TypeScript class extending `HTMLElement`:
+
+**Components:**
+- `app-container` (`src/components/app-container.ts`) - Root layout container, manages panel visibility and toggle buttons, forwards events between components, manages API keys dialog
+- `project-panel` (`src/components/project-panel.ts`) - Collapsible left sidebar (264px wide) that manages local folder projects
+- `project-agent-dashboard` (`src/components/project-agent-dashboard.ts`) - Center content area that displays agents in a grid, handles dashboard/chat view switching
+- `chat-panel` (`src/components/chat-panel.ts`) - Interactive chat interface with streaming/non-streaming support
+- `project-detail-panel` (`src/components/project-detail-panel.ts`) - Collapsible right sidebar (264px wide) that displays recursive file tree
+- `agent-form-dialog` (`src/components/agent-form-dialog.ts`) - Modal dialog for creating and editing agents
+- `api-keys-dialog` (`src/components/api-keys-dialog.ts`) - Modal dialog for managing global API keys
+- `tools-dialog` (`src/components/tools-dialog.ts`) - Modal dialog for managing custom tools with add/edit/delete/test functionality
+- `tool-test-dialog` (`src/components/tool-test-dialog.ts`) - Modal dialog for testing tool execution
+
+### Component Patterns
+All Web Components follow this pattern:
+1. `connectedCallback()` - Called when element is added to DOM, calls `render()` and `attachEventListeners()`
+2. `render()` - Sets `innerHTML` with Tailwind classes, must re-attach listeners after render
+3. `attachEventListeners()` - Clones and replaces DOM nodes to prevent duplicate listeners
+4. Public methods for external control (e.g., `expand()`, `collapse()`, `getValue()`, `show()`, `hide()`)
+5. Custom events for parent communication (e.g., `panel-toggle`, `project-selected`, `agent-selected`, `chat-back`, `api-keys-dialog-close`)
+
+### Event Flow
+1. User clicks project in `project-panel` → emits `project-selected` event (bubbles, composed)
+2. `app-container` catches event → forwards to both `project-agent-dashboard` and `project-detail-panel` with `bubbles: false` to prevent infinite loop
+3. `project-agent-dashboard.handleProjectSelected()` loads agents via IPC
+4. `project-detail-panel.handleProjectSelected()` loads file tree via IPC
+5. User clicks agent card → `project-agent-dashboard` emits `agent-selected` event, switches to chat view
+6. `chat-panel` loads and displays conversation, connects to IPC for messaging
+7. User clicks back button → `chat-panel` emits `chat-back` event, returns to dashboard view
+
+### Dashboard/Chat View Switching
+The `project-agent-dashboard` component has two display modes:
+- **Dashboard mode** (default): Grid of agent cards with add/edit/delete actions
+- **Chat mode**: Shows the `chat-panel` component for the selected agent
+
+When an agent is selected via the `agent-selected` event, the dashboard hides the agent grid and shows the chat panel. The `chat-back` event reverses this.
+
+## IPC Communication
+
+The app uses Electron's IPC (Inter-Process Communication) for secure communication between main and renderer processes.
+
+### Project IPC Channels
+- `dialog:openFolder` - Opens native folder picker dialog, returns folder path or null
+- `projects:get` - Returns all saved projects from storage
+- `projects:add` - Adds a new project (prevents duplicates)
+- `projects:remove` - Removes a project by path
+
+### Agent IPC Channels
+- `agents:get` - Returns all agents for a project (reads agent-*.json files from project folder)
+- `agents:add` - Adds a new agent to a project (validates and saves agent-{name}.json)
+- `agents:remove` - Removes an agent from a project (deletes agent-{name}.json)
+- `agents:update` - Updates an existing agent (validates, handles name changes)
+
+### API Key IPC Channels
+- `api-keys:get` - Returns all stored API keys
+- `api-keys:add` - Adds a new API key (validates and saves to api-keys.json)
+- `api-keys:remove` - Removes an API key by name
+
+### Tool IPC Channels
+- `tools:get` - Returns all stored tools
+- `tools:add` - Adds a new tool (validates name, description, code, and parameters; validates code syntax)
+- `tools:update` - Updates an existing tool (preserves createdAt, sets updatedAt)
+- `tools:remove` - Removes a tool by name
+- `tools:execute` - Executes a tool (routes to worker or renderer based on tool's environment setting)
+- `tools:executeBrowser` - Event sent to renderer to execute browser-based tools
+- `tools:browserResult` - Event sent from renderer with browser tool execution result
+
+### Project Detail IPC Channels
+- `project:getFileTree` - Gets file tree structure for a project folder (recursive, filters hidden files)
+
+### File Reading IPC Channels
+- `files:list` - Lists all .txt and .md files in a project folder (recursive, up to 10 levels deep)
+- `files:readContents` - Reads multiple file contents at once (batch operation)
+
+### Chat IPC Channels
+- `chat:sendMessage` - Sends non-streaming message with optional file paths, returns full response
+- `chat:streamMessage` - Initiates streaming message exchange with optional file paths
+- `chat-chunk` - Event emitted for each response chunk during streaming (via `webContents.send()`)
+- `chat-complete` - Event emitted when streaming completes successfully
+- `chat-error` - Event emitted when streaming encounters an error
+
+## Storage
+
+### Project Storage
+- Projects stored as JSON in `app.getPath('userData')/projects.json`
+- Each project contains: `path` (absolute path), `name` (folder name), `addedAt` (timestamp)
+- Projects persist across app restarts
+- Storage helpers and IPC handlers in `src/main/project-management.ts`
+
+### Agent Storage
+- Agents stored as individual JSON files in project folders: `agent-{sanitized-name}.json`
+- Agent names sanitized for filenames (lowercase, special chars removed, spaces to hyphens)
+- Each agent file contains complete agent metadata including conversation history
+- Storage helpers and IPC handlers in `src/main/agent-management.ts`
+
+### API Key Storage
+- API keys stored in `app.getPath('userData')/api-keys.json`
+- Each key contains: `name`, `key` (secret), `baseURL` (optional), `addedAt` (timestamp)
+- Agents reference API keys by name via `config.apiKeyRef` property
+- Storage helpers and IPC handlers in `src/main/apiKey-management.ts`
+
+### Tool Storage
+- Tools stored in `app.getPath('userData')/tools.json`
+- Each tool contains: `name`, `description`, `code`, `parameters` (JSON Schema), `returns` (optional), `timeout` (default 30000ms), `environment` ('node' or 'browser', default 'node'), `enabled` (default true), `createdAt`, `updatedAt`
+- Storage helpers, JSON Schema validator, and IPC handlers in `src/main/tool-management.ts`
+- Tools execute in different environments based on `environment` setting:
+  - **Node.js tools**: Execute in isolated worker processes with access to Node.js APIs
+  - **Browser tools**: Execute in renderer process with access to browser APIs
+
+## Type Definitions
+
+Global types defined in `src/global.d.ts`:
+
+- `Project` - Local folder project with `path`, `name`, and `addedAt` properties
+- `Agent` - AI agent with full metadata including conversation history
+- `AgentConfig` - Model configuration (model, temperature, maxTokens, topP, apiKeyRef, baseURL)
+- `AgentPrompts` - System and user prompts
+- `ConversationMessage` - Messages in conversation history (role, content, timestamp)
+- `AgentSettings` - Flexible settings object
+- `APIKey` - Global API key storage (name, key, baseURL, addedAt)
+- `Tool` - Custom tool definition (name, description, code, parameters, returns, timeout, environment, enabled, createdAt, updatedAt)
+- `ToolExecutionRequest` - Request for tool execution (toolName, parameters, optional tool)
+- `ToolExecutionResult` - Result from tool execution (success, result, error, executionTime)
+- `FileType` - Discriminator union for file system nodes ('file' | 'directory')
+- `FileTreeNode` - Node in the file tree (name, path, type, children, expanded)
+- `FileTreeOptions` - Configuration for file tree traversal (maxDepth, excludeHidden, includeExtensions)
+- `FileReference` - File reference for @mention (name, path, extension)
+- `FileContent` - File content with metadata (path, name, content, size, error)
+- `FileListOptions` - Configuration for file listing (extensions, maxDepth, excludeHidden)
+- `ElectronAPI` - Exposed API methods from preload script
+
+## TypeScript Configuration
+
+- Target: ES2020
+- Module: CommonJS
+- Strict mode enabled
+- Outputs to `dist/` from `src/` root
