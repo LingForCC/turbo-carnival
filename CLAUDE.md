@@ -481,9 +481,12 @@ The OpenAI client module provides a complete OpenAI-compatible API client (`src/
   - `callOpenAICompatibleAPI()` - Makes non-streaming API requests
   - `streamOpenAICompatibleAPI()` - Makes streaming API requests with SSE parsing, detects tool calls during streaming
 - **Tool Functions**:
-  - `formatToolDescriptions()` - Formats available tools for inclusion in system prompt
-  - `parseToolCalls()` - Parses tool call markers from AI responses
+  - `formatToolDescriptions()` - Formats available tools for inclusion in system prompt with tool call marker format
+  - `parseToolCalls()` - Parses tool call markers from AI responses using regex pattern matching
   - `executeToolInWorker()` - Executes tool code in isolated worker process for security
+- **Tool Call Format**: AI agents output tool calls as JSON objects: `{"toolname":"tool_name","arguments":{"param":"value"}}`
+- **Tool Call Detection**: Streaming detects tool calls by checking for `"toolname"` key in response chunks
+- **Tool Call Deduplication**: Safety net removes duplicate tool calls with same tool name and parameters before execution
 - **Chat IPC Handlers**:
   - `chat:sendMessage` - Handles non-streaming chat with tool support
   - `chat:streamMessage` - Handles streaming chat with tool support

@@ -124,7 +124,7 @@ async function streamOpenAICompatibleAPI(
 
     // Helper to check for partial tool call marker
     const hasPartialToolCallMarker = (text: string): boolean => {
-      const partialPrefixes = ['<', '<t', '<to', '<too', '<tool', '<tool_', '<tool_c', '<tool_ca', '<tool_cal', '<tool_call'];
+      const partialPrefixes = ['{', '{"', '{"t', '{"to', '{"too', '{"tool', '{"tooln', '{"toolna', '{"toolnam', '{"toolname'];
       return partialPrefixes.some(prefix => text.endsWith(prefix));
     };
 
@@ -157,7 +157,7 @@ async function streamOpenAICompatibleAPI(
             sendBuffer += content;
 
             // Check if buffer contains tool call marker
-            if (sendBuffer.includes('<tool_call>')) {
+            if (sendBuffer.includes('"toolname"')) {
               // Tool call detected - stop sending chunks
               detectedToolCalls = true;
               sendBuffer = ''; // Clear buffer, don't send
@@ -219,8 +219,8 @@ function formatToolDescriptions(tools: any[]): string {
   }
 
   let descriptions = '\n\nAvailable Tools:\n';
-  descriptions += 'When you need to use a tool, output ONLY the tool call marker in this exact format:\n';
-  descriptions += '<tool_call>tool_name|{"param":"value"}</tool_call>\n\n';
+  descriptions += 'If you decide to use a tool, output ONLY the tool call marker in this exact format:\n';
+  descriptions += '{"toolname":"tool_name","arguments":{"param":"value"}}\n\n';
 
   for (const tool of enabledTools) {
     descriptions += `- ${tool.name}: ${tool.description}\n`;
@@ -231,22 +231,30 @@ function formatToolDescriptions(tools: any[]): string {
     descriptions += '\n';
   }
 
-  descriptions += 'IMPORTANT: When calling a tool, output ONLY the tool call marker. ';
-  descriptions += 'Do not include any explanatory text before or after the marker. ';
-  descriptions += 'The marker must be on its own without additional commentary.\n';
+  descriptions += 'IMPORTANT: When calling a tool, output ONLY the tool call marker as a JSON object. ';
+  descriptions += 'Do not include any other text before or after the JSON object. ';
+  descriptions += 'The JSON object must be valid and contain both "toolname" and "arguments" keys.\n';
+
+  // Anti-duplication rules to prevent tool call multiplication
+  descriptions += '\nTOOL USAGE RULES:\n';
+  descriptions += '- Call each tool ONLY ONCE per unique input or item\n';
+  descriptions += '- Do NOT call the same tool multiple times with the same parameters\n';
+  descriptions += '- If processing multiple items (e.g., multiple URLs), call the tool once per item\n';
+  descriptions += '- The tool results will contain all necessary information for your response\n';
+  descriptions += '- Do NOT call tools again for formatting or translation purposes\n';
 
   return descriptions;
 }
 
 /**
  * Parse AI response for tool calls
- * Looks for <tool_call>tool_name|{"param":"value"}</tool_call> format
+ * Looks for {"toolname":"tool_name","arguments":{"param":"value"}} format
  */
 function parseToolCalls(response: string): any[] {
   const toolCalls: any[] = [];
 
-  // Pattern: <tool_call>tool_name|{"param":"value"}</tool_call>
-  const pattern = /<tool_call>(\w+)\|({.*?})<\/tool_call>/g;
+  // Pattern: {"toolname":"tool_name","arguments":{"param":"value"}}
+  const pattern = /{\"toolname\":\"(\w+)\",\"arguments\":({.*?})\}/g;
   let match;
 
   while ((match = pattern.exec(response)) !== null) {
@@ -396,7 +404,25 @@ export function registerOpenAIClientIPCHandlers(): void {
     }
 
     // Check for tool calls
-    const toolCalls = parseToolCalls(assistantMessage);
+    let toolCalls = parseToolCalls(assistantMessage);
+
+    // Deduplicate tool calls with same tool name and parameters (safety net)
+    if (toolCalls.length > 0) {
+      const seen = new Set<string>();
+      const uniqueToolCalls = toolCalls.filter(call => {
+        const key = `${call.toolName}|${JSON.stringify(call.parameters)}`;
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+
+      if (uniqueToolCalls.length !== toolCalls.length) {
+        console.warn(`Detected ${toolCalls.length - uniqueToolCalls.length} duplicate tool calls, removing them`);
+        toolCalls = uniqueToolCalls;
+      }
+    }
 
     if (toolCalls.length > 0) {
       // Tool calls detected - execute them
@@ -550,7 +576,25 @@ export function registerOpenAIClientIPCHandlers(): void {
     );
 
     // After streaming completes, check for tool calls
-    const toolCalls = parseToolCalls(fullResponse);
+    let toolCalls = parseToolCalls(fullResponse);
+
+    // Deduplicate tool calls with same tool name and parameters (safety net)
+    if (toolCalls.length > 0) {
+      const seen = new Set<string>();
+      const uniqueToolCalls = toolCalls.filter(call => {
+        const key = `${call.toolName}|${JSON.stringify(call.parameters)}`;
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+
+      if (uniqueToolCalls.length !== toolCalls.length) {
+        console.warn(`Detected ${toolCalls.length - uniqueToolCalls.length} duplicate tool calls, removing them`);
+        toolCalls = uniqueToolCalls;
+      }
+    }
 
     if (toolCalls.length > 0) {
       // Tool calls detected - execute them and make a second API call
