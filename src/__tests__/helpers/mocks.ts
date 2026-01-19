@@ -1,4 +1,29 @@
-import type { Project, Agent } from '../../global.d';
+import type { Project, Agent, APIKey } from '../../global.d';
+
+/**
+ * Create a mock APIKey object with optional overrides
+ */
+export function createMockAPIKey(overrides: Partial<APIKey> = {}): APIKey {
+  return {
+    name: 'test-api-key',
+    apiKey: 'sk-test-key-1234567890',
+    createdAt: Date.now(),
+    ...overrides,
+  };
+}
+
+/**
+ * Create multiple mock API keys at once
+ */
+export function createMockAPIKeys(count: number, baseOverrides: Partial<APIKey> = {}): APIKey[] {
+  return Array.from({ length: count }, (_, i) =>
+    createMockAPIKey({
+      name: `test-api-key-${i + 1}`,
+      apiKey: `sk-test-key-${i + 1}`,
+      ...baseOverrides,
+    })
+  );
+}
 
 /**
  * Create a mock Project object with optional overrides
