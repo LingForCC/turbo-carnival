@@ -107,14 +107,18 @@ Located in `src/__tests__/helpers/`:
 
 Tests are organized in `src/__tests__/` by feature:
 
-### `src/__tests__/project-management/`
+### `src/__tests__/main/project-management/`
 - `projects.test.ts` - Storage helper tests (getProjectsPath, loadProjects, saveProjects)
 - `file-tree.test.ts` - File tree helper tests (isHidden, buildFileTree)
 - `file-listing.test.ts` - File listing helper tests (listFilesRecursive)
 - `ipc-handlers.test.ts` - IPC handler tests (projects:add, projects:remove, project:getFileTree, files:list, files:readContents)
 
-### `src/__tests__/agent-management/`
-- Agent CRUD operation tests
+### `src/__tests__/main/apiKey-management/`
+- `api-keys.test.ts` - Storage helper tests (getAPIKeysPath, loadAPIKeys, saveAPIKeys, getAPIKeyByName)
+- `ipc-handlers.test.ts` - IPC handler tests (api-keys:get, api-keys:add, api-keys:remove)
+
+### `src/__tests__/components/`
+- `project-panel/project-panel.test.ts` - Web Component UI tests (rendering, interactions, events, XSS prevention)
 
 ### `src/__tests__/helpers/`
 - Shared test utilities and mocks
@@ -188,3 +192,171 @@ describe('Project Management', () => {
 - When adding new features, write or update tests first
 - Ensure existing tests still pass after changes
 - Use `npm run test:watch` for continuous testing during active development
+
+## Web Component Automation Testing
+
+Web Components are tested using **Happy DOM** (a lightweight DOM implementation) alongside Jest. This enables testing of UI rendering, user interactions, events, and security.
+
+### Setup Files
+
+**`jest.setup-components.ts`** - Global setup for component tests:
+- Mocks `window.electronAPI` with all IPC methods as Jest mocks
+- Clears mocks and DOM before each test
+- Must be configured in `jest.config.js` for component test files
+
+### Component Testing Helpers
+
+Located in `src/__tests__/helpers/component-testing.ts`:
+
+#### `mountComponent<T>(tagName, properties?)`
+Mounts a custom element and returns testing helpers.
+
+```typescript
+const { element, cleanup } = mountComponent<ProjectPanel>('project-panel');
+expect(element.querySelector('h2')).toBeTruthy();
+cleanup();
+```
+
+**Returns:**
+- `element: T` - The mounted custom element
+- `querySelector(selectors)` - Bound querySelector for the element
+- `cleanup()` - Removes element from DOM
+
+#### `mockElectronAPI(method, implementation)`
+Mocks a specific `window.electronAPI` method.
+
+```typescript
+mockElectronAPI('getProjects', jest.fn().mockResolvedValue([
+  createMockProject({ name: 'test' })
+]));
+```
+
+#### `createMockProject(overrides?)`
+Creates a mock Project object (also exported from `mocks.ts`).
+
+#### `waitForAsync(ms?)`
+Waits for promises to resolve (useful for `connectedCallback` async operations).
+
+```typescript
+await waitForAsync(); // Wait for next tick
+await waitForAsync(50); // Wait 50ms for slower operations
+```
+
+#### `spyOnEvent<T>(element, eventName)`
+Creates a promise that resolves when a custom event is dispatched.
+
+```typescript
+const eventPromise = spyOnEvent(element, 'project-selected');
+element.click();
+const event = await eventPromise;
+expect(event.detail.project).toBeDefined();
+```
+
+### What to Test in Web Components
+
+#### 1. Rendering Tests
+Verify correct DOM structure and content:
+- Initial structure (headers, buttons, containers)
+- Expanded/collapsed states
+- Empty states (no data)
+- Data rendering (lists, items)
+- Styling classes (Tailwind classes)
+- HTML escaping (XSS prevention)
+
+#### 2. Interaction Tests
+Verify user interactions work correctly:
+- Button clicks (toggle, add, remove)
+- Item selection (click handlers)
+- Form input and submission
+- Event dispatching with correct detail
+
+#### 3. Public Method Tests
+Verify public APIs work as expected:
+- `expand()`, `collapse()`, `getValue()`, `show()`, `hide()`
+- State getters (e.g., `getCollapsed()`)
+
+#### 4. Async Operation Tests
+Verify async operations complete correctly:
+- `connectedCallback` loading data
+- IPC calls for add/remove/update operations
+- Error handling with `console.error` spies
+
+#### 5. Event Tests
+Verify custom events are dispatched correctly:
+- Event name matches expected
+- Event detail contains correct data
+- Events bubble and compose as expected
+- Events are not dispatched when they shouldn't be
+
+### Example Web Component Test
+
+```typescript
+import { mountComponent, createMockProject, mockElectronAPI, waitForAsync, spyOnEvent } from '../../helpers/component-testing';
+
+interface ProjectPanel extends HTMLElement {
+  collapse(): void;
+  expand(): void;
+  getCollapsed(): boolean;
+}
+
+describe('ProjectPanel Web Component', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should render with correct initial structure', async () => {
+    mockElectronAPI('getProjects', jest.fn().mockResolvedValue([]));
+    const { element, cleanup } = mountComponent<ProjectPanel>('project-panel');
+
+    await waitForAsync();
+
+    expect(element.querySelector('h2')?.textContent).toBe('Projects');
+    expect(element.querySelector('#toggle-btn')).toBeTruthy();
+
+    cleanup();
+  });
+
+  it('should dispatch project-selected event when clicked', async () => {
+    const mockProjects = [createMockProject({ name: 'project1', path: '/path1' })];
+    mockElectronAPI('getProjects', jest.fn().mockResolvedValue(mockProjects));
+    const { element, cleanup } = mountComponent<ProjectPanel>('project-panel');
+
+    await waitForAsync();
+
+    const eventPromise = spyOnEvent(element, 'project-selected');
+    const projectItem = element.querySelector('[data-project-path="/path1"]') as HTMLElement;
+    projectItem.click();
+
+    const event = await eventPromise;
+    expect(event.detail.project).toEqual(mockProjects[0]);
+
+    cleanup();
+  });
+
+  it('should escape HTML in project names', async () => {
+    const mockProjects = [
+      createMockProject({ name: '<script>alert("xss")</script>', path: '/path1' }),
+    ];
+    mockElectronAPI('getProjects', jest.fn().mockResolvedValue(mockProjects));
+    const { element, cleanup } = mountComponent<ProjectPanel>('project-panel');
+
+    await waitForAsync();
+
+    const projectItem = element.querySelector('[data-project-path="/path1"]');
+    expect(projectItem?.innerHTML).not.toContain('<script>');
+    expect(projectItem?.innerHTML).toContain('&lt;script&gt;');
+
+    cleanup();
+  });
+});
+```
+
+### Important Notes for Component Tests
+
+1. **Always await async operations**: Use `waitForAsync()` after mounting, clicking, or any operation that triggers async code
+2. **Cleanup after each test**: Always call `cleanup()` to remove elements from DOM
+3. **Mock before mounting**: Set up `mockElectronAPI()` before calling `mountComponent()`
+4. **Query elements after async**: DOM changes happen after async operations complete
+5. **XSS testing is critical**: Always test that user input is properly escaped
+6. **Event bubbling**: Verify events bubble correctly by listening on `document`
+7. **Clone-and-replace pattern**: Tests verify that duplicate listeners are prevented

@@ -108,6 +108,10 @@ The app uses graceful degradation for errors:
 3. Use clone-and-replace pattern for event listeners
 4. Emit custom events for parent communication
 5. Import and register in renderer or parent component
+6. **Write automation tests** in `src/__tests__/components/` (see testing.md)
+7. **Update documentation**:
+   - Add component to "UI Components" section in CLAUDE.md
+   - Document any new events or patterns in relevant feature docs
 
 ### Adding a New Main Process Module
 
@@ -115,7 +119,27 @@ The app uses graceful degradation for errors:
 2. Export storage helpers and a `registerFeatureIPCHandlers()` function
 3. Import and call registration function in `src/main.ts`
 4. If needed, import functions from other modules
-5. Update documentation
+5. **Write tests** for storage helpers and IPC handlers
+6. **Update documentation**:
+   - Add module to "Module Organization" section in docs/architecture.md
+   - Document IPC channels in relevant IPC sections
+   - Add module to "Main Process Modules" in CLAUDE.md
+
+### Documentation Maintenance
+
+**Always update documentation after code changes when:**
+- Adding new modules, components, or features
+- Modifying IPC channels or storage locations
+- Changing critical patterns or best practices
+- Updating test structure or configuration
+
+**Key files to update:**
+- **CLAUDE.md** - Quick reference for modules, components, IPC channels
+- **docs/architecture.md** - Module organization, IPC channels, storage
+- **docs/features/[feature].md** - Feature-specific implementation details
+- **docs/testing.md** - Test structure and testing patterns
+
+For detailed guidance, see "Documentation Maintenance" in CLAUDE.md.
 
 ### Adding IPC Handler
 

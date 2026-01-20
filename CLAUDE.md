@@ -91,7 +91,7 @@ The documentation has been split into focused modules for better performance:
 - **[docs/development.md](docs/development.md)** - Development notes, security, styling, common tasks, debugging tips
 
 ### Testing
-- **[docs/testing.md](docs/testing.md)** - Jest configuration, mocking patterns, test helpers, examples
+- **[docs/testing.md](docs/testing.md)** - Jest configuration, mocking patterns, test helpers, web component automation testing
 
 ## Quick Reference
 
@@ -150,9 +150,55 @@ The documentation has been split into focused modules for better performance:
 1. Read relevant documentation in `docs/`
 2. Check for similar existing patterns in codebase
 3. Write tests first (see `docs/testing.md`)
+   - Main process modules: Write storage helper and IPC handler tests
+   - Web Components: Write rendering, interaction, event, and XSS prevention tests
 4. Implement feature following established patterns
 5. Run tests to ensure nothing breaks
-6. Update relevant documentation
+6. **Update relevant documentation** (see "Documentation Maintenance" below)
+
+### Documentation Maintenance
+
+**When to Update Documentation:**
+
+After making code changes, update documentation if you:
+- Add a new module or feature
+- Modify IPC channels or storage locations
+- Change critical patterns or best practices
+- Add new components or change component behavior
+- Update test structure or add new test types
+- Modify configuration or build process
+
+**What to Update:**
+
+1. **CLAUDE.md** - Update when:
+   - Adding new main process modules (add to "Main Process Modules" section)
+   - Adding new UI components (add to "UI Components" section)
+   - Adding new IPC channels (add to "Key IPC Channels" section)
+   - Changing storage locations (update "Storage Locations" section)
+   - Adding new file types or extensions (update "File Extensions Reference")
+
+2. **docs/architecture.md** - Update when:
+   - Adding new modules (module organization, dependencies, pattern)
+   - Modifying IPC channels (add to relevant sections)
+   - Changing storage (update storage section)
+   - Modifying type definitions (add to "Type Definitions")
+
+3. **docs/features/[feature].md** - Update when:
+   - Modifying feature behavior
+   - Adding new functionality to existing features
+   - Changing implementation details
+
+4. **docs/testing.md** - Update when:
+   - Adding new test files or test structure
+   - Adding new test helpers or patterns
+   - Updating testing configuration
+
+**Documentation Update Workflow:**
+1. After code changes are complete and tests pass
+2. Review which documentation sections are affected
+3. Update the relevant documentation files
+4. Verify documentation links are correct
+5. Ensure examples and code snippets in docs are current
 
 ### Debugging IPC Issues
 1. Check handler registered in main process module
