@@ -2,6 +2,10 @@
 
 The app allows users to tag .txt and .md files from the project folder to include them as context in AI conversations.
 
+## Overview
+
+File tagging is an **optional feature** of the `conversation-panel` component, enabled via the `enable-file-tagging` attribute. It is currently used in `chat-panel` but not in `app-panel`.
+
 ## File Tagging Features
 
 - **@mention trigger** - Type `@` in chat input to open autocomplete dropdown
@@ -11,6 +15,19 @@ The app allows users to tag .txt and .md files from the project folder to includ
 - **Easy removal** - X button on each tag or "Clear all" button
 - **Session persistence** - Tagged files persist across messages in same conversation
 - **Agent switching** - Tagged files cleared when switching agents
+
+## Enabling File Tagging
+
+File tagging is enabled by setting the `enable-file-tagging` attribute on the `conversation-panel` component:
+
+```html
+<conversation-panel
+  enable-file-tagging="true"
+  placeholder="Type @ to mention files...">
+</conversation-panel>
+```
+
+When disabled (default), file tagging UI and functionality are not rendered or available.
 
 ## File Tagging UI
 
@@ -42,7 +59,7 @@ The app allows users to tag .txt and .md files from the project folder to includ
 
 ## File Tagging State
 
-The `chat-panel` component maintains:
+The `conversation-panel` component maintains (when file tagging is enabled):
 - `taggedFiles` - Array of currently tagged files `{ name, path }`
 - `availableFiles` - All .txt/.md files in project `{ name, path, extension }`
 - `showAutocomplete` - Whether dropdown is visible
@@ -58,6 +75,7 @@ The `chat-panel` component maintains:
 
 ## Related Files
 
-- `src/components/chat-panel.ts` - File tagging UI and state management
+- `src/components/conversation.ts` - Reusable conversation component with optional file tagging
+- `src/components/chat-panel.ts` - Uses conversation-panel with file tagging enabled
 - `src/main/project-management.ts` - `listFilesRecursive()` helper for file listing
 - IPC channels: `files:list`, `files:readContents`

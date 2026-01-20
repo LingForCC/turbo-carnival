@@ -5,6 +5,9 @@
 import { mountComponent, createMockProject, mockElectronAPI, waitForAsync } from '../../helpers/component-testing';
 import { createMockAgent, createMockApp } from '../../helpers/mocks';
 
+// Import the conversation component since app-panel uses it
+require('../../../components/conversation-panel.ts');
+
 // Type for the AppPanel element
 interface AppPanel extends HTMLElement {
   // Extend with any methods if needed for testing
@@ -24,7 +27,7 @@ describe('AppPanel Web Component', () => {
       await waitForAsync();
 
       expect(element.querySelector('#back-btn')).toBeTruthy();
-      expect(element.querySelector('#chat-messages')).toBeTruthy();
+      expect(element.querySelector('conversation-panel')).toBeTruthy();
       expect(element.querySelector('#app-preview')).toBeTruthy();
       expect(element.querySelector('#code-view-toggle')).toBeTruthy();
       expect(element.querySelector('#refresh-app-btn')).toBeTruthy();
@@ -40,7 +43,9 @@ describe('AppPanel Web Component', () => {
       await waitForAsync();
 
       const html = element.innerHTML;
-      expect(html).toContain('Select an App agent');
+      // Check for conversation-panel and empty state
+      expect(html).toContain('conversation-panel');
+      expect(html).toContain('No Agent Selected');
 
       cleanup();
     });
@@ -537,8 +542,9 @@ describe('AppPanel Web Component', () => {
       await waitForAsync();
 
       const html = element.innerHTML;
-      expect(html).toContain('Select an App agent');
-      expect(html).toContain('to start building');
+      // Check for conversation-panel with correct attributes
+      expect(html).toContain('conversation-panel');
+      expect(html).toContain('Describe the app you want to build');
 
       cleanup();
     });
@@ -563,10 +569,12 @@ describe('AppPanel Web Component', () => {
 
       await waitForAsync(50);
 
-      // Check for the chat input with placeholder
-      const chatInput = element.querySelector('#chat-input') as HTMLTextAreaElement;
-      expect(chatInput).toBeTruthy();
-      expect(chatInput?.placeholder).toContain('Describe the app you want to build');
+      // Check for conversation panel
+      const conversationPanel = element.querySelector('conversation-panel');
+      expect(conversationPanel).toBeTruthy();
+
+      // The conversation-panel should have the correct placeholder attribute
+      expect(conversationPanel?.getAttribute('placeholder')).toContain('Describe the app you want to build');
 
       cleanup();
     });

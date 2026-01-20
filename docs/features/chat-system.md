@@ -15,25 +15,52 @@ The app provides a complete chat interface for interacting with AI agents throug
 
 ## Chat UI Components
 
+The chat functionality is built on a reusable `conversation-panel` component:
+
+### conversation-panel
+Reusable Web Component that provides:
 - Message container with automatic scrolling
 - User and assistant message bubbles with different styling
 - Loading indicator during streaming
-- File tagging area with removable badges
-- Autocomplete dropdown for @mention file selection
+- **Optional file tagging** area with removable badges (configurable via `enable-file-tagging` attribute)
+- **Optional autocomplete dropdown** for @mention file selection
 - Send button with keyboard shortcuts (Enter to send, Shift+Enter for new line)
-- Streaming toggle in chat header
-- Back button to return to agent dashboard
+- **Optional streaming toggle** (configurable via `show-stream-toggle` attribute)
+- Configurable placeholder and empty state messages
+- Emits events: `message-sent`, `stream-complete`, `back-clicked`, `chat-cleared`
+
+### Usage Examples
+
+**chat-panel** (with file tagging):
+```html
+<conversation-panel
+  enable-file-tagging="true"
+  show-stream-toggle="true"
+  placeholder="Type @ to mention files..."
+  model-info="gpt-4">
+</conversation-panel>
+```
+
+**app-panel** (without file tagging):
+```html
+<conversation-panel
+  placeholder="Describe the app you want to build..."
+  empty-state-icon="computer"
+  empty-state-message="Describe the app you want to build...">
+</conversation-panel>
+```
 
 ## Message Flow
 
-1. User enters message in `chat-panel` text area (optionally tags files via @mention)
-2. `chat-panel` calls IPC method (`streamMessage` or `sendMessage`) with file paths
+1. User enters message in `conversation-panel` text area (optionally tags files via @mention if enabled)
+2. `conversation-panel` validates API key (if required) and calls IPC method (`streamMessage` or `sendMessage`) with file paths
 3. OpenAI client module (`src/main/openai-client.ts`) validates agent and API key
 4. OpenAI client compiles messages: system prompt + tool descriptions + tagged file contents + conversation history + new message
 5. OpenAI client calls OpenAI-compatible API with agent's model config
 6. For tool-enabled agents, OpenAI client detects tool calls, executes them via worker processes, and makes follow-up API call
 7. Response chunks/events sent back via IPC events (`chat-chunk`, `chat-complete`, `chat-error`)
-8. `chat-panel` updates UI in real-time, saves completed messages to agent file via OpenAI client module
+8. `conversation-panel` updates UI in real-time, emits `stream-complete` event
+9. Parent components (e.g., `app-panel`) can listen for `stream-complete` to trigger additional processing
 
 ## API Integration
 

@@ -110,8 +110,9 @@ The documentation has been split into focused modules for better performance:
 - `app-container` - Root layout, event forwarding
 - `project-panel` - Left sidebar, project management
 - `project-agent-dashboard` - Center area, agent grid/chat switching
-- `chat-panel` - Chat interface with streaming and file tagging
-- `app-panel` - Split-panel interface for App-type agents (chat + app preview)
+- `conversation-panel` - Reusable chat interface with optional file tagging
+- `chat-panel` - Right sidebar chat interface (uses conversation-panel)
+- `app-panel` - Split-panel interface for App-type agents (uses conversation-panel)
 - `project-detail-panel` - Right sidebar, file tree
 - `agent-form-dialog` - Agent creation/editing
 - `api-keys-dialog` - API key management

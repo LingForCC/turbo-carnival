@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+/* Make conversation-panel custom element work with flexbox */
+conversation-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%; /* Equivalent to flex-1 */
+  min-height: 0; /* Important for flex children to shrink properly */
+}
+
+/* Ensure the internal content fills the element */
+conversation-panel > div {
+  flex: 1;
+  min-height: 0;
+}
