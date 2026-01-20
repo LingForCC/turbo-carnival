@@ -1,9 +1,9 @@
 // Mocks are set up in jest.setup.ts
 import * as electron from 'electron';
 import * as path from 'path';
-import { registerProjectIPCHandlers } from '../../main/project-management';
-import { setupMockFS, clearMockFiles } from '../helpers/file-system';
-import type { Project } from '../../global.d';
+import { registerProjectIPCHandlers } from '../../../main/project-management';
+import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
+import type { Project } from '../../../global.d';
 
 describe('Project Management - IPC Handlers', () => {
   let mockHandlers: Map<string, Function>;

@@ -8,11 +8,7 @@ module.exports = {
       // Main process tests (existing tests)
       displayName: 'main-process',
       testMatch: [
-        '<rootDir>/src/__tests__/project-management/**/*.test.ts',
-        '<rootDir>/src/__tests__/agent-management/**/*.test.ts',
-        '<rootDir>/src/__tests__/api-key-management/**/*.test.ts',
-        '<rootDir>/src/__tests__/tool-management/**/*.test.ts',
-        '<rootDir>/src/__tests__/openai-client/**/*.test.ts',
+        '<rootDir>/src/__tests__/main/**/*.test.ts',
       ],
       testEnvironment: 'node',
       preset: 'ts-jest',

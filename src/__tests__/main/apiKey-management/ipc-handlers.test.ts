@@ -1,9 +1,9 @@
 // Mocks are set up in jest.setup.ts
 import * as electron from 'electron';
-import { registerApiKeyIPCHandlers } from '../../main/apiKey-management';
-import { setupMockFS, clearMockFiles } from '../helpers/file-system';
-import { createMockAPIKey, createMockAPIKeys } from '../helpers/mocks';
-import type { APIKey } from '../../global.d';
+import { registerApiKeyIPCHandlers } from '../../../main/apiKey-management';
+import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
+import { createMockAPIKey, createMockAPIKeys } from '../../helpers/mocks';
+import type { APIKey } from '../../../global.d';
 
 describe('API Key Management - IPC Handlers', () => {
   let mockHandlers: Map<string, Function>;

@@ -1,5 +1,5 @@
-import { isHidden, buildFileTree } from '../../main/project-management';
-import { setupMockFS, clearMockFiles } from '../helpers/file-system';
+import { isHidden, buildFileTree } from '../../../main/project-management';
+import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
 
 describe('File Tree Helpers', () => {
   describe('isHidden()', () => {

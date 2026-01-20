@@ -5,10 +5,10 @@ import {
   loadAPIKeys,
   saveAPIKeys,
   getAPIKeyByName,
-} from '../../main/apiKey-management';
-import { createMockAPIKey, createMockAPIKeys } from '../helpers/mocks';
-import { setupMockFS, clearMockFiles } from '../helpers/file-system';
-import type { APIKey } from '../../global.d';
+} from '../../../main/apiKey-management';
+import { createMockAPIKey, createMockAPIKeys } from '../../helpers/mocks';
+import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
+import type { APIKey } from '../../../global.d';
 
 describe('API Key Management - Storage Helpers', () => {
   // Mock app.getPath before each test

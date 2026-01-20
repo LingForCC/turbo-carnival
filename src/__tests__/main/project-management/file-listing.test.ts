@@ -1,5 +1,5 @@
-import { listFilesRecursive } from '../../main/project-management';
-import { setupMockFS, clearMockFiles } from '../helpers/file-system';
+import { listFilesRecursive } from '../../../main/project-management';
+import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
 
 describe('File Listing Helpers', () => {
   describe('listFilesRecursive()', () => {
