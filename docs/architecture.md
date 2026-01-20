@@ -24,6 +24,13 @@ The main process is organized into dedicated modules:
 - Storage helpers: `loadAgents`, `saveAgent`, `deleteAgent`, `sanitizeAgentName`, `getAgentFilePath`
 - IPC handler registration: `registerAgentIPCHandlers`
 
+**`src/main/app-management.ts`**
+- App CRUD operations (for App-type agents)
+- Storage helpers: `loadApp`, `saveApp`, `deleteAppFile`, `sanitizeAppName`, `getAppFilePath`, `createApp`
+- IPC handler registration: `registerAppIPCHandlers`
+- App execution: `apps:executeMain` for running main process code
+- Data persistence: `apps:updateData` for updating app.data field
+
 **`src/main/apiKey-management.ts`**
 - API key CRUD operations
 - Storage helpers: `getAPIKeysPath`, `loadAPIKeys`, `saveAPIKeys`, `getAPIKeyByName`
@@ -65,6 +72,9 @@ The main process is organized into dedicated modules:
   - `openFolderDialog()` - Opens native folder picker dialog
   - `getProjects()`, `addProject(path)`, `removeProject(path)` - Project operations
   - `getAgents(projectPath)`, `addAgent(...)`, `removeAgent(...)`, `updateAgent(...)` - Agent operations
+  - `getApp(projectPath, agentName)`, `saveApp(...)`, `deleteApp(...)` - App operations
+  - `executeAppMain(...)` - Execute main process code from app
+  - `updateAppData(...)` - Update app data storage
   - `getAPIKeys()`, `addAPIKey(...)`, `removeAPIKey(name)` - API key operations
   - `getTools()`, `addTool(...)`, `updateTool(...)`, `removeTool(toolName)` - Tool operations
   - `executeTool(request)` - Executes a tool (routes based on environment)
@@ -95,10 +105,11 @@ The project uses **Vite** as the sole build tool (`vite.config.mjs`):
 The renderer uses vanilla JavaScript Web Components (not Vue/React). Each component is a TypeScript class extending `HTMLElement`:
 
 **Components:**
-- `app-container` (`src/components/app-container.ts`) - Root layout container, manages panel visibility and toggle buttons, forwards events between components, manages API keys dialog
+- `app-container` (`src/components/app-container.ts`) - Root layout container, manages panel visibility and toggle buttons, forwards events between components, manages API keys dialog, routes between chat-panel and app-panel based on agent type
 - `project-panel` (`src/components/project-panel.ts`) - Collapsible left sidebar (264px wide) that manages local folder projects
 - `project-agent-dashboard` (`src/components/project-agent-dashboard.ts`) - Center content area that displays agents in a grid, handles dashboard/chat view switching
 - `chat-panel` (`src/components/chat-panel.ts`) - Interactive chat interface with streaming/non-streaming support
+- `app-panel` (`src/components/app-panel.ts`) - Split-panel interface for App-type agents with chat (left 25%) and live app preview (right 75%)
 - `project-detail-panel` (`src/components/project-detail-panel.ts`) - Collapsible right sidebar (264px wide) that displays recursive file tree
 - `agent-form-dialog` (`src/components/agent-form-dialog.ts`) - Modal dialog for creating and editing agents
 - `api-keys-dialog` (`src/components/api-keys-dialog.ts`) - Modal dialog for managing global API keys

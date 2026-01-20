@@ -100,6 +100,8 @@ Located in `src/__tests__/helpers/`:
 ### `mocks.ts`
 - `createMockProject(overrides)` - Creates a mock Project object
 - `createMockAgent(overrides)` - Creates a mock Agent object
+- `createMockApp(overrides)` - Creates a mock App object
+- `createMockAPIKey(overrides)` - Creates a mock APIKey object
 - `createMockFileSystem()` - Creates an in-memory file system object
 - `createTestProjectStructure(path, agents)` - Creates mock files for a project with agents
 
@@ -117,8 +119,18 @@ Tests are organized in `src/__tests__/` by feature:
 - `api-keys.test.ts` - Storage helper tests (getAPIKeysPath, loadAPIKeys, saveAPIKeys, getAPIKeyByName)
 - `ipc-handlers.test.ts` - IPC handler tests (api-keys:get, api-keys:add, api-keys:remove)
 
+### `src/__tests__/main/app-management/`
+- `app-storage.test.ts` - Storage helper tests (sanitizeAppName, getAppFilePath, createApp, saveApp, loadApp, deleteAppFile)
+- `ipc-handlers.test.ts` - IPC handler tests (apps:get, apps:save, apps:delete, apps:executeMain, apps:updateData)
+- `agent-deletion.test.ts` - Agent deletion tests with app file cleanup
+
+### `src/__tests__/main/agent-management/`
+- `agents.test.ts` - Storage helper tests (loadAgents, saveAgent, deleteAgent, sanitizeAgentName)
+- `ipc-handlers.test.ts` - IPC handler tests (agents:get, agents:add, agents:remove, agents:update)
+
 ### `src/__tests__/components/`
 - `project-panel/project-panel.test.ts` - Web Component UI tests (rendering, interactions, events, XSS prevention)
+- `app-panel/app-panel.test.ts` - Web Component UI tests for App-type agents (rendering, code view toggle, streaming, XSS prevention)
 
 ### `src/__tests__/helpers/`
 - Shared test utilities and mocks

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import type { Agent } from './global.d.ts';
 import { registerAgentIPCHandlers, loadAgents, saveAgent } from './main/agent-management';
+import { registerAppIPCHandlers } from './main/app-management';
 import { registerApiKeyIPCHandlers, getAPIKeyByName } from './main/apiKey-management';
 import { registerOpenAIClientIPCHandlers } from './main/openai-client';
 import { registerToolIPCHandlers } from './main/tool-management';
@@ -75,6 +76,9 @@ function registerIPCHandlers(): void {
 
   // ============ TOOL IPC HANDLERS ============
   registerToolIPCHandlers();
+
+  // ============ APP IPC HANDLERS ============
+  registerAppIPCHandlers();
 }
 
 // Quit when all windows are closed, except on macOS

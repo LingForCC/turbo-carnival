@@ -13,15 +13,23 @@ jest.mock('fs', () => {
   };
 
   const existsSync = function(filePath: any) {
+    // First check if file exists in mock files
     if (mockFiles.hasOwnProperty(filePath)) {
       return true;
     }
+    // Check if it's a directory with files
     const dirPath = filePath.endsWith('/') ? filePath : filePath + '/';
     const isDir = Object.keys(mockFiles).some(f => f.startsWith(dirPath));
     if (isDir) {
       return true;
     }
-    if (filePath === '/mock' || filePath === '/mock/userdata' || filePath.includes('project')) {
+    // Special case for base mock directories (but not subdirectories)
+    if (filePath === '/mock' || filePath === '/mock/userdata') {
+      return true;
+    }
+    // Check if it's a project directory (path ends with /project or contains /project/ but not specific files)
+    // Don't return true for files within project directories - only the directory itself
+    if (filePath === '/project' || filePath.endsWith('/project')) {
       return true;
     }
     return false;

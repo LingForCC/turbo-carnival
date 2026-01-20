@@ -58,6 +58,20 @@ export interface AgentSettings {
 }
 
 /**
+ * Generated App interface representing a JavaScript + HTML application
+ */
+export interface App {
+  name: string;                    // App name (matches agent name)
+  agentName: string;               // Link to parent agent
+  html: string;                    // HTML content for the app
+  rendererCode: string;            // JavaScript code to run in renderer process
+  mainCode: string;                // JavaScript code to run in main process
+  data: Record<string, any>;       // Persistent data storage for the app
+  createdAt: number;               // Timestamp when created
+  updatedAt: number;               // Timestamp when last updated
+}
+
+/**
  * API configuration for OpenAI-compatible endpoints
  */
 export interface APIConfig {
@@ -246,6 +260,13 @@ interface ElectronAPI {
   listProjectFiles: (projectPath: string, options?: FileListOptions) => Promise<FileReference[]>;
   readFileContent: (filePath: string) => Promise<FileContent>;
   readFileContents: (filePaths: string[]) => Promise<FileContent[]>;
+
+  // App management methods
+  getApp: (projectPath: string, agentName: string) => Promise<App | null>;
+  saveApp: (projectPath: string, app: App) => Promise<void>;
+  deleteApp: (projectPath: string, agentName: string) => Promise<void>;
+  executeAppMain: (projectPath: string, agentName: string, functionName: string, args: any[]) => Promise<any>;
+  updateAppData: (projectPath: string, agentName: string, data: Record<string, any>) => Promise<void>;
 }
 
 declare global {

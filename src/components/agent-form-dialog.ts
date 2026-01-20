@@ -92,6 +92,7 @@ export class AgentFormDialog extends HTMLElement {
                   <option value="code" ${agent?.type === 'code' ? 'selected' : ''}>Code</option>
                   <option value="assistant" ${agent?.type === 'assistant' ? 'selected' : ''}>Assistant</option>
                   <option value="reviewer" ${agent?.type === 'reviewer' ? 'selected' : ''}>Reviewer</option>
+                  <option value="app" ${agent?.type === 'app' ? 'selected' : ''}>App</option>
                   <option value="custom" ${agent?.type === 'custom' ? 'selected' : ''}>Custom</option>
                 </select>
               </div>

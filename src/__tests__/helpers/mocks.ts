@@ -1,4 +1,4 @@
-import type { Project, Agent, APIKey } from '../../global.d';
+import type { Project, Agent, APIKey, App } from '../../global.d';
 
 /**
  * Create a mock APIKey object with optional overrides
@@ -142,4 +142,35 @@ export function createTestProjectStructure(projectPath: string, agents: any[] = 
   });
 
   return mockFiles;
+}
+
+/**
+ * Create a mock App object with optional overrides
+ */
+export function createMockApp(overrides: Partial<App> = {}): App {
+  const now = Date.now();
+  return {
+    name: 'Test App',
+    agentName: 'Test Agent',
+    html: '<div>Test App HTML</div>',
+    rendererCode: '// Renderer code\nconsole.log("test");',
+    mainCode: '// Main code',
+    data: {},
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
+
+/**
+ * Create multiple mock apps at once
+ */
+export function createMockApps(count: number, baseOverrides: Partial<App> = {}): App[] {
+  return Array.from({ length: count }, (_, i) =>
+    createMockApp({
+      name: `Test App ${i + 1}`,
+      agentName: `Test Agent ${i + 1}`,
+      ...baseOverrides,
+    })
+  );
 }

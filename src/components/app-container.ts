@@ -1,6 +1,7 @@
 import './project-detail-panel';
 import './tools-dialog';
 import './tool-test-dialog';
+import './app-panel';
 
 /**
  * AppContainer Web Component
@@ -10,10 +11,12 @@ export class AppContainer extends HTMLElement {
   private projectPanel: any = null;
   private dashboard: any = null;
   private chatPanel: any = null;
+  private appPanel: any = null;
   private projectDetailPanel: any = null;
   private projectToggleBtn: HTMLElement | null = null;
   private projectDetailToggleBtn: HTMLElement | null = null;
   private showingChat: boolean = false;
+  private isAppAgent: boolean = false;
 
   constructor() {
     super();
@@ -51,9 +54,10 @@ export class AppContainer extends HTMLElement {
           </svg>
         </button>
 
-        <!-- Center area: either dashboard or chat-panel -->
+        <!-- Center area: either dashboard or chat-panel or app-panel -->
         <project-agent-dashboard id="project-agent-dashboard" class="flex-1 transition-all duration-300 ease-in-out ${this.showingChat ? 'hidden' : ''}"></project-agent-dashboard>
-        <chat-panel id="chat-panel" class="flex-1 transition-all duration-300 ease-in-out ${!this.showingChat ? 'hidden' : ''}"></chat-panel>
+        <chat-panel id="chat-panel" class="flex-1 transition-all duration-300 ease-in-out ${!this.showingChat || this.isAppAgent ? 'hidden' : ''}"></chat-panel>
+        <app-panel id="app-panel" class="flex-1 transition-all duration-300 ease-in-out ${!this.showingChat || !this.isAppAgent ? 'hidden' : ''}"></app-panel>
 
         <!-- Toggle button for right panel -->
         <button id="toggle-project-detail-btn" class="hidden flex-col items-center justify-center w-8 bg-gray-50 border-l border-gray-200 hover:bg-gray-100 cursor-pointer border-0" aria-label="Expand project detail panel">
@@ -71,6 +75,7 @@ export class AppContainer extends HTMLElement {
     this.projectPanel = this.querySelector('#project-panel');
     this.dashboard = this.querySelector('#project-agent-dashboard');
     this.chatPanel = this.querySelector('#chat-panel');
+    this.appPanel = this.querySelector('#app-panel');
     this.projectDetailPanel = this.querySelector('#project-detail-panel');
 
     // Re-attach event listeners after re-rendering
@@ -145,9 +150,22 @@ export class AppContainer extends HTMLElement {
     // Listen for agent-selected events - show chat panel
     this.addEventListener('agent-selected', (event: Event) => {
       const customEvent = event as CustomEvent;
+      const agent = customEvent.detail.agent;
+
+      // Check if this is an App-type agent
+      const isAppAgent = agent.type === 'app';
+      this.isAppAgent = isAppAgent;
+
       this.showChatPanel();
-      // Forward to chat-panel
-      if (this.chatPanel) {
+
+      // Forward to appropriate panel
+      if (isAppAgent && this.appPanel) {
+        this.appPanel.dispatchEvent(new CustomEvent('agent-selected', {
+          detail: customEvent.detail,
+          bubbles: false,
+          composed: true
+        }));
+      } else if (this.chatPanel) {
         this.chatPanel.dispatchEvent(new CustomEvent('agent-selected', {
           detail: customEvent.detail,
           bubbles: false,
@@ -202,16 +220,34 @@ export class AppContainer extends HTMLElement {
     if (this.dashboard) {
       this.dashboard.classList.add('hidden');
     }
-    if (this.chatPanel) {
-      this.chatPanel.classList.remove('hidden');
+
+    // Show appropriate panel based on agent type
+    if (this.isAppAgent) {
+      if (this.chatPanel) {
+        this.chatPanel.classList.add('hidden');
+      }
+      if (this.appPanel) {
+        this.appPanel.classList.remove('hidden');
+      }
+    } else {
+      if (this.appPanel) {
+        this.appPanel.classList.add('hidden');
+      }
+      if (this.chatPanel) {
+        this.chatPanel.classList.remove('hidden');
+      }
     }
   }
 
   private showDashboard(): void {
     this.showingChat = false;
+    this.isAppAgent = false;
     // Toggle visibility instead of re-rendering to preserve component state
     if (this.chatPanel) {
       this.chatPanel.classList.add('hidden');
+    }
+    if (this.appPanel) {
+      this.appPanel.classList.add('hidden');
     }
     if (this.dashboard) {
       this.dashboard.classList.remove('hidden');

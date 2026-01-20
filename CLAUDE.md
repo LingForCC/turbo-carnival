@@ -13,6 +13,7 @@ Turbo Carnival is an Electron desktop application built with TypeScript, using W
 - File tagging for including project files as context
 - Global API key management
 - Custom tool execution in Node.js or Browser environments
+- App agent type for generating interactive JavaScript + HTML applications
 
 ## Build and Development Commands
 
@@ -86,6 +87,7 @@ The documentation has been split into focused modules for better performance:
 - **[docs/features/file-tagging.md](docs/features/file-tagging.md)** - File @mention system for including project context
 - **[docs/features/project-panel.md](docs/features/project-panel.md)** - Project sidebar and file tree panel
 - **[docs/features/tool-management.md](docs/features/tool-management.md)** - Custom tools with Node.js/Browser execution
+- **[docs/features/app-agents.md](docs/features/app-agents.md)** - App agent type for generating interactive applications
 
 ### Development
 - **[docs/development.md](docs/development.md)** - Development notes, security, styling, common tasks, debugging tips
@@ -99,6 +101,7 @@ The documentation has been split into focused modules for better performance:
 - `src/main.ts` - Core app setup, window creation, IPC coordination
 - `src/main/project-management.ts` - Project CRUD, file tree, file listing
 - `src/main/agent-management.ts` - Agent CRUD operations
+- `src/main/app-management.ts` - App CRUD operations, execution in main/renderer processes
 - `src/main/apiKey-management.ts` - API key CRUD operations
 - `src/main/openai-client.ts` - OpenAI API client, tool execution, chat handlers
 - `src/main/tool-management.ts` - Tool CRUD, JSON Schema validation, execution routing
@@ -108,6 +111,7 @@ The documentation has been split into focused modules for better performance:
 - `project-panel` - Left sidebar, project management
 - `project-agent-dashboard` - Center area, agent grid/chat switching
 - `chat-panel` - Chat interface with streaming and file tagging
+- `app-panel` - Split-panel interface for App-type agents (chat + app preview)
 - `project-detail-panel` - Right sidebar, file tree
 - `agent-form-dialog` - Agent creation/editing
 - `api-keys-dialog` - API key management
@@ -117,6 +121,7 @@ The documentation has been split into focused modules for better performance:
 ### Key IPC Channels
 - `projects:*` - Project CRUD operations
 - `agents:*` - Agent CRUD operations
+- `apps:*` - App CRUD operations, execution, data persistence
 - `api-keys:*` - API key CRUD operations
 - `tools:*` - Tool CRUD and execution
 - `project:getFileTree` - File tree structure
@@ -129,6 +134,7 @@ The documentation has been split into focused modules for better performance:
 - `app.getPath('userData')/api-keys.json` - Global API keys
 - `app.getPath('userData')/tools.json` - Custom tools
 - `{projectFolder}/agent-{name}.json` - Agent files (stored in project folders)
+- `{projectFolder}/app-{name}.json` - App files (stored in project folders, linked to agents)
 
 ## TypeScript Configuration
 
