@@ -3,6 +3,9 @@ import type { Agent, Project, APIKey } from '../global.d.ts';
 /**
  * ConversationPanel Web Component
  * Reusable chat interface with optional file tagging
+ *
+ * NOTE: This component dispatches 'message-sent' events that bubble up to parent components.
+ * Parent components (chat-panel, app-panel) should listen for this event and handle IPC calls.
  */
 export class ConversationPanel extends HTMLElement {
   // Core state
@@ -42,12 +45,6 @@ export class ConversationPanel extends HTMLElement {
     this.render();
     this.attachEventListeners();
 
-    // Listen for agent selection events
-    // this.addEventListener('agent-selected', (event: Event) => {
-    //   const customEvent = event as CustomEvent;
-    //   this.handleAgentSelected(customEvent.detail.agent, customEvent.detail.project);
-    // });
-
     // Close autocomplete when clicking outside
     document.addEventListener('click', (e) => {
       if (this.showAutocomplete) {
@@ -75,7 +72,7 @@ export class ConversationPanel extends HTMLElement {
     this.modelInfo = this.getAttribute('model-info') || '';
   }
 
-  // ========== PUBLIC API ==========
+  // ========== PUBLIC API ===========
 
   public setAgent(agent: Agent, project: Project): void {
     this.currentAgent = agent;
@@ -119,6 +116,46 @@ export class ConversationPanel extends HTMLElement {
     if (messagesContainer) {
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
+  }
+
+  /**
+   * Handle stream chunk from parent component
+   * Called by parent (chat-panel/app-panel) during streaming
+   */
+  public handleStreamChunk(chunk: string): void {
+    this.currentStreamedContent += chunk;
+    this.chatHistory[this.chatHistory.length - 1].content = this.currentStreamedContent;
+    this.render();
+    this.scrollToBottom();
+  }
+
+  /**
+   * Handle stream completion from parent component
+   * Called by parent (chat-panel/app-panel) when streaming completes
+   */
+  public handleStreamComplete(content: string): void {
+    this.isStreaming = false;
+    this.currentStreamedContent = '';
+    this.render();
+
+    // Emit stream-complete event for consistency
+    this.dispatchEvent(new CustomEvent('stream-complete', {
+      detail: { content },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  /**
+   * Handle stream error from parent component
+   * Called by parent (chat-panel/app-panel) when an error occurs
+   */
+  public handleStreamError(error: string): void {
+    this.isStreaming = false;
+    this.currentStreamedContent = '';
+    this.chatHistory.pop(); // Remove user message
+    this.showError(error);
+    this.render();
   }
 
   // ========== RENDERING ==========
@@ -364,10 +401,6 @@ export class ConversationPanel extends HTMLElement {
     });
   }
 
-  private async handleAgentSelected(agent: Agent, project: Project): Promise<void> {
-    this.setAgent(agent, project);
-  }
-
   private async sendMessage(): Promise<void> {
     if (!this.currentAgent || !this.currentProject || this.isStreaming) return;
 
@@ -403,96 +436,21 @@ export class ConversationPanel extends HTMLElement {
     this.render();
     this.scrollToBottom();
 
-    // Emit message-sent event
+    // Dispatch message-sent event with all necessary data
+    // Parent component (chat-panel/app-panel) will handle the actual IPC call
     this.dispatchEvent(new CustomEvent('message-sent', {
-      detail: { message: message || '', filePaths },
-      bubbles: true,
-      composed: true
+      detail: {
+        projectPath: this.currentProject.path,
+        agentName: this.currentAgent.name,
+        message: message || '',
+        filePaths,
+        shouldStream
+      },
+      bubbles: true,   // Allow event to bubble to parent
+      composed: true   // Allow event to cross shadow DOM boundaries
     }));
 
-    try {
-      if (shouldStream) {
-        await this.streamMessage(message, filePaths);
-      } else {
-        await this.sendNonStreamingMessage(message, filePaths);
-      }
-    } catch (error: any) {
-      this.showError(`Failed to send message: ${error.message}`);
-      this.chatHistory.pop(); // Remove user message
-      this.render();
-    }
-
-    // Keep tagged files for the entire conversation session
-    this.render();
-  }
-
-  private async sendNonStreamingMessage(userMessage: string, filePaths: string[]): Promise<void> {
-    if (!window.electronAPI || !this.currentProject || !this.currentAgent) return;
-
-    const response = await window.electronAPI.sendChatMessage(
-      this.currentProject.path,
-      this.currentAgent.name,
-      userMessage,
-      filePaths
-    );
-
-    const assistantMessage = response.choices?.[0]?.message?.content;
-    if (assistantMessage) {
-      this.chatHistory.push({ role: 'assistant', content: assistantMessage });
-      this.render();
-      this.scrollToBottom();
-
-      // Emit stream-complete event for consistency
-      this.dispatchEvent(new CustomEvent('stream-complete', {
-        detail: { content: assistantMessage },
-        bubbles: true,
-        composed: true
-      }));
-    }
-  }
-
-  private async streamMessage(userMessage: string, filePaths: string[]): Promise<void> {
-    if (!window.electronAPI || !this.currentProject || !this.currentAgent) return;
-
-    this.isStreaming = true;
-    this.currentStreamedContent = '';
-
-    // Add empty assistant message that will be updated
-    this.chatHistory.push({ role: 'assistant', content: '' });
-    this.render();
-
-    await window.electronAPI.streamChatMessage(
-      this.currentProject.path,
-      this.currentAgent.name,
-      userMessage,
-      filePaths,
-      // onChunk
-      (chunk: string) => {
-        this.currentStreamedContent += chunk;
-        // Update the last message (assistant's response)
-        this.chatHistory[this.chatHistory.length - 1].content = this.currentStreamedContent;
-        this.render();
-        this.scrollToBottom();
-      },
-      // onComplete
-      () => {
-        this.isStreaming = false;
-        this.render();
-
-        // Emit stream-complete event with the full content
-        this.dispatchEvent(new CustomEvent('stream-complete', {
-          detail: { content: this.currentStreamedContent },
-          bubbles: true,
-          composed: true
-        }));
-      },
-      // onError
-      (error: string) => {
-        this.isStreaming = false;
-        this.showError(error);
-        this.render();
-      }
-    );
+    // NO DIRECT IPC CALLS HERE - parent will handle them
   }
 
   // ========== FILE TAGGING METHODS ==========

@@ -399,7 +399,7 @@ describe('AppPanel Web Component', () => {
       const mockApp = createMockApp();
       mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
       mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-      mockElectronAPI('streamChatMessage', jest.fn().mockImplementation((
+      mockElectronAPI('streamAppAgentMessage', jest.fn().mockImplementation((
         _projectPath: string,
         _agentName: string,
         _message: string,
@@ -446,7 +446,7 @@ describe('AppPanel Web Component', () => {
       const mockApp = createMockApp();
       mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
       mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-      mockElectronAPI('streamChatMessage', jest.fn().mockImplementation((
+      mockElectronAPI('streamAppAgentMessage', jest.fn().mockImplementation((
         _projectPath: string,
         _agentName: string,
         _message: string,
@@ -487,7 +487,7 @@ describe('AppPanel Web Component', () => {
       mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
       mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
 
-      mockElectronAPI('streamChatMessage', jest.fn().mockImplementation((
+      mockElectronAPI('streamAppAgentMessage', jest.fn().mockImplementation((
         _projectPath: string,
         _agentName: string,
         _message: string,
@@ -525,9 +525,9 @@ describe('AppPanel Web Component', () => {
 
       await waitForAsync(50);
 
-      // Verify streamChatMessage was called
-      const streamChatMock = (window.electronAPI as any).streamChatMessage;
-      expect(streamChatMock).toHaveBeenCalled();
+      // Verify streamAppAgentMessage was called
+      const streamAppAgentMock = (window.electronAPI as any).streamAppAgentMessage;
+      expect(streamAppAgentMock).toHaveBeenCalled();
 
       cleanup();
     });

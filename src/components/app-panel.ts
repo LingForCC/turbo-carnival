@@ -3,7 +3,9 @@ import type { Agent, Project, App } from '../global.d.ts';
 /**
  * AppPanel Web Component
  * Split-panel interface for App-type agents with chat (left) and app preview (right)
- * Refactored to use conversation-panel component
+ *
+ * Listens for 'message-sent' events from conversation-panel and routes them
+ * through the app-agent IPC channels (files only, no tools).
  */
 export class AppPanel extends HTMLElement {
   private currentProject: Project | null = null;
@@ -175,6 +177,19 @@ export class AppPanel extends HTMLElement {
     const conversation = this.querySelector('#conversation') as any;
     if (!conversation) return;
 
+    // Listen for message-sent events from conversation-panel
+    // This event is dispatched when user sends a message
+    conversation.addEventListener('message-sent', async (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { projectPath, agentName, message, filePaths } = customEvent.detail;
+
+      try {
+        await this.handleAppAgentStream(projectPath, agentName, message, filePaths, conversation);
+      } catch (error: any) {
+        conversation.handleStreamError(`Failed to send message: ${error.message}`);
+      }
+    });
+
     // Note: We don't clone-and-replace here to avoid removing the back button listener
     // that was just attached in attachEventListeners()
 
@@ -187,6 +202,42 @@ export class AppPanel extends HTMLElement {
     conversation.addEventListener('back-clicked', () => {
       this.goBack();
     });
+  }
+
+  /**
+   * Handle streaming message via app-agent IPC
+   * App agents always use streaming (no stream toggle)
+   */
+  private async handleAppAgentStream(
+    projectPath: string,
+    agentName: string,
+    message: string,
+    filePaths: string[],
+    conversation: any
+  ): Promise<void> {
+    if (!window.electronAPI) return;
+
+    // Add empty assistant message to history before streaming starts
+    const currentHistory = conversation.chatHistory || [];
+    conversation.chatHistory = [...currentHistory, { role: 'assistant', content: '' }];
+    conversation.render();
+    conversation.scrollToBottom();
+
+    // Call new app-agent stream IPC channel
+    await (window.electronAPI as any).streamAppAgentMessage(
+      projectPath,
+      agentName,
+      message,
+      filePaths,
+      // onChunk - delegate to conversation-panel
+      (chunk: string) => conversation.handleStreamChunk(chunk),
+      // onComplete - delegate to conversation-panel
+      () => {
+        conversation.handleStreamComplete(conversation.currentStreamedContent || '');
+      },
+      // onError - delegate to conversation-panel
+      (error: string) => conversation.handleStreamError(error)
+    );
   }
 
   private async handleAgentSelected(agent: Agent, project: Project): Promise<void> {

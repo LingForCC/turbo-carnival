@@ -234,16 +234,39 @@ interface ElectronAPI {
     executionTime: number
   }) => void;
 
-  // Chat completion (non-streaming)
-  sendChatMessage: (
+  // ============ CHAT-AGENT METHODS ============
+
+  // Send chat-agent message (non-streaming)
+  sendChatAgentMessage: (
     projectPath: string,
     agentName: string,
     message: string,
     filePaths?: string[]
   ) => Promise<any>;
 
-  // Chat completion (streaming)
-  streamChatMessage: (
+  // Stream chat-agent message
+  streamChatAgentMessage: (
+    projectPath: string,
+    agentName: string,
+    message: string,
+    filePaths: string[] | undefined,
+    onChunk: (chunk: string) => void,
+    onComplete: () => void,
+    onError: (error: string) => void
+  ) => Promise<void>;
+
+  // ============ APP-AGENT METHODS ============
+
+  // Send app-agent message (non-streaming)
+  sendAppAgentMessage: (
+    projectPath: string,
+    agentName: string,
+    message: string,
+    filePaths?: string[]
+  ) => Promise<any>;
+
+  // Stream app-agent message
+  streamAppAgentMessage: (
     projectPath: string,
     agentName: string,
     message: string,

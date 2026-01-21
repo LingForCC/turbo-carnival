@@ -8,6 +8,8 @@ import { registerApiKeyIPCHandlers, getAPIKeyByName } from './main/apiKey-manage
 import { registerOpenAIClientIPCHandlers } from './main/openai-client';
 import { registerToolIPCHandlers } from './main/tool-management';
 import { registerProjectIPCHandlers } from './main/project-management';
+import { registerChatAgentIPCHandlers } from './main/chat-agent-management';
+import { registerAppAgentIPCHandlers } from './main/app-agent-management';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -71,14 +73,21 @@ function registerIPCHandlers(): void {
   // ============ API KEY IPC HANDLERS ============
   registerApiKeyIPCHandlers();
 
-  // ============ OPENAI CLIENT IPC HANDLERS ============
-  registerOpenAIClientIPCHandlers();
-
   // ============ TOOL IPC HANDLERS ============
   registerToolIPCHandlers();
 
   // ============ APP IPC HANDLERS ============
   registerAppIPCHandlers();
+
+  // ============ CHAT-AGENT IPC HANDLERS ============
+  registerChatAgentIPCHandlers();
+
+  // ============ APP-AGENT IPC HANDLERS ============
+  registerAppAgentIPCHandlers();
+
+  // ============ OPENAI CLIENT IPC HANDLERS ============
+  // Now a no-op - handlers are registered in agent management modules
+  registerOpenAIClientIPCHandlers();
 }
 
 // Quit when all windows are closed, except on macOS

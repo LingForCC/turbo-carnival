@@ -90,18 +90,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFileContents: (filePaths: string[]) =>
     ipcRenderer.invoke('files:readContents', filePaths),
 
-  // ============ CHAT METHODS ============
+  // ============ CHAT-AGENT METHODS ============
 
-  // Send chat message (non-streaming)
-  sendChatMessage: (
+  // Send chat-agent message (non-streaming)
+  sendChatAgentMessage: (
     projectPath: string,
     agentName: string,
     message: string,
     filePaths?: string[]
-  ) => ipcRenderer.invoke('chat:sendMessage', projectPath, agentName, message, filePaths),
+  ) => ipcRenderer.invoke('chat-agent:sendMessage', projectPath, agentName, message, filePaths),
 
-  // Stream chat message
-  streamChatMessage: (
+  // Stream chat-agent message
+  streamChatAgentMessage: (
     projectPath: string,
     agentName: string,
     message: string,
@@ -140,7 +140,71 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('chat-error', errorListener);
 
     // Invoke the streaming handler
-    return ipcRenderer.invoke('chat:streamMessage', projectPath, agentName, message, filePaths)
+    return ipcRenderer.invoke('chat-agent:streamMessage', projectPath, agentName, message, filePaths)
+      .catch((error) => {
+        // Handle promise rejection (e.g., if the main process handler throws)
+        if (!completed) {
+          completed = true;
+          onError(error.message || String(error));
+          // Clean up all listeners
+          ipcRenderer.removeListener('chat-chunk', chunkListener);
+          ipcRenderer.removeListener('chat-complete', completeListener);
+          ipcRenderer.removeListener('chat-error', errorListener);
+        }
+      });
+  },
+
+  // ============ APP-AGENT METHODS ============
+
+  // Send app-agent message (non-streaming)
+  sendAppAgentMessage: (
+    projectPath: string,
+    agentName: string,
+    message: string,
+    filePaths?: string[]
+  ) => ipcRenderer.invoke('app-agent:sendMessage', projectPath, agentName, message, filePaths),
+
+  // Stream app-agent message
+  streamAppAgentMessage: (
+    projectPath: string,
+    agentName: string,
+    message: string,
+    filePaths: string[] | undefined,
+    onChunk: (chunk: string) => void,
+    onComplete: () => void,
+    onError: (error: string) => void
+  ) => {
+    let completed = false;
+
+    // Set up IPC listeners for streaming events
+    const chunkListener = (_event: Electron.IpcRendererEvent, chunk: string) => onChunk(chunk);
+    const completeListener = () => {
+      if (!completed) {
+        completed = true;
+        onComplete();
+        // Clean up all listeners after completion
+        ipcRenderer.removeListener('chat-chunk', chunkListener);
+        ipcRenderer.removeListener('chat-complete', completeListener);
+        ipcRenderer.removeListener('chat-error', errorListener);
+      }
+    };
+    const errorListener = (_event: Electron.IpcRendererEvent, error: string) => {
+      if (!completed) {
+        completed = true;
+        onError(error);
+        // Clean up all listeners after error
+        ipcRenderer.removeListener('chat-chunk', chunkListener);
+        ipcRenderer.removeListener('chat-complete', completeListener);
+        ipcRenderer.removeListener('chat-error', errorListener);
+      }
+    };
+
+    ipcRenderer.on('chat-chunk', chunkListener);
+    ipcRenderer.on('chat-complete', completeListener);
+    ipcRenderer.on('chat-error', errorListener);
+
+    // Invoke the streaming handler
+    return ipcRenderer.invoke('app-agent:streamMessage', projectPath, agentName, message, filePaths)
       .catch((error) => {
         // Handle promise rejection (e.g., if the main process handler throws)
         if (!completed) {
