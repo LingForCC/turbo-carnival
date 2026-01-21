@@ -103,16 +103,18 @@ The documentation has been split into focused modules for better performance:
 - `src/main/agent-management.ts` - Agent CRUD operations
 - `src/main/app-management.ts` - App CRUD operations, execution in main/renderer processes
 - `src/main/apiKey-management.ts` - API key CRUD operations
-- `src/main/openai-client.ts` - OpenAI API client, tool execution, chat handlers
+- `src/main/openai-client.ts` - OpenAI API client, tool execution utilities (pure API client)
+- `src/main/chat-agent-management.ts` - Chat agent logic with tool calling + file context
+- `src/main/app-agent-management.ts` - App agent logic with file context only (no tools)
 - `src/main/tool-management.ts` - Tool CRUD, JSON Schema validation, execution routing
 
 ### UI Components (Web Components)
 - `app-container` - Root layout, event forwarding
 - `project-panel` - Left sidebar, project management
 - `project-agent-dashboard` - Center area, agent grid/chat switching
-- `conversation-panel` - Reusable chat interface with optional file tagging
-- `chat-panel` - Right sidebar chat interface (uses conversation-panel)
-- `app-panel` - Split-panel interface for App-type agents (uses conversation-panel)
+- `conversation-panel` - Reusable chat interface (event-driven, dispatches `message-sent` events)
+- `chat-panel` - Right sidebar chat interface (uses conversation-panel, handles chat-agent IPC)
+- `app-panel` - Split-panel interface for App-type agents (uses conversation-panel, handles app-agent IPC)
 - `project-detail-panel` - Right sidebar, file tree
 - `agent-form-dialog` - Agent creation/editing
 - `api-keys-dialog` - API key management
@@ -127,8 +129,8 @@ The documentation has been split into focused modules for better performance:
 - `tools:*` - Tool CRUD and execution
 - `project:getFileTree` - File tree structure
 - `files:list`, `files:readContents` - File operations for @mention
-- `chat:sendMessage`, `chat:streamMessage` - Chat operations
-- `chat-chunk`, `chat-complete`, `chat-error` - Streaming events
+- `chat-agent:sendMessage`, `chat-agent:streamMessage` - Chat agent operations (with tools + files)
+- `app-agent:sendMessage`, `app-agent:streamMessage` - App agent operations (files only, no tools)
 
 ### Storage Locations
 - `app.getPath('userData')/projects.json` - Project list

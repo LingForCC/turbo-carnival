@@ -37,11 +37,23 @@ The main process is organized into dedicated modules:
 - IPC handler registration: `registerApiKeyIPCHandlers`
 
 **`src/main/openai-client.ts`**
-- OpenAI API integration
+- Pure OpenAI API client (no business logic)
 - API client functions: `callOpenAICompatibleAPI`, `streamOpenAICompatibleAPI`
-- Tool helper functions: `formatToolDescriptions`, `parseToolCalls`
-- Tool worker execution: `executeToolInWorker`
-- Chat IPC handlers: `chat:sendMessage`, `chat:streamMessage`
+- Tool helper functions: `parseToolCalls`, `executeToolWithRouting`
+- Exports utilities for use by agent management modules
+
+**`src/main/chat-agent-management.ts`**
+- Chat agent logic (tools + files)
+- System prompt generation: `generateChatAgentSystemPrompt` (includes tool descriptions)
+- Message building: `buildMessagesForChatAgent` (includes tool descriptions and file contents)
+- Tool description formatting: `formatToolDescriptions`
+- IPC handlers: `chat-agent:sendMessage` (non-streaming), `chat-agent:streamMessage` (streaming)
+
+**`src/main/app-agent-management.ts`**
+- App agent logic (files only, no tools)
+- System prompt generation: `generateAppAgentSystemPrompt` (system prompt only)
+- Message building: `buildMessagesForAppAgent` (includes file contents, no tools)
+- IPC handlers: `app-agent:sendMessage` (non-streaming), `app-agent:streamMessage` (streaming)
 
 **`src/main/tool-management.ts`**
 - Tool CRUD operations
@@ -54,9 +66,10 @@ The main process is organized into dedicated modules:
 - Runs tools in renderer context with access to browser APIs
 
 ### Module Dependencies
-- `openai-client.ts` imports from: `agent-management.ts`, `apiKey-management.ts`, `tool-management.ts`
-- `tool-management.ts` imports from: `openai-client.ts` (executeToolInWorker)
-- `main.ts` imports from: `project-management.ts`, `openai-client.ts`, `tool-management.ts`
+- `chat-agent-management.ts` imports from: `agent-management.ts`, `apiKey-management.ts`, `tool-management.ts`, `openai-client.ts`
+- `app-agent-management.ts` imports from: `agent-management.ts`, `apiKey-management.ts`, `openai-client.ts`
+- `tool-management.ts` imports from: `openai-client.ts` (executeToolWithRouting)
+- `main.ts` imports from: `project-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`
 
 ### Pattern for Creating New Modules
 1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)
@@ -83,9 +96,10 @@ The main process is organized into dedicated modules:
   - `getFileTree(projectPath, options)` - Gets file tree structure
   - `listProjectFiles(projectPath, options)` - Lists .txt and .md files
   - `readFileContents(filePaths)` - Reads multiple file contents
-  - `sendMessage(...)` - Sends non-streaming chat message
-  - `streamMessage(...)` - Initiates streaming chat
-  - `onChatChunk(callback)`, `onChatComplete(callback)`, `onChatError(callback)` - Stream events
+  - `sendChatAgentMessage(projectPath, agentName, message, filePaths)` - Sends non-streaming chat agent message
+  - `streamChatAgentMessage(projectPath, agentName, message, filePaths, onChunk, onComplete, onError)` - Streams chat agent message
+  - `sendAppAgentMessage(projectPath, agentName, message, filePaths)` - Sends non-streaming app agent message
+  - `streamAppAgentMessage(projectPath, agentName, message, filePaths, onChunk, onComplete, onError)` - Streams app agent message
 
 ### Renderer Process (`src/renderer.ts`)
 - Web Components UI, runs in browser context
@@ -130,8 +144,13 @@ All Web Components follow this pattern:
 3. `project-agent-dashboard.handleProjectSelected()` loads agents via IPC
 4. `project-detail-panel.handleProjectSelected()` loads file tree via IPC
 5. User clicks agent card → `project-agent-dashboard` emits `agent-selected` event, switches to chat view
-6. `chat-panel` loads and displays conversation, connects to IPC for messaging
-7. User clicks back button → `chat-panel` emits `chat-back` event, returns to dashboard view
+6. `chat-panel` or `app-panel` (based on agent type) loads and displays conversation
+7. **Chat message flow (event-driven)**:
+   - User sends message in `conversation-panel` → dispatches `message-sent` event (bubbles, composed) with message details
+   - Parent component (`chat-panel` or `app-panel`) listens for `message-sent` → calls appropriate IPC (`chat-agent:*` or `app-agent:*`)
+   - Main process module handles streaming → calls back via `handleStreamChunk()`, `handleStreamComplete()`, or `handleStreamError()`
+   - Parent component listens for `stream-complete` event for additional processing (e.g., `app-panel` parses app code)
+8. User clicks back button → parent panel emits `chat-back` event, returns to dashboard view
 
 ### Dashboard/Chat View Switching
 The `project-agent-dashboard` component has two display modes:
@@ -178,11 +197,16 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - `files:readContents` - Reads multiple file contents at once (batch operation)
 
 ### Chat IPC Channels
-- `chat:sendMessage` - Sends non-streaming message with optional file paths, returns full response
-- `chat:streamMessage` - Initiates streaming message exchange with optional file paths
-- `chat-chunk` - Event emitted for each response chunk during streaming (via `webContents.send()`)
-- `chat-complete` - Event emitted when streaming completes successfully
-- `chat-error` - Event emitted when streaming encounters an error
+
+**Chat Agent (with tools):**
+- `chat-agent:sendMessage` - Sends non-streaming message with tool calling + file context
+- `chat-agent:streamMessage` - Initiates streaming message with tool calling + file context
+
+**App Agent (files only, no tools):**
+- `app-agent:sendMessage` - Sends non-streaming message with file context only
+- `app-agent:streamMessage` - Initiates streaming message with file context only
+
+**Note:** The old `chat:sendMessage` and `chat:streamMessage` channels have been removed in favor of the more specific `chat-agent:*` and `app-agent:*` channels.
 
 ## Storage
 
