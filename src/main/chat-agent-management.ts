@@ -366,7 +366,7 @@ export function registerChatAgentIPCHandlers(): void {
 
       // Add tool results to messages
       for (const result of toolResults) {
-        messages.push({ role: 'system', content: result });
+        messages.push({ role: 'user', content: result });
       }
 
       // Stream final response
