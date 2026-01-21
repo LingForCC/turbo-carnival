@@ -48,6 +48,18 @@ Object.defineProperty(window, 'electronAPI', {
   writable: true,
 });
 
+// Mock alert for Happy DOM (which doesn't have it by default)
+// Use the same function reference for both window.alert and global alert
+const alertMock = jest.fn();
+Object.defineProperty(window, 'alert', {
+  value: alertMock,
+  writable: true,
+  configurable: true,
+});
+
+// Also add to global scope for direct alert() calls
+(global as any).alert = alertMock;
+
 // Clear mocks and clean DOM before each test
 beforeEach(() => {
   jest.clearAllMocks();

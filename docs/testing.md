@@ -129,6 +129,7 @@ Tests are organized in `src/__tests__/` by feature:
 - `ipc-handlers.test.ts` - IPC handler tests (agents:get, agents:add, agents:remove, agents:update)
 
 ### `src/__tests__/components/`
+- `conversation-panel/conversation-panel.test.ts` - Web Component UI tests (rendering, file tagging, message sending, streaming, API key validation, XSS prevention)
 - `project-panel/project-panel.test.ts` - Web Component UI tests (rendering, interactions, events, XSS prevention)
 - `app-panel/app-panel.test.ts` - Web Component UI tests for App-type agents (rendering, code view toggle, streaming, XSS prevention)
 

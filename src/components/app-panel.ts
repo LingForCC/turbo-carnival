@@ -63,9 +63,7 @@ export class AppPanel extends HTMLElement {
           <!-- Conversation Component -->
           <conversation-panel
             id="conversation"
-            placeholder="Describe the app you want to build..."
-            empty-state-icon="computer"
-            empty-state-message="Describe the app you want to build...">
+            placeholder="Describe the app you want to build...">
           </conversation-panel>
         </div>
 

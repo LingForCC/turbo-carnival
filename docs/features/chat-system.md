@@ -26,7 +26,8 @@ Reusable Web Component that provides:
 - **Optional autocomplete dropdown** for @mention file selection
 - Send button with keyboard shortcuts (Enter to send, Shift+Enter for new line)
 - **Optional streaming toggle** (configurable via `show-stream-toggle` attribute)
-- Configurable placeholder and empty state messages
+- Configurable placeholder text
+- Empty state always shows "Start a conversation!" with chat icon
 - Emits events: `message-sent`, `stream-complete`, `back-clicked`, `chat-cleared`
 
 ### Usage Examples
@@ -44,9 +45,7 @@ Reusable Web Component that provides:
 **app-panel** (without file tagging):
 ```html
 <conversation-panel
-  placeholder="Describe the app you want to build..."
-  empty-state-icon="computer"
-  empty-state-message="Describe the app you want to build...">
+  placeholder="Describe the app you want to build...">
 </conversation-panel>
 ```
 

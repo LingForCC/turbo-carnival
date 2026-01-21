@@ -17,8 +17,6 @@ export class ConversationPanel extends HTMLElement {
   private showStreamToggle: boolean = false;
   private placeholder: string = 'Type a message...';
   private modelInfo: string = '';
-  private emptyStateIcon: 'chat' | 'computer' = 'chat';
-  private emptyStateMessage: string = 'Start a conversation!';
 
   // API key validation (optional, for components like chat-panel)
   private apiKeys: APIKey[] = [];
@@ -36,7 +34,7 @@ export class ConversationPanel extends HTMLElement {
   }
 
   static get observedAttributes(): string[] {
-    return ['enable-file-tagging', 'show-stream-toggle', 'placeholder', 'model-info', 'empty-state-icon', 'empty-state-message'];
+    return ['enable-file-tagging', 'show-stream-toggle', 'placeholder', 'model-info'];
   }
 
   connectedCallback(): void {
@@ -45,10 +43,10 @@ export class ConversationPanel extends HTMLElement {
     this.attachEventListeners();
 
     // Listen for agent selection events
-    this.addEventListener('agent-selected', (event: Event) => {
-      const customEvent = event as CustomEvent;
-      this.handleAgentSelected(customEvent.detail.agent, customEvent.detail.project);
-    });
+    // this.addEventListener('agent-selected', (event: Event) => {
+    //   const customEvent = event as CustomEvent;
+    //   this.handleAgentSelected(customEvent.detail.agent, customEvent.detail.project);
+    // });
 
     // Close autocomplete when clicking outside
     document.addEventListener('click', (e) => {
@@ -75,8 +73,6 @@ export class ConversationPanel extends HTMLElement {
     this.showStreamToggle = this.getAttribute('show-stream-toggle') === 'true';
     this.placeholder = this.getAttribute('placeholder') || 'Type a message...';
     this.modelInfo = this.getAttribute('model-info') || '';
-    this.emptyStateIcon = (this.getAttribute('empty-state-icon') === 'computer' ? 'computer' : 'chat');
-    this.emptyStateMessage = this.getAttribute('empty-state-message') || 'Start a conversation!';
   }
 
   // ========== PUBLIC API ==========
@@ -214,13 +210,10 @@ export class ConversationPanel extends HTMLElement {
       return `
         <div class="flex flex-col items-center justify-center h-full text-center">
           <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            ${this.emptyStateIcon === 'chat' ?
-              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>' :
-              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>'
-            }
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
           </svg>
           <p class="text-sm text-gray-400 m-0">
-            ${this.escapeHtml(this.emptyStateMessage)}
+            Start a conversation!
           </p>
         </div>
       `;
@@ -233,7 +226,7 @@ export class ConversationPanel extends HTMLElement {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
           </svg>
           <p class="text-sm text-gray-400 m-0">
-            ${this.escapeHtml(this.emptyStateMessage)}
+            Start a conversation!
           </p>
         </div>
       `;
