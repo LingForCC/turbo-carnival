@@ -97,6 +97,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ============ CHAT-AGENT METHODS ============
 
+  // Clear chat-agent history
+  clearChatAgentHistory: (projectPath: string, agentName: string) =>
+    ipcRenderer.invoke('chat-agent:clearHistory', projectPath, agentName),
+
   // Stream chat-agent message
   streamChatAgentMessage: (
     projectPath: string,
@@ -152,6 +156,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // ============ APP-AGENT METHODS ============
+
+  // Clear app-agent history
+  clearAppAgentHistory: (projectPath: string, agentName: string) =>
+    ipcRenderer.invoke('app-agent:clearHistory', projectPath, agentName),
 
   // Stream app-agent message
   streamAppAgentMessage: (

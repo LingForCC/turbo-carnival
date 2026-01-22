@@ -190,6 +190,18 @@ export class AppPanel extends HTMLElement {
       }
     });
 
+    // Listen for clear-chat events from conversation-panel
+    conversation.addEventListener('clear-chat', async (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { projectPath, agentName } = customEvent.detail;
+
+      try {
+        await window.electronAPI?.clearAppAgentHistory(projectPath, agentName);
+      } catch (error: any) {
+        console.error('Failed to clear agent history:', error);
+      }
+    });
+
     // Note: We don't clone-and-replace here to avoid removing the back button listener
     // that was just attached in attachEventListeners()
 
@@ -347,9 +359,15 @@ export class AppPanel extends HTMLElement {
   private clearChat(): void {
     if (!this.currentAgent) return;
 
-    const conversation = this.querySelector('#conversation') as any;
-    if (conversation) {
-      conversation.clearChat();
+    const confirmed = confirm(
+      'Are you sure you want to clear the chat history? This will also delete the conversation from the agent file.'
+    );
+
+    if (confirmed) {
+      const conversation = this.querySelector('#conversation') as any;
+      if (conversation) {
+        conversation.clearChat();
+      }
     }
   }
 

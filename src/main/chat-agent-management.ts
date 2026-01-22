@@ -392,4 +392,22 @@ export function registerChatAgentIPCHandlers(): void {
 
     return fullResponse;
   });
+
+  // Handler: chat-agent:clearHistory
+  ipcMain.handle('chat-agent:clearHistory', async (event, projectPath: string, agentName: string) => {
+    const agents = loadAgents(projectPath);
+    const agent = agents.find(a => a.name === agentName);
+
+    if (!agent) {
+      throw new Error(`Agent "${agentName}" not found`);
+    }
+
+    // Clear history
+    agent.history = [];
+
+    // Save updated agent
+    saveAgent(projectPath, agent);
+
+    return { success: true };
+  });
 }

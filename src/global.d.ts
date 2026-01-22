@@ -271,6 +271,9 @@ interface ElectronAPI {
 
   // ============ CHAT-AGENT METHODS ============
 
+  // Clear chat-agent history
+  clearChatAgentHistory: (projectPath: string, agentName: string) => Promise<{ success: boolean }>;
+
   // Send chat-agent message (non-streaming)
   sendChatAgentMessage: (
     projectPath: string,
@@ -291,6 +294,9 @@ interface ElectronAPI {
   ) => Promise<void>;
 
   // ============ APP-AGENT METHODS ============
+
+  // Clear app-agent history
+  clearAppAgentHistory: (projectPath: string, agentName: string) => Promise<{ success: boolean }>;
 
   // Send app-agent message (non-streaming)
   sendAppAgentMessage: (

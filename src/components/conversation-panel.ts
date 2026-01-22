@@ -140,6 +140,18 @@ export class ConversationPanel extends HTMLElement {
     this.chatHistory = [];
     this.activeToolCalls.clear();
     this.render();
+
+    // Dispatch event to clear agent history in parent component
+    if (this.currentAgent && this.currentProject) {
+      this.dispatchEvent(new CustomEvent('clear-chat', {
+        detail: {
+          projectPath: this.currentProject.path,
+          agentName: this.currentAgent.name
+        },
+        bubbles: true,
+        composed: true
+      }));
+    }
   }
 
   public scrollToBottom(): void {
