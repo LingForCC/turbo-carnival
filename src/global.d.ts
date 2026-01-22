@@ -48,6 +48,15 @@ export interface ConversationMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
   timestamp: number;
+  toolCall?: {
+    type: 'start' | 'result';
+    toolName: string;
+    parameters?: Record<string, any>;
+    result?: any;
+    executionTime?: number;
+    status: 'executing' | 'completed' | 'failed';
+    error?: string;
+  };
 }
 
 /**
@@ -137,6 +146,32 @@ export interface ToolExecutionResult {
   result: any;                     // Return value from tool execution
   error?: string;                  // Error message if failed
   executionTime: number;           // Execution time in milliseconds
+}
+
+/**
+ * Tool call data for conversation panel display
+ * Attached to messages internally in the UI layer (not stored in ConversationMessage)
+ */
+export interface ToolCallData {
+  toolName: string;
+  parameters: Record<string, any>;
+  result?: any;
+  executionTime?: number;
+  status: 'pending' | 'executing' | 'completed' | 'failed';
+  error?: string;
+}
+
+/**
+ * Tool call event for IPC communication
+ * Sent from main process to renderer during tool execution
+ */
+export interface ToolCallEvent {
+  toolName: string;
+  parameters: Record<string, any>;
+  status: 'started' | 'completed' | 'failed';
+  result?: any;
+  executionTime?: number;
+  error?: string;
 }
 
 /**

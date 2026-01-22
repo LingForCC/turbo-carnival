@@ -1,4 +1,4 @@
-import type { Agent, Project, APIKey } from '../global.d.ts';
+import type { Agent, Project, APIKey, ToolCallData } from '../global.d.ts';
 
 /**
  * ConversationPanel Web Component
@@ -11,9 +11,10 @@ export class ConversationPanel extends HTMLElement {
   // Core state
   private currentAgent: Agent | null = null;
   private currentProject: Project | null = null;
-  private chatHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  private chatHistory: Array<{ role: 'user' | 'assistant'; content: string; toolCall?: ToolCallData }> = [];
   private isStreaming: boolean = false;
   private currentStreamedContent: string = '';
+  private activeToolCalls: Map<string, ToolCallData> = new Map();
 
   // Configuration from attributes
   private enableFileTagging: boolean = false;
@@ -82,12 +83,56 @@ export class ConversationPanel extends HTMLElement {
     this.taggedFiles = [];
 
     // Load conversation history from agent
-    this.chatHistory = (agent.history || [])
-      .filter(msg => msg.role === 'user' || msg.role === 'assistant')
-      .map(msg => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content
-      }));
+    const mappedHistory = (agent.history || [])
+      .map(msg => {
+        // Check if message has toolCall metadata (new format)
+        if (msg.toolCall) {
+          const toolCall = msg.toolCall;
+          // Map persisted tool call data to ToolCallData format
+          const toolCallData: ToolCallData = {
+            toolName: toolCall.toolName,
+            parameters: toolCall.parameters || {},
+            result: toolCall.result,
+            executionTime: toolCall.executionTime,
+            status: toolCall.status as 'executing' | 'completed' | 'failed',
+            error: toolCall.error
+          };
+
+          // Return message with toolCall data
+          return {
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            toolCall: toolCallData
+          };
+        }
+
+        // Fallback: Parse tool call messages from system messages (old format for backward compatibility)
+        if (msg.role === 'system') {
+          const toolCallMatch = this.parseToolCallFromSystemMessage(msg.content);
+          if (toolCallMatch) {
+            // Return as user message with tool call data
+            return {
+              role: 'user' as const,
+              content: msg.content,
+              toolCall: toolCallMatch
+            };
+          }
+        }
+
+        // Return user/assistant messages as-is
+        if (msg.role === 'user' || msg.role === 'assistant') {
+          return {
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content
+          };
+        }
+
+        // Filter out other system messages
+        return null;
+      })
+      .filter((msg): msg is NonNullable<typeof msg> => msg !== null);
+
+    this.chatHistory = mappedHistory as Array<{ role: 'user' | 'assistant'; content: string; toolCall?: ToolCallData }>;
 
     // Load available .txt and .md files if file tagging is enabled
     if (this.enableFileTagging) {
@@ -96,6 +141,47 @@ export class ConversationPanel extends HTMLElement {
 
     this.render();
     this.scrollToBottom();
+  }
+
+  /**
+   * Parse tool call data from system message content
+   * Tool results are stored as system messages with specific format
+   */
+  private parseToolCallFromSystemMessage(content: string): ToolCallData | null {
+    // Parse: "Tool 'tool_name' executed successfully:\n{result}\n(Execution time: Xms)"
+    const successMatch = content.match(/Tool '(\w+)' executed successfully:\n([\s\S]*?)\n\(Execution time: (\d+)ms\)/);
+
+    if (successMatch) {
+      const toolName = successMatch[1];
+      const resultJson = successMatch[2];
+      const executionTime = parseInt(successMatch[3], 10);
+
+      try {
+        return {
+          toolName,
+          parameters: {}, // Parameters not preserved in current format
+          result: JSON.parse(resultJson),
+          executionTime,
+          status: 'completed'
+        };
+      } catch {
+        // If JSON parsing fails, return null (will be filtered out)
+        return null;
+      }
+    }
+
+    // Parse: "Tool 'tool_name' failed: error message"
+    const failMatch = content.match(/Tool '(\w+)' failed: (.+)/);
+    if (failMatch) {
+      return {
+        toolName: failMatch[1],
+        parameters: {},
+        status: 'failed',
+        error: failMatch[2]
+      };
+    }
+
+    return null;
   }
 
   public setAPIKeys(apiKeys: APIKey[]): void {
@@ -108,6 +194,7 @@ export class ConversationPanel extends HTMLElement {
 
   public clearChat(): void {
     this.chatHistory = [];
+    this.activeToolCalls.clear();
     this.render();
   }
 
@@ -123,6 +210,23 @@ export class ConversationPanel extends HTMLElement {
    * Called by parent (chat-panel/app-panel) during streaming
    */
   public handleStreamChunk(chunk: string): void {
+    // If not currently streaming, start a new streaming session
+    if (!this.isStreaming) {
+      this.isStreaming = true;
+      this.currentStreamedContent = '';
+      // Add empty assistant message for streaming
+      // Check if last message is already an assistant message (from first stream with tool calls)
+      const lastMessage = this.chatHistory[this.chatHistory.length - 1];
+      if (!lastMessage || lastMessage.role !== 'assistant') {
+        // Last message is not an assistant message, add a new one
+        this.chatHistory.push({
+          role: 'assistant',
+          content: ''
+        });
+      }
+      // If last message IS an assistant message (e.g., from tool call start), reuse it
+    }
+
     this.currentStreamedContent += chunk;
     this.chatHistory[this.chatHistory.length - 1].content = this.currentStreamedContent;
     this.render();
@@ -156,6 +260,96 @@ export class ConversationPanel extends HTMLElement {
     this.chatHistory.pop(); // Remove user message
     this.showError(error);
     this.render();
+  }
+
+  /**
+   * Handle tool call started event from main process
+   * Called by parent component when tool execution begins
+   */
+  public handleToolCallStarted(toolName: string, parameters: Record<string, any>): void {
+    const toolCallData: ToolCallData = {
+      toolName,
+      parameters,
+      status: 'executing'
+    };
+
+    // Add as assistant message (tool call details)
+    this.chatHistory.push({
+      role: 'assistant',
+      content: `Executing tool: ${toolName}`,
+      toolCall: toolCallData
+    });
+
+    // Track as active
+    const key = `${toolName}|${JSON.stringify(parameters)}`;
+    this.activeToolCalls.set(key, toolCallData);
+
+    this.render();
+    this.scrollToBottom();
+  }
+
+  /**
+   * Handle tool call completed event from main process
+   * Called by parent component when tool execution finishes
+   */
+  public handleToolCallCompleted(
+    toolName: string,
+    parameters: Record<string, any>,
+    result: any,
+    executionTime: number
+  ): void {
+    const toolCallData: ToolCallData = {
+      toolName,
+      parameters,
+      result,
+      executionTime,
+      status: 'completed'
+    };
+
+    // Add as user message (tool call result)
+    this.chatHistory.push({
+      role: 'user',
+      content: `Tool "${toolName}" executed successfully:\n${JSON.stringify(result, null, 2)}\n(Execution time: ${executionTime}ms)`,
+      toolCall: toolCallData
+    });
+
+    // Remove from active tracking
+    const key = `${toolName}|${JSON.stringify(parameters)}`;
+    this.activeToolCalls.delete(key);
+
+    this.render();
+    this.scrollToBottom();
+  }
+
+  /**
+   * Handle tool call failed event from main process
+   * Called by parent component when tool execution fails
+   */
+  public handleToolCallFailed(
+    toolName: string,
+    parameters: Record<string, any>,
+    error: string
+  ): void {
+    const toolCallData: ToolCallData = {
+      toolName,
+      parameters,
+      error,
+      status: 'failed'
+    };
+
+    // Add as user message (error message)
+    this.chatHistory.push({
+      role: 'user',
+      content: `Tool "${toolName}" failed:\n${error}`,
+      toolCall: toolCallData
+    });
+
+    // Remove from active tracking
+    const key = `${toolName}|${JSON.stringify(parameters)}`;
+    this.activeToolCalls.delete(key);
+
+    this.render();
+    this.scrollToBottom();
   }
 
   // ========== RENDERING ==========
@@ -270,10 +464,16 @@ export class ConversationPanel extends HTMLElement {
     }
 
     // Render chat messages
-    return this.chatHistory.map(msg => this.renderMessage(msg.role, msg.content)).join('');
+    return this.chatHistory.map(msg => this.renderMessage(msg.role, msg.content, msg.toolCall)).join('');
   }
 
-  private renderMessage(role: 'user' | 'assistant', content: string): string {
+  private renderMessage(role: 'user' | 'assistant', content: string, toolCall?: ToolCallData): string {
+    // If this message has tool call data, render with special styling
+    if (toolCall) {
+      return this.renderToolCallMessage(role, content, toolCall);
+    }
+
+    // Regular user/assistant message rendering
     const isUser = role === 'user';
     return `
       <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
@@ -283,6 +483,84 @@ export class ConversationPanel extends HTMLElement {
             : 'bg-gray-100 text-gray-800'
         }">
           <p class="text-sm whitespace-pre-wrap break-words m-0">${this.escapeHtml(content)}</p>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderToolCallMessage(role: 'user' | 'assistant', content: string, toolCall: ToolCallData): string {
+    const isExecuting = toolCall.status === 'executing';
+    const isFailed = toolCall.status === 'failed';
+    const isCompleted = toolCall.status === 'completed';
+    const isAssistant = role === 'assistant';  // Tool call start (assistant side)
+
+    // Background color based on role and status
+    // Amber/yellow for tool call start (assistant), green/red for results (user)
+    const bgColor = isAssistant
+      ? 'bg-amber-50 border-amber-200'
+      : (isFailed ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200');
+
+    // Status icon
+    const statusIcon = isExecuting
+      ? `<svg class="w-4 h-4 text-amber-600 animate-spin" fill="none" viewBox="0 0 24 24">
+           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+         </svg>`
+      : isCompleted
+        ? `<svg class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+           </svg>`
+        : `<svg class="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+           </svg>`;
+
+    const statusText = isExecuting
+      ? 'Executing...'
+      : isCompleted
+        ? 'Completed'
+        : 'Failed';
+
+    return `
+      <div class="flex ${isAssistant ? 'justify-start' : 'justify-end'} my-2">
+        <div class="max-w-[85%] w-[85%] rounded-lg border ${bgColor} px-4 py-3">
+          <div class="flex items-center gap-2 mb-2">
+            ${statusIcon}
+            <span class="text-xs font-semibold text-gray-700 truncate">
+              ${this.escapeHtml(toolCall.toolName)}
+            </span>
+            <span class="text-xs text-gray-500 flex-shrink-0">•</span>
+            <span class="text-xs text-gray-600 flex-shrink-0">${statusText}</span>
+          </div>
+
+          ${isExecuting ? `
+            <div class="text-xs text-gray-600 mb-2">
+              <div class="font-semibold mb-1">Parameters:</div>
+              <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
+                <pre class="text-xs m-0 whitespace-pre-wrap break-all">${this.escapeHtml(JSON.stringify(toolCall.parameters, null, 2))}</pre>
+              </div>
+            </div>
+          ` : ''}
+
+          ${isCompleted && toolCall.result ? `
+            <div class="mt-2">
+              <div class="text-xs font-semibold text-gray-700 mb-1">Result:</div>
+              <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
+                <pre class="text-xs m-0 whitespace-pre-wrap break-all">${this.escapeHtml(JSON.stringify(toolCall.result, null, 2))}</pre>
+              </div>
+              ${toolCall.executionTime ? `
+                <div class="text-xs text-gray-500 mt-1">Execution time: ${toolCall.executionTime}ms</div>
+              ` : ''}
+            </div>
+          ` : ''}
+
+          ${isFailed && toolCall.error ? `
+            <div class="mt-2">
+              <div class="text-xs font-semibold text-gray-700 mb-1">Error:</div>
+              <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
+                <pre class="text-xs m-0 whitespace-pre-wrap break-all text-red-700">${this.escapeHtml(toolCall.error)}</pre>
+              </div>
+            </div>
+          ` : ''}
         </div>
       </div>
     `;

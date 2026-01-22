@@ -200,8 +200,33 @@ export function registerChatAgentIPCHandlers(): void {
     if (toolCalls.length > 0) {
       console.log('Tool calls detected:', toolCalls);
 
-      // Save initial exchange
+      // Initialize history
       agent.history = agent.history || [];
+
+      // For each tool call, save START message to history and emit IPC event
+      for (const toolCall of toolCalls) {
+        // Emit IPC event for UI
+        event.sender.send('chat-agent:toolCall', {
+          toolName: toolCall.toolName,
+          parameters: toolCall.parameters,
+          status: 'started'
+        });
+
+        // Save to agent history as assistant message
+        agent.history.push({
+          role: 'assistant',
+          content: `Calling tool: ${toolCall.toolName}`,
+          timestamp: Date.now(),
+          toolCall: {
+            type: 'start',
+            toolName: toolCall.toolName,
+            parameters: toolCall.parameters,
+            status: 'executing'
+          }
+        });
+      }
+
+      // Save user message and initial assistant response
       agent.history.push(
         { role: 'user', content: message, timestamp: Date.now() },
         { role: 'assistant', content: assistantMessage, timestamp: Date.now() }
@@ -213,12 +238,52 @@ export function registerChatAgentIPCHandlers(): void {
         try {
           const tool = getToolByName(toolCall.toolName);
           if (!tool) {
-            toolResults.push(`Error: Tool "${toolCall.toolName}" not found`);
+            const errorMsg = `Tool "${toolCall.toolName}" not found`;
+            toolResults.push(`Error: ${errorMsg}`);
+            event.sender.send('chat-agent:toolCall', {
+              toolName: toolCall.toolName,
+              parameters: toolCall.parameters,
+              status: 'failed',
+              error: errorMsg
+            });
+            // Save failed tool call to history
+            agent.history.push({
+              role: 'user',
+              content: `Tool "${toolCall.toolName}" failed:\n${errorMsg}`,
+              timestamp: Date.now(),
+              toolCall: {
+                type: 'result',
+                toolName: toolCall.toolName,
+                parameters: toolCall.parameters,
+                status: 'failed',
+                error: errorMsg
+              }
+            });
             continue;
           }
 
           if (!tool.enabled) {
-            toolResults.push(`Error: Tool "${toolCall.toolName}" is disabled`);
+            const errorMsg = `Tool "${toolCall.toolName}" is disabled`;
+            toolResults.push(`Error: ${errorMsg}`);
+            event.sender.send('chat-agent:toolCall', {
+              toolName: toolCall.toolName,
+              parameters: toolCall.parameters,
+              status: 'failed',
+              error: errorMsg
+            });
+            // Save failed tool call to history
+            agent.history.push({
+              role: 'user',
+              content: `Tool "${toolCall.toolName}" failed:\n${errorMsg}`,
+              timestamp: Date.now(),
+              toolCall: {
+                type: 'result',
+                toolName: toolCall.toolName,
+                parameters: toolCall.parameters,
+                status: 'failed',
+                error: errorMsg
+              }
+            });
             continue;
           }
 
@@ -226,6 +291,25 @@ export function registerChatAgentIPCHandlers(): void {
           const validationError = validateJSONSchema(toolCall.parameters, tool.parameters);
           if (validationError) {
             toolResults.push(`Error: ${validationError}`);
+            event.sender.send('chat-agent:toolCall', {
+              toolName: toolCall.toolName,
+              parameters: toolCall.parameters,
+              status: 'failed',
+              error: validationError
+            });
+            // Save failed tool call to history
+            agent.history.push({
+              role: 'user',
+              content: `Tool "${toolCall.toolName}" failed:\n${validationError}`,
+              timestamp: Date.now(),
+              toolCall: {
+                type: 'result',
+                toolName: toolCall.toolName,
+                parameters: toolCall.parameters,
+                status: 'failed',
+                error: validationError
+              }
+            });
             continue;
           }
 
@@ -234,8 +318,52 @@ export function registerChatAgentIPCHandlers(): void {
           toolResults.push(
             `Tool "${toolCall.toolName}" executed successfully:\n${JSON.stringify(result.result, null, 2)}\n(Execution time: ${result.executionTime}ms)`
           );
+
+          // Emit completed event
+          event.sender.send('chat-agent:toolCall', {
+            toolName: toolCall.toolName,
+            parameters: toolCall.parameters,
+            status: 'completed',
+            result: result.result,
+            executionTime: result.executionTime
+          });
+
+          // Save completed tool call to history
+          agent.history.push({
+            role: 'user',
+            content: `Tool "${toolCall.toolName}" executed successfully:\n${JSON.stringify(result.result, null, 2)}\n(Execution time: ${result.executionTime}ms)`,
+            timestamp: Date.now(),
+            toolCall: {
+              type: 'result',
+              toolName: toolCall.toolName,
+              parameters: toolCall.parameters,
+              result: result.result,
+              executionTime: result.executionTime,
+              status: 'completed'
+            }
+          });
         } catch (error: any) {
-          toolResults.push(`Tool "${toolCall.toolName}" failed: ${error.message}`);
+          const errorMsg = error.message;
+          toolResults.push(`Tool "${toolCall.toolName}" failed: ${errorMsg}`);
+          event.sender.send('chat-agent:toolCall', {
+            toolName: toolCall.toolName,
+            parameters: toolCall.parameters,
+            status: 'failed',
+            error: errorMsg
+          });
+          // Save failed tool call to history
+          agent.history.push({
+            role: 'user',
+            content: `Tool "${toolCall.toolName}" failed:\n${errorMsg}`,
+            timestamp: Date.now(),
+            toolCall: {
+              type: 'result',
+              toolName: toolCall.toolName,
+              parameters: toolCall.parameters,
+              status: 'failed',
+              error: errorMsg
+            }
+          });
         }
       }
 
@@ -312,6 +440,10 @@ export function registerChatAgentIPCHandlers(): void {
     // 4. Check for tool calls
     let toolCalls = parseToolCalls(fullResponse);
 
+    // Save user message to history before tool call detection
+    agent.history = agent.history || [];
+    agent.history.push({ role: 'user', content: message, timestamp: Date.now() });
+
     // Deduplicate
     if (toolCalls.length > 0) {
       const seen = new Set<string>();
@@ -332,26 +464,109 @@ export function registerChatAgentIPCHandlers(): void {
     if (toolCalls.length > 0) {
       console.log('Tool calls detected in stream:', toolCalls);
 
-      // Save initial exchange
+      // Initialize history
       agent.history = agent.history || [];
-      agent.history.push(
-        { role: 'user', content: message, timestamp: Date.now() },
-        { role: 'assistant', content: fullResponse, timestamp: Date.now() }
-      );
+
+      // For each tool call, save START message to history and emit IPC event
+      for (const toolCall of toolCalls) {
+        // Emit IPC event for UI
+        event.sender.send('chat-agent:toolCall', {
+          toolName: toolCall.toolName,
+          parameters: toolCall.parameters,
+          status: 'started'
+        });
+
+        // Save to agent history as assistant message
+        agent.history.push({
+          role: 'assistant',
+          content: `Calling tool: ${toolCall.toolName}`,
+          timestamp: Date.now(),
+          toolCall: {
+            type: 'start',
+            toolName: toolCall.toolName,
+            parameters: toolCall.parameters,
+            status: 'executing'
+          }
+        });
+      }
 
       // Execute tools
       const toolResults: string[] = [];
       for (const toolCall of toolCalls) {
         try {
           const tool = getToolByName(toolCall.toolName);
-          if (!tool || !tool.enabled) {
-            toolResults.push(`Error: Tool "${toolCall.toolName}" ${!tool ? 'not found' : 'is disabled'}`);
+          if (!tool) {
+            const errorMsg = `Tool "${toolCall.toolName}" not found`;
+            toolResults.push(`Error: ${errorMsg}`);
+            event.sender.send('chat-agent:toolCall', {
+              toolName: toolCall.toolName,
+              parameters: toolCall.parameters,
+              status: 'failed',
+              error: errorMsg
+            });
+            // Save failed tool call to history
+            agent.history.push({
+              role: 'user',
+              content: `Tool "${toolCall.toolName}" failed:\n${errorMsg}`,
+              timestamp: Date.now(),
+              toolCall: {
+                type: 'result',
+                toolName: toolCall.toolName,
+                parameters: toolCall.parameters,
+                status: 'failed',
+                error: errorMsg
+              }
+            });
+            continue;
+          }
+
+          if (!tool.enabled) {
+            const errorMsg = `Tool "${toolCall.toolName}" is disabled`;
+            toolResults.push(`Error: ${errorMsg}`);
+            event.sender.send('chat-agent:toolCall', {
+              toolName: toolCall.toolName,
+              parameters: toolCall.parameters,
+              status: 'failed',
+              error: errorMsg
+            });
+            // Save failed tool call to history
+            agent.history.push({
+              role: 'user',
+              content: `Tool "${toolCall.toolName}" failed:\n${errorMsg}`,
+              timestamp: Date.now(),
+              toolCall: {
+                type: 'result',
+                toolName: toolCall.toolName,
+                parameters: toolCall.parameters,
+                status: 'failed',
+                error: errorMsg
+              }
+            });
             continue;
           }
 
           const validationError = validateJSONSchema(toolCall.parameters, tool.parameters);
           if (validationError) {
             toolResults.push(`Error: ${validationError}`);
+            event.sender.send('chat-agent:toolCall', {
+              toolName: toolCall.toolName,
+              parameters: toolCall.parameters,
+              status: 'failed',
+              error: validationError
+            });
+            // Save failed tool call to history
+            agent.history.push({
+              role: 'user',
+              content: `Tool "${toolCall.toolName}" failed:\n${validationError}`,
+              timestamp: Date.now(),
+              toolCall: {
+                type: 'result',
+                toolName: toolCall.toolName,
+                parameters: toolCall.parameters,
+                status: 'failed',
+                error: validationError
+              }
+            });
             continue;
           }
 
@@ -359,8 +574,52 @@ export function registerChatAgentIPCHandlers(): void {
           toolResults.push(
             `Tool "${toolCall.toolName}" executed successfully:\n${JSON.stringify(result.result, null, 2)}\n(Execution time: ${result.executionTime}ms)`
           );
+
+          // Emit completed event
+          event.sender.send('chat-agent:toolCall', {
+            toolName: toolCall.toolName,
+            parameters: toolCall.parameters,
+            status: 'completed',
+            result: result.result,
+            executionTime: result.executionTime
+          });
+
+          // Save completed tool call to history
+          agent.history.push({
+            role: 'user',
+            content: `Tool "${toolCall.toolName}" executed successfully:\n${JSON.stringify(result.result, null, 2)}\n(Execution time: ${result.executionTime}ms)`,
+            timestamp: Date.now(),
+            toolCall: {
+              type: 'result',
+              toolName: toolCall.toolName,
+              parameters: toolCall.parameters,
+              result: result.result,
+              executionTime: result.executionTime,
+              status: 'completed'
+            }
+          });
         } catch (error: any) {
-          toolResults.push(`Tool "${toolCall.toolName}" failed: ${error.message}`);
+          const errorMsg = error.message;
+          toolResults.push(`Tool "${toolCall.toolName}" failed: ${errorMsg}`);
+          event.sender.send('chat-agent:toolCall', {
+            toolName: toolCall.toolName,
+            parameters: toolCall.parameters,
+            status: 'failed',
+            error: errorMsg
+          });
+          // Save failed tool call to history
+          agent.history.push({
+            role: 'user',
+            content: `Tool "${toolCall.toolName}" failed:\n${errorMsg}`,
+            timestamp: Date.now(),
+            toolCall: {
+              type: 'result',
+              toolName: toolCall.toolName,
+              parameters: toolCall.parameters,
+              status: 'failed',
+              error: errorMsg
+            }
+          });
         }
       }
 
@@ -388,13 +647,9 @@ export function registerChatAgentIPCHandlers(): void {
       return finalMessage;
     }
 
-    // 6. No tool calls - save and complete
-    const timestamp = Date.now();
-    agent.history = agent.history || [];
-    agent.history.push(
-      { role: 'user', content: message, timestamp },
-      { role: 'assistant', content: fullResponse, timestamp }
-    );
+    // 6. No tool calls - save assistant response and complete
+    // User message was already saved at line 445, so only save assistant response here
+    agent.history.push({ role: 'assistant', content: fullResponse, timestamp: Date.now() });
 
     saveAgent(projectPath, agent);
 

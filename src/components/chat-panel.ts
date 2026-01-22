@@ -1,4 +1,4 @@
-import type { Agent, Project, APIKey } from '../global.d.ts';
+import type { Agent, Project, APIKey, ToolCallEvent } from '../global.d.ts';
 
 /**
  * ChatPanel Web Component
@@ -11,6 +11,7 @@ export class ChatPanel extends HTMLElement {
   private currentProject: Project | null = null;
   private currentAgent: Agent | null = null;
   private apiKeys: APIKey[] = [];
+  private toolCallListenerSetup = false;
 
   constructor() {
     super();
@@ -20,6 +21,32 @@ export class ChatPanel extends HTMLElement {
     this.render();
     this.attachConversationListeners();
     this.loadAPIKeys();
+
+    // Set up tool call listener ONCE when component connects (before any tool execution)
+    if (!this.toolCallListenerSetup && window.electronAPI) {
+      this.toolCallListenerSetup = true;
+      (window.electronAPI as any).onToolCallEvent((toolEvent: ToolCallEvent) => {
+        // Query for fresh reference on each event
+        const conversation = this.querySelector('#conversation') as any;
+        if (!conversation) {
+          console.warn('[ChatPanel] Conversation element not found for tool event:', toolEvent.status);
+          return;
+        }
+
+        if (toolEvent.status === 'started') {
+          conversation.handleToolCallStarted(toolEvent.toolName, toolEvent.parameters);
+        } else if (toolEvent.status === 'completed') {
+          conversation.handleToolCallCompleted(
+            toolEvent.toolName,
+            toolEvent.parameters,
+            toolEvent.result,
+            toolEvent.executionTime!
+          );
+        } else if (toolEvent.status === 'failed') {
+          conversation.handleToolCallFailed(toolEvent.toolName, toolEvent.parameters, toolEvent.error!);
+        }
+      });
+    }
 
     // Listen for agent selection events
     this.addEventListener('agent-selected', (event: Event) => {

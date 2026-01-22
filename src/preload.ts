@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { Project, Agent, APIKey, Tool, ToolExecutionRequest, App } from './global.d.ts';
+import type { Project, Agent, APIKey, Tool, ToolExecutionRequest, ToolCallEvent, App } from './global.d.ts';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -74,6 +74,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Send browser tool execution result back to main process
   sendBrowserToolResult: (result: { success: boolean; result?: any; error?: string; executionTime: number }) => {
     ipcRenderer.send('tools:browserResult', result);
+  },
+
+  // Listen for tool call events from main process during chat-agent streaming
+  onToolCallEvent: (callback: (event: ToolCallEvent) => void) => {
+    ipcRenderer.on('chat-agent:toolCall', (_event, toolEvent) => callback(toolEvent));
   },
 
   // ============ PROJECT DETAIL METHODS ============
