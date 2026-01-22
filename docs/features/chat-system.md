@@ -52,7 +52,7 @@ Reusable Web Component that provides:
 - Configurable placeholder text
 - Empty state always shows "Start a conversation!" with chat icon
 - **Event-driven**: Dispatches `message-sent` events instead of calling IPC directly
-- Public methods for parent control: `handleStreamChunk()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallStart()`, `handleToolCallComplete()`, `handleToolCallFailed()`
+- Public methods for parent control: `handleStreamChunk()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallComplete()`, `handleToolCallFailed()`
 
 ### Usage Examples
 
@@ -94,9 +94,8 @@ Reusable Web Component that provides:
    - Makes follow-up API call with tool results (formatted as user messages)
    - Calls parent's `handleStreamComplete()` when done
 6. `chat-panel` listens for `chat-agent:toolCall` IPC events and calls corresponding `conversation-panel` methods:
-   - `handleToolCallStart()` - Shows tool call indicator with "executing" status
-   - `handleToolCallComplete()` - Updates indicator with results and execution time
-   - `handleToolCallFailed()` - Updates indicator with error message
+   - `handleToolCallComplete()` - Shows collapsed tool call indicator with results and execution time
+   - `handleToolCallFailed()` - Shows collapsed tool call indicator with error message
 7. `conversation-panel` updates UI in real-time, renders tool call messages with visual indicators
 8. Parent components can listen for `stream-complete` to trigger additional processing
 
@@ -193,35 +192,36 @@ AI agents output tool calls as JSON objects: `{"toolname":"tool_name","arguments
 
 **Tool Execution Flow:**
 1. `chat-agent-management` detects tool call in AI response
-2. Emits `chat-agent:toolCall` IPC event with `status: 'started'` for UI indicator
-3. Saves assistant message to history with `toolCall` metadata (type: 'start', status: 'executing')
-4. Tool call parsed via `parseToolCalls()`
-5. Tool executed via `executeToolWithRouting()` (Node.js worker or browser)
-6. On success:
+2. Saves assistant message to history with `toolCall` metadata (type: 'start')
+3. Tool call parsed via `parseToolCalls()`
+4. Tool executed via `executeToolWithRouting()` (Node.js worker or browser)
+5. On success:
    - Emits `chat-agent:toolCall` IPC event with `status: 'completed'` and results
-   - Saves user message to history with `toolCall` metadata (type: 'result', status: 'completed', result, executionTime)
-7. On failure:
+   - Saves user message to history with `toolCall` metadata (type: 'result', status: 'completed', result, executionTime, parameters)
+6. On failure:
    - Emits `chat-agent:toolCall` IPC event with `status: 'failed'` and error
-   - Saves user message to history with `toolCall` metadata (type: 'result', status: 'failed', error)
-8. Tool results formatted as user messages and sent in second API call
-9. Final response delivered to renderer
+   - Saves user message to history with `toolCall` metadata (type: 'result', status: 'failed', error, parameters)
+7. Tool results formatted as user messages and sent in second API call
+8. Final response delivered to renderer
 
 **Tool Call Indicators:**
 The conversation panel displays tool calls with visual indicators showing:
-- **Executing state**: Animated spinner, tool name, and parameters
+- **Collapsed by default**: Tool calls show as expandable entries (click to expand)
 - **Completed state**: Green checkmark, tool name, parameters, formatted result, execution time
 - **Failed state**: Red X, tool name, parameters, error message
+- Parameters are displayed for both completed and failed tool calls
 
 **Tool Call Messages in History:**
 Messages with `toolCall` metadata are rendered differently:
 - Assistant messages with `toolCall.type: 'start'` show the tool being called
-- User messages with `toolCall.type: 'result'` show the tool result
-- Messages include expandable sections for parameters and results
+- User messages with `toolCall.type: 'result'` show the tool result (completed or failed)
+- Tool call results stored in `toolCall` metadata (not in message.content)
+- Messages include expandable sections for parameters and results (collapsed by default)
 
 **Streaming with Tool Calls:**
-- Tool call detection stops chunk delivery to renderer
-- Tools executed with real-time status updates via IPC
-- Tool call indicators appear in conversation panel
+- Tool call detection pauses chunk delivery to renderer during execution
+- Tools executed and status updates sent via IPC events (completed/failed)
+- Tool call indicators appear in conversation panel (collapsed by default)
 - Second API call made with tool results (as user messages)
 - Final response streamed to renderer
 
@@ -264,10 +264,12 @@ Streaming responses use Server-Sent Events (SSE) parsing:
   - `type` - 'start' (assistant message) or 'result' (user message)
   - `toolName` - Name of the tool being called
   - `parameters` - Tool input parameters
-  - `result` - Tool output (for 'result' type)
-  - `executionTime` - Execution time in milliseconds (for 'result' type)
-  - `status` - 'executing', 'completed', or 'failed'
-  - `error` - Error message (if failed)
+  - `result` - Tool output (for 'result' type with 'completed' status)
+  - `executionTime` - Execution time in milliseconds (for 'result' type with 'completed' status)
+  - `status` - 'completed' or 'failed'
+  - `error` - Error message (for 'result' type with 'failed' status)
+- **Only `toolCall` metadata format supported** - backward compatibility for system message format removed
+- Tool results stored in `toolCall` metadata (not in message.content)
 - History automatically saved after each message exchange
 - Full conversation history sent with each new message for context
 - System messages and tool call messages filtered from regular display, rendered with special indicators in `conversation-panel`
