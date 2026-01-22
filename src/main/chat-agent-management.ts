@@ -241,7 +241,7 @@ export function registerChatAgentIPCHandlers(): void {
             // Save failed tool call to history
             agent.history.push({
               role: 'user',
-              content: `Tool "${toolCall.toolName}" failed:\n${errorMsg}`,
+              content: `Tool "${toolCall.toolName}" failed`,
               timestamp: Date.now(),
               toolCall: {
                 type: 'result',
@@ -266,7 +266,7 @@ export function registerChatAgentIPCHandlers(): void {
             // Save failed tool call to history
             agent.history.push({
               role: 'user',
-              content: `Tool "${toolCall.toolName}" failed:\n${errorMsg}`,
+              content: `Tool "${toolCall.toolName}" failed`,
               timestamp: Date.now(),
               toolCall: {
                 type: 'result',
@@ -291,7 +291,7 @@ export function registerChatAgentIPCHandlers(): void {
             // Save failed tool call to history
             agent.history.push({
               role: 'user',
-              content: `Tool "${toolCall.toolName}" failed:\n${validationError}`,
+              content: `Tool "${toolCall.toolName}" failed`,
               timestamp: Date.now(),
               toolCall: {
                 type: 'result',
@@ -321,7 +321,7 @@ export function registerChatAgentIPCHandlers(): void {
           // Save completed tool call to history
           agent.history.push({
             role: 'user',
-            content: `Tool "${toolCall.toolName}" executed successfully:\n${JSON.stringify(result.result, null, 2)}\n(Execution time: ${result.executionTime}ms)`,
+            content: `Tool "${toolCall.toolName}" executed successfully`,
             timestamp: Date.now(),
             toolCall: {
               type: 'result',
@@ -344,7 +344,7 @@ export function registerChatAgentIPCHandlers(): void {
           // Save failed tool call to history
           agent.history.push({
             role: 'user',
-            content: `Tool "${toolCall.toolName}" failed:\n${errorMsg}`,
+            content: `Tool "${toolCall.toolName}" failed`,
             timestamp: Date.now(),
             toolCall: {
               type: 'result',

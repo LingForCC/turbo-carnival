@@ -307,7 +307,7 @@ export class ConversationPanel extends HTMLElement {
     // Add as user message (tool call result)
     this.chatHistory.push({
       role: 'user',
-      content: `Tool "${toolName}" executed successfully:\n${JSON.stringify(result, null, 2)}\n(Execution time: ${executionTime}ms)`,
+      content: `Tool "${toolName}" executed successfully`,
       toolCall: toolCallData
     });
 
@@ -338,7 +338,7 @@ export class ConversationPanel extends HTMLElement {
     // Add as user message (error message)
     this.chatHistory.push({
       role: 'user',
-      content: `Tool "${toolName}" failed:\n${error}`,
+      content: `Tool "${toolName}" failed`,
       toolCall: toolCallData
     });
 
