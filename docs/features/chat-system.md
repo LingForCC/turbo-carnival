@@ -222,8 +222,67 @@ Messages with `toolCall` metadata are rendered differently:
 - Tool call detection pauses chunk delivery to renderer during execution
 - Tools executed and status updates sent via IPC events (completed/failed)
 - Tool call indicators appear in conversation panel (collapsed by default)
-- Second API call made with tool results (as user messages)
+- Tool results sent in subsequent API call (as user messages)
 - Final response streamed to renderer
+
+### Iterative Tool Calling
+
+Chat agents now support **multiple rounds of tool calls** in a single conversation:
+
+**How It Works:**
+- The system enters a loop that continues until the LLM stops requesting tool calls
+- Maximum of 10 iterations (safety safeguard to prevent infinite loops)
+- Each iteration:
+  1. Makes API call with accumulated messages
+  2. Detects and parses tool calls from response
+  3. Deduplicates tool calls (removes duplicates with same tool name + parameters)
+  4. If tool calls detected:
+     - Executes all tools with IPC status updates
+     - Saves tool call starts and results to history
+     - Adds formatted tool results to messages array
+     - Loops back to step 1
+  5. If no tool calls:
+     - Saves final assistant response to history
+     - Sends completion event
+     - Exits loop
+
+**History Growth Across Iterations:**
+- User message saved ONCE at the start
+- Each iteration with tool calls adds multiple history entries:
+  - Assistant message: "Calling tool: {toolName}" (with toolCall.start metadata)
+  - User message: "Tool executed successfully" or "Tool failed" (with toolCall.result metadata)
+- Final iteration (no tools): Saves the conversational assistant response
+
+**Example Multi-Round Flow:**
+```
+User: "What's the weather in Tokyo and Paris?"
+
+Round 1:
+  → API call detects tool call for weather Tokyo
+  → Execute weather tool for Tokyo
+  → IPC: { toolName: "weather", status: "completed", result: {...} }
+  → History: assistant message (start) + user message (result)
+
+Round 2:
+  → API call with Tokyo weather detects tool call for weather Paris
+  → Execute weather tool for Paris
+  → IPC: { toolName: "weather", status: "completed", result: {...} }
+  → History: assistant message (start) + user message (result)
+
+Round 3:
+  → API call with both weather results - no tool calls detected
+  → Save final assistant response comparing both cities
+  → IPC: chat-complete event
+```
+
+**Safeguards:**
+- **Maximum iterations**: 10 rounds maximum (configurable via `MAX_ITERATIONS`)
+- **Deduplication**: Duplicate tool calls with identical parameters removed before execution
+- **Error handling**: Tool failures don't stop the loop - error messages added to messages and execution continues
+
+**Messages Array vs History Array:**
+- **Messages array** (sent to API): Simple format with tool results, grows with each iteration
+- **History array** (saved to disk): Structured format with toolCall metadata, used for conversation persistence and UI display
 
 ## API Integration
 

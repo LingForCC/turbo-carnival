@@ -132,6 +132,178 @@ async function buildMessagesForChatAgent(
   return messages;
 }
 
+/**
+ * Execute tool calls with comprehensive error handling and IPC events
+ * @param toolCalls - Array of parsed tool calls to execute
+ * @param agent - Agent instance (for history tracking)
+ * @param event - IPC event object (for sending status updates)
+ * @returns Array of formatted tool result strings to add to messages
+ */
+async function executeToolCalls(
+  toolCalls: any[],
+  agent: Agent,
+  event: Electron.IpcMainInvokeEvent
+): Promise<string[]> {
+  const toolResults: string[] = [];
+
+  // For each tool call, save START message to history and emit IPC event
+  for (const toolCall of toolCalls) {
+    // Emit IPC event for UI
+    event.sender.send('chat-agent:toolCall', {
+      toolName: toolCall.toolName,
+      parameters: toolCall.parameters,
+      status: 'started'
+    });
+
+    // Save to agent history as assistant message
+    agent.history.push({
+      role: 'assistant',
+      content: `Calling tool: ${toolCall.toolName}`,
+      timestamp: Date.now(),
+      toolCall: {
+        type: 'start',
+        toolName: toolCall.toolName,
+        parameters: toolCall.parameters,
+        status: 'executing'
+      }
+    });
+  }
+
+  // Execute tools
+  for (const toolCall of toolCalls) {
+    try {
+      const tool = getToolByName(toolCall.toolName);
+      if (!tool) {
+        const errorMsg = `Tool "${toolCall.toolName}" not found`;
+        toolResults.push(`Error: ${errorMsg}`);
+        event.sender.send('chat-agent:toolCall', {
+          toolName: toolCall.toolName,
+          parameters: toolCall.parameters,
+          status: 'failed',
+          error: errorMsg
+        });
+        // Save failed tool call to history
+        agent.history.push({
+          role: 'user',
+          content: `Tool "${toolCall.toolName}" failed`,
+          timestamp: Date.now(),
+          toolCall: {
+            type: 'result',
+            toolName: toolCall.toolName,
+            parameters: toolCall.parameters,
+            status: 'failed',
+            error: errorMsg
+          }
+        });
+        continue;
+      }
+
+      if (!tool.enabled) {
+        const errorMsg = `Tool "${toolCall.toolName}" is disabled`;
+        toolResults.push(`Error: ${errorMsg}`);
+        event.sender.send('chat-agent:toolCall', {
+          toolName: toolCall.toolName,
+          parameters: toolCall.parameters,
+          status: 'failed',
+          error: errorMsg
+        });
+        // Save failed tool call to history
+        agent.history.push({
+          role: 'user',
+          content: `Tool "${toolCall.toolName}" failed`,
+          timestamp: Date.now(),
+          toolCall: {
+            type: 'result',
+            toolName: toolCall.toolName,
+            parameters: toolCall.parameters,
+            status: 'failed',
+            error: errorMsg
+          }
+        });
+        continue;
+      }
+
+      const validationError = validateJSONSchema(toolCall.parameters, tool.parameters);
+      if (validationError) {
+        toolResults.push(`Error: ${validationError}`);
+        event.sender.send('chat-agent:toolCall', {
+          toolName: toolCall.toolName,
+          parameters: toolCall.parameters,
+          status: 'failed',
+          error: validationError
+        });
+        // Save failed tool call to history
+        agent.history.push({
+          role: 'user',
+          content: `Tool "${toolCall.toolName}" failed`,
+          timestamp: Date.now(),
+          toolCall: {
+            type: 'result',
+            toolName: toolCall.toolName,
+            parameters: toolCall.parameters,
+            status: 'failed',
+            error: validationError
+          }
+        });
+        continue;
+      }
+
+      const result = await executeToolWithRouting(tool, toolCall.parameters, event.sender);
+      toolResults.push(
+        `Tool "${toolCall.toolName}" executed successfully:\n${JSON.stringify(result.result, null, 2)}\n(Execution time: ${result.executionTime}ms)`
+      );
+
+      // Emit completed event
+      event.sender.send('chat-agent:toolCall', {
+        toolName: toolCall.toolName,
+        parameters: toolCall.parameters,
+        status: 'completed',
+        result: result.result,
+        executionTime: result.executionTime
+      });
+
+      // Save completed tool call to history
+      agent.history.push({
+        role: 'user',
+        content: `Tool "${toolCall.toolName}" executed successfully`,
+        timestamp: Date.now(),
+        toolCall: {
+          type: 'result',
+          toolName: toolCall.toolName,
+          parameters: toolCall.parameters,
+          result: result.result,
+          executionTime: result.executionTime,
+          status: 'completed'
+        }
+      });
+    } catch (error: any) {
+      const errorMsg = error.message;
+      toolResults.push(`Tool "${toolCall.toolName}" failed: ${errorMsg}`);
+      event.sender.send('chat-agent:toolCall', {
+        toolName: toolCall.toolName,
+        parameters: toolCall.parameters,
+        status: 'failed',
+        error: errorMsg
+      });
+      // Save failed tool call to history
+      agent.history.push({
+        role: 'user',
+        content: `Tool "${toolCall.toolName}" failed`,
+        timestamp: Date.now(),
+        toolCall: {
+          type: 'result',
+          toolName: toolCall.toolName,
+          parameters: toolCall.parameters,
+          status: 'failed',
+          error: errorMsg
+        }
+      });
+    }
+  }
+
+  return toolResults;
+}
+
 // ============ IPC HANDLERS ============
 
 /**
@@ -162,208 +334,19 @@ export function registerChatAgentIPCHandlers(): void {
     // 2. Build messages with tools and files
     const messages = await buildMessagesForChatAgent(agent, message, filePaths);
 
-    // 3. Stream response
-    const { content: fullResponse, hasToolCalls } = await streamOpenAICompatibleAPI(
-      messages,
-      agent.config,
-      apiKeyEntry.apiKey,
-      agent.config.apiConfig?.baseURL || apiKeyEntry.baseURL,
-      event.sender
-    );
-
-    // 4. Check for tool calls
-    let toolCalls = parseToolCalls(fullResponse);
-
-    // Save user message to history before tool call detection
+    // 3. Save user message to history ONCE at the start
     agent.history = agent.history || [];
     agent.history.push({ role: 'user', content: message, timestamp: Date.now() });
 
-    // Deduplicate
-    if (toolCalls.length > 0) {
-      const seen = new Set<string>();
-      const uniqueToolCalls = toolCalls.filter(call => {
-        const key = `${call.toolName}|${JSON.stringify(call.parameters)}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+    // 4. Iterative tool call loop
+    const MAX_ITERATIONS = 10;
+    let iterationCount = 0;
 
-      if (uniqueToolCalls.length !== toolCalls.length) {
-        console.warn(`Detected ${toolCalls.length - uniqueToolCalls.length} duplicate tool calls, removing them`);
-        toolCalls = uniqueToolCalls;
-      }
-    }
+    while (iterationCount < MAX_ITERATIONS) {
+      iterationCount++;
 
-    // 5. Execute tools if detected
-    if (toolCalls.length > 0) {
-      console.log('Tool calls detected in stream:', toolCalls);
-
-      // Initialize history
-      agent.history = agent.history || [];
-
-      // For each tool call, save START message to history and emit IPC event
-      for (const toolCall of toolCalls) {
-        // Emit IPC event for UI
-        event.sender.send('chat-agent:toolCall', {
-          toolName: toolCall.toolName,
-          parameters: toolCall.parameters,
-          status: 'started'
-        });
-
-        // Save to agent history as assistant message
-        agent.history.push({
-          role: 'assistant',
-          content: `Calling tool: ${toolCall.toolName}`,
-          timestamp: Date.now(),
-          toolCall: {
-            type: 'start',
-            toolName: toolCall.toolName,
-            parameters: toolCall.parameters,
-            status: 'executing'
-          }
-        });
-      }
-
-      // Execute tools
-      const toolResults: string[] = [];
-      for (const toolCall of toolCalls) {
-        try {
-          const tool = getToolByName(toolCall.toolName);
-          if (!tool) {
-            const errorMsg = `Tool "${toolCall.toolName}" not found`;
-            toolResults.push(`Error: ${errorMsg}`);
-            event.sender.send('chat-agent:toolCall', {
-              toolName: toolCall.toolName,
-              parameters: toolCall.parameters,
-              status: 'failed',
-              error: errorMsg
-            });
-            // Save failed tool call to history
-            agent.history.push({
-              role: 'user',
-              content: `Tool "${toolCall.toolName}" failed`,
-              timestamp: Date.now(),
-              toolCall: {
-                type: 'result',
-                toolName: toolCall.toolName,
-                parameters: toolCall.parameters,
-                status: 'failed',
-                error: errorMsg
-              }
-            });
-            continue;
-          }
-
-          if (!tool.enabled) {
-            const errorMsg = `Tool "${toolCall.toolName}" is disabled`;
-            toolResults.push(`Error: ${errorMsg}`);
-            event.sender.send('chat-agent:toolCall', {
-              toolName: toolCall.toolName,
-              parameters: toolCall.parameters,
-              status: 'failed',
-              error: errorMsg
-            });
-            // Save failed tool call to history
-            agent.history.push({
-              role: 'user',
-              content: `Tool "${toolCall.toolName}" failed`,
-              timestamp: Date.now(),
-              toolCall: {
-                type: 'result',
-                toolName: toolCall.toolName,
-                parameters: toolCall.parameters,
-                status: 'failed',
-                error: errorMsg
-              }
-            });
-            continue;
-          }
-
-          const validationError = validateJSONSchema(toolCall.parameters, tool.parameters);
-          if (validationError) {
-            toolResults.push(`Error: ${validationError}`);
-            event.sender.send('chat-agent:toolCall', {
-              toolName: toolCall.toolName,
-              parameters: toolCall.parameters,
-              status: 'failed',
-              error: validationError
-            });
-            // Save failed tool call to history
-            agent.history.push({
-              role: 'user',
-              content: `Tool "${toolCall.toolName}" failed`,
-              timestamp: Date.now(),
-              toolCall: {
-                type: 'result',
-                toolName: toolCall.toolName,
-                parameters: toolCall.parameters,
-                status: 'failed',
-                error: validationError
-              }
-            });
-            continue;
-          }
-
-          const result = await executeToolWithRouting(tool, toolCall.parameters, event.sender);
-          toolResults.push(
-            `Tool "${toolCall.toolName}" executed successfully:\n${JSON.stringify(result.result, null, 2)}\n(Execution time: ${result.executionTime}ms)`
-          );
-
-          // Emit completed event
-          event.sender.send('chat-agent:toolCall', {
-            toolName: toolCall.toolName,
-            parameters: toolCall.parameters,
-            status: 'completed',
-            result: result.result,
-            executionTime: result.executionTime
-          });
-
-          // Save completed tool call to history
-          agent.history.push({
-            role: 'user',
-            content: `Tool "${toolCall.toolName}" executed successfully`,
-            timestamp: Date.now(),
-            toolCall: {
-              type: 'result',
-              toolName: toolCall.toolName,
-              parameters: toolCall.parameters,
-              result: result.result,
-              executionTime: result.executionTime,
-              status: 'completed'
-            }
-          });
-        } catch (error: any) {
-          const errorMsg = error.message;
-          toolResults.push(`Tool "${toolCall.toolName}" failed: ${errorMsg}`);
-          event.sender.send('chat-agent:toolCall', {
-            toolName: toolCall.toolName,
-            parameters: toolCall.parameters,
-            status: 'failed',
-            error: errorMsg
-          });
-          // Save failed tool call to history
-          agent.history.push({
-            role: 'user',
-            content: `Tool "${toolCall.toolName}" failed`,
-            timestamp: Date.now(),
-            toolCall: {
-              type: 'result',
-              toolName: toolCall.toolName,
-              parameters: toolCall.parameters,
-              status: 'failed',
-              error: errorMsg
-            }
-          });
-        }
-      }
-
-      // Add tool results to messages
-      for (const result of toolResults) {
-        messages.push({ role: 'user', content: result });
-      }
-
-      // Stream final response
-      const { content: finalMessage } = await streamOpenAICompatibleAPI(
+      // 4.1. Make API call
+      const { content: response, hasToolCalls } = await streamOpenAICompatibleAPI(
         messages,
         agent.config,
         apiKeyEntry.apiKey,
@@ -371,26 +354,61 @@ export function registerChatAgentIPCHandlers(): void {
         event.sender
       );
 
-      // Save final AI response to history
-      agent.history.push({ role: 'assistant', content: finalMessage, timestamp: Date.now() });
-      saveAgent(projectPath, agent);
+      // 4.2. Detect and parse tool calls
+      let toolCalls = parseToolCalls(response);
 
-      // Send completion event
-      event.sender.send('chat-complete');
+      // 4.3. Deduplicate tool calls
+      if (toolCalls.length > 0) {
+        const seen = new Set<string>();
+        const uniqueToolCalls = toolCalls.filter(call => {
+          const key = `${call.toolName}|${JSON.stringify(call.parameters)}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
 
-      return finalMessage;
+        if (uniqueToolCalls.length !== toolCalls.length) {
+          console.warn(`Detected ${toolCalls.length - uniqueToolCalls.length} duplicate tool calls, removing them`);
+          toolCalls = uniqueToolCalls;
+        }
+      }
+
+      // 4.4. If no tool calls, save response and complete
+      if (toolCalls.length === 0) {
+        // Save final AI response to history
+        agent.history.push({ role: 'assistant', content: response, timestamp: Date.now() });
+        saveAgent(projectPath, agent);
+
+        // Send completion event
+        event.sender.send('chat-complete');
+
+        return response;
+      }
+
+      // 4.5. Execute tools
+      console.log(`Tool call iteration ${iterationCount}: ${toolCalls.length} tools detected`);
+      const toolResults = await executeToolCalls(toolCalls, agent, event);
+
+      // 4.6. Add tool results to messages for next iteration
+      for (const result of toolResults) {
+        messages.push({ role: 'user', content: result });
+      }
+
+      // Loop continues...
     }
 
-    // 6. No tool calls - save assistant response and complete
-    // User message was already saved at line 445, so only save assistant response here
-    agent.history.push({ role: 'assistant', content: fullResponse, timestamp: Date.now() });
+    // 5. Maximum iterations reached - save last response with warning
+    const lastResponse = messages[messages.length - 1].content;
+    const warningMessage = lastResponse + '\n\n[Note: Maximum tool call rounds reached. Some tool calls may not have been executed.]';
 
+    // Save final AI response with warning to history
+    agent.history.push({ role: 'assistant', content: warningMessage, timestamp: Date.now() });
     saveAgent(projectPath, agent);
 
     // Send completion event
     event.sender.send('chat-complete');
 
-    return fullResponse;
+    return warningMessage;
   });
 
   // Handler: chat-agent:clearHistory
