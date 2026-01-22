@@ -8,6 +8,7 @@ The app provides a complete chat interface for interacting with AI agents throug
 - **Conversation persistence** - Messages stored in agent `history` array
 - **Context awareness** - System prompt + full conversation history sent with each message
 - **Tool calling** - AI agents can call custom tools during conversations (chat agents only)
+- **Tool call indicators** - Visual display of tool execution status, parameters, results, and errors
 - **File tagging** - Reference .txt and .md files from project folder as conversation context (see [file-tagging.md](./file-tagging.md))
 - **Error handling** - Graceful timeout and error message display
 - **Message management** - Clear chat with confirmation, automatic scroll to latest
@@ -44,13 +45,14 @@ Reusable Web Component that provides:
 - Message container with automatic scrolling
 - User and assistant message bubbles with different styling
 - Loading indicator during streaming
+- **Tool call indicators** - Visual display of tool execution with status, parameters, results, and execution time
 - **Optional file tagging** area with removable badges (configurable via `enable-file-tagging` attribute)
 - **Optional autocomplete dropdown** for @mention file selection
 - Send button with keyboard shortcuts (Enter to send, Shift+Enter for new line)
 - Configurable placeholder text
 - Empty state always shows "Start a conversation!" with chat icon
 - **Event-driven**: Dispatches `message-sent` events instead of calling IPC directly
-- Public methods for parent control: `handleStreamChunk()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`
+- Public methods for parent control: `handleStreamChunk()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallStart()`, `handleToolCallComplete()`, `handleToolCallFailed()`
 
 ### Usage Examples
 
@@ -87,10 +89,16 @@ Reusable Web Component that provides:
    - Builds messages: system prompt + **tool descriptions** + file contents + conversation history + new message
    - Calls OpenAI API via `openai-client.ts`
    - **For streaming**: Adds empty assistant message, calls parent's `handleStreamChunk()` for each chunk
-   - **Detects tool calls**: Executes tools, makes follow-up API call with results
+   - **Detects tool calls**: Emits `chat-agent:toolCall` IPC events for each tool call status update
+   - **Tool execution**: Executes tools, saves tool call messages to history with `toolCall` metadata
+   - Makes follow-up API call with tool results (formatted as user messages)
    - Calls parent's `handleStreamComplete()` when done
-6. `conversation-panel` updates UI in real-time, emits `stream-complete` event
-7. Parent components can listen for `stream-complete` to trigger additional processing
+6. `chat-panel` listens for `chat-agent:toolCall` IPC events and calls corresponding `conversation-panel` methods:
+   - `handleToolCallStart()` - Shows tool call indicator with "executing" status
+   - `handleToolCallComplete()` - Updates indicator with results and execution time
+   - `handleToolCallFailed()` - Updates indicator with error message
+7. `conversation-panel` updates UI in real-time, renders tool call messages with visual indicators
+8. Parent components can listen for `stream-complete` to trigger additional processing
 
 ### App Agent Flow (Files Only, No Tools)
 
@@ -156,6 +164,9 @@ Located in `src/main/chat-agent-management.ts`:
 
 ### IPC Handlers
 - `chat-agent:streamMessage` - Streaming with tool detection and execution
+- `chat-agent:toolCall` - Real-time tool call status updates (one-way IPC from main to renderer)
+  - Sent when tool execution starts, completes, or fails
+  - Includes tool name, parameters, status, result/error, and execution time
 
 ## App Agent Management Module
 
@@ -182,16 +193,36 @@ AI agents output tool calls as JSON objects: `{"toolname":"tool_name","arguments
 
 **Tool Execution Flow:**
 1. `chat-agent-management` detects tool call in AI response
-2. Tool call parsed via `parseToolCalls()`
-3. Tool executed via `executeToolWithRouting()` (Node.js worker or browser)
-4. Tool results formatted as user message
-5. Second API call made with tool results
-6. Final response delivered to renderer
+2. Emits `chat-agent:toolCall` IPC event with `status: 'started'` for UI indicator
+3. Saves assistant message to history with `toolCall` metadata (type: 'start', status: 'executing')
+4. Tool call parsed via `parseToolCalls()`
+5. Tool executed via `executeToolWithRouting()` (Node.js worker or browser)
+6. On success:
+   - Emits `chat-agent:toolCall` IPC event with `status: 'completed'` and results
+   - Saves user message to history with `toolCall` metadata (type: 'result', status: 'completed', result, executionTime)
+7. On failure:
+   - Emits `chat-agent:toolCall` IPC event with `status: 'failed'` and error
+   - Saves user message to history with `toolCall` metadata (type: 'result', status: 'failed', error)
+8. Tool results formatted as user messages and sent in second API call
+9. Final response delivered to renderer
+
+**Tool Call Indicators:**
+The conversation panel displays tool calls with visual indicators showing:
+- **Executing state**: Animated spinner, tool name, and parameters
+- **Completed state**: Green checkmark, tool name, parameters, formatted result, execution time
+- **Failed state**: Red X, tool name, parameters, error message
+
+**Tool Call Messages in History:**
+Messages with `toolCall` metadata are rendered differently:
+- Assistant messages with `toolCall.type: 'start'` show the tool being called
+- User messages with `toolCall.type: 'result'` show the tool result
+- Messages include expandable sections for parameters and results
 
 **Streaming with Tool Calls:**
 - Tool call detection stops chunk delivery to renderer
-- Tools executed
-- Second API call made with tool results
+- Tools executed with real-time status updates via IPC
+- Tool call indicators appear in conversation panel
+- Second API call made with tool results (as user messages)
 - Final response streamed to renderer
 
 ## API Integration
@@ -228,7 +259,15 @@ Streaming responses use Server-Sent Events (SSE) parsing:
 ## Message Storage
 
 - Messages stored in agent `history` array
-- Each message includes: `role` (user/assistant), `content`, and `timestamp`
+- Each message includes: `role` (user/assistant), `content`, `timestamp`, and optional `toolCall` metadata
+- `toolCall` metadata includes:
+  - `type` - 'start' (assistant message) or 'result' (user message)
+  - `toolName` - Name of the tool being called
+  - `parameters` - Tool input parameters
+  - `result` - Tool output (for 'result' type)
+  - `executionTime` - Execution time in milliseconds (for 'result' type)
+  - `status` - 'executing', 'completed', or 'failed'
+  - `error` - Error message (if failed)
 - History automatically saved after each message exchange
 - Full conversation history sent with each new message for context
-- System messages filtered out from display in `conversation-panel`
+- System messages and tool call messages filtered from regular display, rendered with special indicators in `conversation-panel`

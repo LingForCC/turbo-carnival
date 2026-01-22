@@ -47,7 +47,8 @@ The main process is organized into dedicated modules:
 - System prompt generation: `generateChatAgentSystemPrompt` (includes tool descriptions)
 - Message building: `buildMessagesForChatAgent` (includes tool descriptions and file contents)
 - Tool description formatting: `formatToolDescriptions`
-- IPC handler: `chat-agent:streamMessage` (streaming)
+- Tool execution with real-time status updates via `chat-agent:toolCall` IPC events
+- IPC handlers: `chat-agent:streamMessage` (streaming), emits `chat-agent:toolCall` events during tool execution
 
 **`src/main/app-agent-management.ts`**
 - App agent logic (files only, no tools)
@@ -120,7 +121,8 @@ The renderer uses vanilla JavaScript Web Components (not Vue/React). Each compon
 - `app-container` (`src/components/app-container.ts`) - Root layout container, manages panel visibility and toggle buttons, forwards events between components, manages API keys dialog, routes between chat-panel and app-panel based on agent type
 - `project-panel` (`src/components/project-panel.ts`) - Collapsible left sidebar (264px wide) that manages local folder projects
 - `project-agent-dashboard` (`src/components/project-agent-dashboard.ts`) - Center content area that displays agents in a grid, handles dashboard/chat view switching
-- `chat-panel` (`src/components/chat-panel.ts`) - Interactive chat interface with streaming support
+- `conversation-panel` (`src/components/conversation-panel.ts`) - Reusable chat interface with streaming, tool call indicators, and optional file tagging
+- `chat-panel` (`src/components/chat-panel.ts`) - Interactive chat interface with streaming support, wraps conversation-panel for chat agents
 - `app-panel` (`src/components/app-panel.ts`) - Split-panel interface for App-type agents with chat (left 25%) and live app preview (right 75%)
 - `project-detail-panel` (`src/components/project-detail-panel.ts`) - Collapsible right sidebar (264px wide) that displays recursive file tree
 - `agent-form-dialog` (`src/components/agent-form-dialog.ts`) - Modal dialog for creating and editing agents
@@ -146,7 +148,8 @@ All Web Components follow this pattern:
 7. **Chat message flow (event-driven)**:
    - User sends message in `conversation-panel` → dispatches `message-sent` event (bubbles, composed) with message details
    - Parent component (`chat-panel` or `app-panel`) listens for `message-sent` → calls appropriate IPC (`chat-agent:*` or `app-agent:*`)
-   - Main process module handles streaming → calls back via `handleStreamChunk()`, `handleStreamComplete()`, or `handleStreamError()`
+   - **For chat agents with tools**: Main process emits `chat-agent:toolCall` events during tool execution → parent component calls `handleToolCallStart()`, `handleToolCallComplete()`, or `handleToolCallFailed()` on conversation panel
+   - Main process handles streaming → calls back via `handleStreamChunk()`, `handleStreamComplete()`, or `handleStreamError()`
    - Parent component listens for `stream-complete` event for additional processing (e.g., `app-panel` parses app code)
 8. User clicks back button → parent panel emits `chat-back` event, returns to dashboard view
 
@@ -198,6 +201,7 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 
 **Chat Agent (with tools):**
 - `chat-agent:streamMessage` - Initiates streaming message with tool calling + file context
+- `chat-agent:toolCall` - Real-time tool call status updates (one-way IPC from main to renderer, sent during tool execution)
 
 **App Agent (files only, no tools):**
 - `app-agent:streamMessage` - Initiates streaming message with file context only
@@ -240,12 +244,14 @@ Global types defined in `src/global.d.ts`:
 - `Agent` - AI agent with full metadata including conversation history
 - `AgentConfig` - Model configuration (model, temperature, maxTokens, topP, apiKeyRef, baseURL)
 - `AgentPrompts` - System and user prompts
-- `ConversationMessage` - Messages in conversation history (role, content, timestamp)
+- `ConversationMessage` - Messages in conversation history (role, content, timestamp, optional toolCall metadata)
 - `AgentSettings` - Flexible settings object
 - `APIKey` - Global API key storage (name, key, baseURL, addedAt)
 - `Tool` - Custom tool definition (name, description, code, parameters, returns, timeout, environment, enabled, createdAt, updatedAt)
 - `ToolExecutionRequest` - Request for tool execution (toolName, parameters, optional tool)
 - `ToolExecutionResult` - Result from tool execution (success, result, error, executionTime)
+- `ToolCallData` - Tool call data for conversation panel display (toolName, parameters, result, executionTime, status, error)
+- `ToolCallEvent` - Tool call event for IPC communication (toolName, parameters, status, result, executionTime, error)
 - `FileType` - Discriminator union for file system nodes ('file' | 'directory')
 - `FileTreeNode` - Node in the file tree (name, path, type, children, expanded)
 - `FileTreeOptions` - Configuration for file tree traversal (maxDepth, excludeHidden, includeExtensions)

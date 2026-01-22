@@ -9,7 +9,7 @@ Turbo Carnival is an Electron desktop application built with TypeScript, using W
 **Key Features:**
 - Local folder project management with add/remove/select
 - AI agent system with OpenAI-compatible API integration
-- Conversational AI interface with streaming and tool calling
+- Conversational AI interface with streaming, tool calling, and visual tool call indicators
 - File tagging for including project files as context
 - Global API key management
 - Custom tool execution in Node.js or Browser environments
@@ -112,7 +112,7 @@ The documentation has been split into focused modules for better performance:
 - `app-container` - Root layout, event forwarding
 - `project-panel` - Left sidebar, project management
 - `project-agent-dashboard` - Center area, agent grid/chat switching
-- `conversation-panel` - Reusable chat interface (event-driven, dispatches `message-sent` events)
+- `conversation-panel` - Reusable chat interface (event-driven, tool call indicators, dispatches `message-sent` events)
 - `chat-panel` - Right sidebar chat interface (uses conversation-panel, handles chat-agent IPC)
 - `app-panel` - Split-panel interface for App-type agents (uses conversation-panel, handles app-agent IPC)
 - `project-detail-panel` - Right sidebar, file tree
@@ -130,6 +130,7 @@ The documentation has been split into focused modules for better performance:
 - `project:getFileTree` - File tree structure
 - `files:list`, `files:readContents` - File operations for @mention
 - `chat-agent:sendMessage`, `chat-agent:streamMessage` - Chat agent operations (with tools + files)
+- `chat-agent:toolCall` - Real-time tool call status updates (one-way IPC from main to renderer)
 - `app-agent:sendMessage`, `app-agent:streamMessage` - App agent operations (files only, no tools)
 
 ### Storage Locations
