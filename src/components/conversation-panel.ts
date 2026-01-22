@@ -83,7 +83,7 @@ export class ConversationPanel extends HTMLElement {
     // Load conversation history from agent
     const mappedHistory = (agent.history || [])
       .map(msg => {
-        // Check if message has toolCall metadata (new format)
+        // Check if message has toolCall metadata
         if (msg.toolCall) {
           const toolCall = msg.toolCall;
           // Map persisted tool call data to ToolCallData format
@@ -104,19 +104,6 @@ export class ConversationPanel extends HTMLElement {
           };
         }
 
-        // Fallback: Parse tool call messages from system messages (old format for backward compatibility)
-        if (msg.role === 'system') {
-          const toolCallMatch = this.parseToolCallFromSystemMessage(msg.content);
-          if (toolCallMatch) {
-            // Return as user message with tool call data
-            return {
-              role: 'user' as const,
-              content: msg.content,
-              toolCall: toolCallMatch
-            };
-          }
-        }
-
         // Return user/assistant messages as-is
         if (msg.role === 'user' || msg.role === 'assistant') {
           return {
@@ -125,7 +112,7 @@ export class ConversationPanel extends HTMLElement {
           };
         }
 
-        // Filter out other system messages
+        // Filter out system messages
         return null;
       })
       .filter((msg): msg is NonNullable<typeof msg> => msg !== null);
@@ -139,47 +126,6 @@ export class ConversationPanel extends HTMLElement {
 
     this.render();
     this.scrollToBottom();
-  }
-
-  /**
-   * Parse tool call data from system message content
-   * Tool results are stored as system messages with specific format
-   */
-  private parseToolCallFromSystemMessage(content: string): ToolCallData | null {
-    // Parse: "Tool 'tool_name' executed successfully:\n{result}\n(Execution time: Xms)"
-    const successMatch = content.match(/Tool '(\w+)' executed successfully:\n([\s\S]*?)\n\(Execution time: (\d+)ms\)/);
-
-    if (successMatch) {
-      const toolName = successMatch[1];
-      const resultJson = successMatch[2];
-      const executionTime = parseInt(successMatch[3], 10);
-
-      try {
-        return {
-          toolName,
-          parameters: {}, // Parameters not preserved in current format
-          result: JSON.parse(resultJson),
-          executionTime,
-          status: 'completed'
-        };
-      } catch {
-        // If JSON parsing fails, return null (will be filtered out)
-        return null;
-      }
-    }
-
-    // Parse: "Tool 'tool_name' failed: error message"
-    const failMatch = content.match(/Tool '(\w+)' failed: (.+)/);
-    if (failMatch) {
-      return {
-        toolName: failMatch[1],
-        parameters: {},
-        status: 'failed',
-        error: failMatch[2]
-      };
-    }
-
-    return null;
   }
 
   public setAPIKeys(apiKeys: APIKey[]): void {
