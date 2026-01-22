@@ -639,4 +639,123 @@ describe('ConversationPanel Web Component', () => {
       cleanup();
     });
   });
+
+  describe('Tool Call Rendering', () => {
+    it('should render tool call message collapsed by default', async () => {
+      const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
+
+      await waitForAsync();
+
+      const mockAgent = createMockAgent();
+      const mockProject = createMockProject();
+
+      element.setAgent(mockAgent, mockProject);
+      await waitForAsync();
+
+      // Add a tool call message to history
+      (element as any).chatHistory = [
+        { role: 'assistant', content: 'Executing tool: test_tool', toolCall: {
+          toolName: 'test_tool',
+          parameters: { arg1: 'value1' },
+          status: 'executing'
+        }}
+      ];
+      (element as any).render();
+      await waitForAsync();
+
+      const html = element.innerHTML;
+      expect(html).toContain('test_tool');
+      expect(html).toContain('tool-call-toggle-btn');
+      expect(html).toContain('tool-call-details');
+      expect(html).toContain('hidden'); // Details should be hidden by default
+
+      cleanup();
+    });
+
+    it('should toggle details when button is clicked', async () => {
+      const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
+
+      await waitForAsync();
+
+      const mockAgent = createMockAgent();
+      const mockProject = createMockProject();
+
+      element.setAgent(mockAgent, mockProject);
+      await waitForAsync();
+
+      // Add a completed tool call with result
+      (element as any).chatHistory = [
+        { role: 'user', content: 'Tool "test_tool" executed successfully', toolCall: {
+          toolName: 'test_tool',
+          parameters: { arg1: 'value1' },
+          result: { output: 'success' },
+          executionTime: 100,
+          status: 'completed'
+        }}
+      ];
+      (element as any).render();
+      await waitForAsync();
+
+      // Initially collapsed - details should have hidden class
+      let details = element.querySelector('.tool-call-details') as HTMLElement;
+      expect(details).toBeTruthy();
+      expect(details?.classList.contains('hidden')).toBe(true);
+
+      // Click the toggle button
+      const toggleBtn = element.querySelector('.tool-call-toggle-btn') as HTMLElement;
+      if (toggleBtn) {
+        toggleBtn.click();
+        await waitForAsync();
+      }
+
+      // Now expanded - hidden class should be removed
+      details = element.querySelector('.tool-call-details') as HTMLElement;
+      expect(details?.classList.contains('hidden')).toBe(false);
+
+      // Click again to collapse
+      const toggleBtn2 = element.querySelector('.tool-call-toggle-btn') as HTMLElement;
+      if (toggleBtn2) {
+        toggleBtn2.click();
+        await waitForAsync();
+      }
+
+      // Now collapsed again
+      details = element.querySelector('.tool-call-details') as HTMLElement;
+      expect(details?.classList.contains('hidden')).toBe(true);
+
+      cleanup();
+    });
+
+    it('should render failed tool calls with toggle button', async () => {
+      const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
+
+      await waitForAsync();
+
+      const mockAgent = createMockAgent();
+      const mockProject = createMockProject();
+
+      element.setAgent(mockAgent, mockProject);
+      await waitForAsync();
+
+      // Add a failed tool call
+      (element as any).chatHistory = [
+        { role: 'user', content: 'Tool "test_tool" failed', toolCall: {
+          toolName: 'test_tool',
+          parameters: {},
+          error: 'Something went wrong',
+          status: 'failed'
+        }}
+      ];
+      (element as any).render();
+      await waitForAsync();
+
+      const html = element.innerHTML;
+      expect(html).toContain('test_tool');
+      expect(html).toContain('Failed');
+      expect(html).toContain('tool-call-toggle-btn');
+      expect(html).toContain('hidden'); // Details hidden by default
+
+      cleanup();
+    });
+  });
 });

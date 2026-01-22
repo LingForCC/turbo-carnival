@@ -515,44 +515,53 @@ export class ConversationPanel extends HTMLElement {
     return `
       <div class="flex ${isAssistant ? 'justify-start' : 'justify-end'} my-2">
         <div class="max-w-[85%] w-[85%] rounded-lg border ${bgColor} px-4 py-3">
-          <div class="flex items-center gap-2 mb-2">
+          <div class="flex items-center gap-2">
             ${statusIcon}
-            <span class="text-xs font-semibold text-gray-700 truncate">
+            <span class="text-xs font-semibold text-gray-700 truncate flex-1">
               ${this.escapeHtml(toolCall.toolName)}
             </span>
             <span class="text-xs text-gray-500 flex-shrink-0">•</span>
             <span class="text-xs text-gray-600 flex-shrink-0">${statusText}</span>
+            <button
+              class="tool-call-toggle-btn hover:bg-gray-200 rounded p-1 cursor-pointer border-0 bg-transparent flex-shrink-0"
+            >
+              <svg class="w-4 h-4 text-gray-500 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
           </div>
 
-          ${isExecuting ? `
-            <div class="text-xs text-gray-600 mb-2">
-              <div class="font-semibold mb-1">Parameters:</div>
-              <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
-                <pre class="text-xs m-0 whitespace-pre-wrap break-all">${this.escapeHtml(JSON.stringify(toolCall.parameters, null, 2))}</pre>
+          <div class="tool-call-details hidden mt-3">
+            ${isExecuting ? `
+              <div class="text-xs text-gray-600 mb-2">
+                <div class="font-semibold mb-1">Parameters:</div>
+                <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
+                  <pre class="text-xs m-0 whitespace-pre-wrap break-all">${this.escapeHtml(JSON.stringify(toolCall.parameters, null, 2))}</pre>
+                </div>
               </div>
-            </div>
-          ` : ''}
+            ` : ''}
 
-          ${isCompleted && toolCall.result ? `
-            <div class="mt-2">
-              <div class="text-xs font-semibold text-gray-700 mb-1">Result:</div>
-              <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
-                <pre class="text-xs m-0 whitespace-pre-wrap break-all">${this.escapeHtml(JSON.stringify(toolCall.result, null, 2))}</pre>
+            ${isCompleted && toolCall.result ? `
+              <div>
+                <div class="text-xs font-semibold text-gray-700 mb-1">Result:</div>
+                <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
+                  <pre class="text-xs m-0 whitespace-pre-wrap break-all">${this.escapeHtml(JSON.stringify(toolCall.result, null, 2))}</pre>
+                </div>
+                ${toolCall.executionTime ? `
+                  <div class="text-xs text-gray-500 mt-1">Execution time: ${toolCall.executionTime}ms</div>
+                ` : ''}
               </div>
-              ${toolCall.executionTime ? `
-                <div class="text-xs text-gray-500 mt-1">Execution time: ${toolCall.executionTime}ms</div>
-              ` : ''}
-            </div>
-          ` : ''}
+            ` : ''}
 
-          ${isFailed && toolCall.error ? `
-            <div class="mt-2">
-              <div class="text-xs font-semibold text-gray-700 mb-1">Error:</div>
-              <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
-                <pre class="text-xs m-0 whitespace-pre-wrap break-all text-red-700">${this.escapeHtml(toolCall.error)}</pre>
+            ${isFailed && toolCall.error ? `
+              <div>
+                <div class="text-xs font-semibold text-gray-700 mb-1">Error:</div>
+                <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
+                  <pre class="text-xs m-0 whitespace-pre-wrap break-all text-red-700">${this.escapeHtml(toolCall.error)}</pre>
+                </div>
               </div>
-            </div>
-          ` : ''}
+            ` : ''}
+          </div>
         </div>
       </div>
     `;
@@ -667,6 +676,25 @@ export class ConversationPanel extends HTMLElement {
       option.replaceWith(newOption);
       (newOption as HTMLElement).addEventListener('click', () => {
         this.selectFileForTagging(filePath, fileName);
+      });
+    });
+
+    // Tool call toggle buttons - use DOM manipulation without re-render
+    this.querySelectorAll('.tool-call-toggle-btn').forEach(btn => {
+      const newBtn = btn.cloneNode(true);
+      btn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', (e) => {
+        e.stopPropagation();
+        const button = e.currentTarget as HTMLElement;
+        const icon = button.querySelector('svg');
+        const details = button.parentElement?.nextElementSibling as HTMLElement;
+
+        if (details) {
+          details.classList.toggle('hidden');
+          if (icon) {
+            icon.style.transform = details.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(90deg)';
+          }
+        }
       });
     });
   }
