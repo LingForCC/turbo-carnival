@@ -1,4 +1,6 @@
 import type { Agent, Project, APIKey, ToolCallData } from '../global.d.ts';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 /**
  * ConversationPanel Web Component
@@ -425,6 +427,13 @@ export class ConversationPanel extends HTMLElement {
 
     // Regular user/assistant message rendering
     const isUser = role === 'user';
+    const isAssistant = role === 'assistant';
+
+    // Apply markdown parsing only to assistant messages
+    const renderedContent = isAssistant
+      ? this.renderMarkdown(content)
+      : this.escapeHtml(content);
+
     return `
       <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
         <div class="max-w-[85%] rounded-lg px-4 py-2 ${
@@ -432,7 +441,7 @@ export class ConversationPanel extends HTMLElement {
             ? 'bg-blue-500 text-white'
             : 'bg-gray-100 text-gray-800'
         }">
-          <p class="text-sm whitespace-pre-wrap break-words m-0">${this.escapeHtml(content)}</p>
+          <div class="text-sm ${isAssistant ? 'prose prose-sm max-w-none' : 'whitespace-pre-wrap'} break-words">${renderedContent}</div>
         </div>
       </div>
     `;
@@ -829,6 +838,30 @@ export class ConversationPanel extends HTMLElement {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  /**
+   * Safely render markdown content with XSS protection
+   * Only used for assistant messages (not for tool calls or user messages)
+   */
+  private renderMarkdown(content: string): string {
+    try {
+      // Parse markdown to HTML
+      const html = marked.parse(content) as string;
+
+      // Sanitize HTML to prevent XSS attacks
+      const sanitized = DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre', 'blockquote', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
+        ALLOWED_ATTR: ['href', 'title', 'class'],
+        ALLOW_DATA_ATTR: false
+      });
+
+      return sanitized;
+    } catch (error) {
+      // Fallback to escaped HTML if markdown parsing fails
+      console.error('Markdown parsing error:', error);
+      return this.escapeHtml(content);
+    }
   }
 }
 

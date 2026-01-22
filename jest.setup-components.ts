@@ -3,6 +3,20 @@
  * This file runs before each test suite in the web-components project
  */
 
+// Mock marked library
+jest.mock('marked', () => ({
+  marked: {
+    parse: jest.fn((content: string) => `<p>${content}</p>`),
+  },
+}));
+
+// Mock DOMPurify library
+jest.mock('dompurify', () => ({
+  default: {
+    sanitize: jest.fn((html: string) => html),
+  },
+}));
+
 // Mock window.electronAPI for all component tests
 const mockElectronAPI = {
   platform: 'darwin',
