@@ -532,7 +532,7 @@ export class ConversationPanel extends HTMLElement {
           </div>
 
           <div class="tool-call-details hidden mt-3">
-            ${isExecuting ? `
+            ${toolCall.parameters && Object.keys(toolCall.parameters).length > 0 ? `
               <div class="text-xs text-gray-600 mb-2">
                 <div class="font-semibold mb-1">Parameters:</div>
                 <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
