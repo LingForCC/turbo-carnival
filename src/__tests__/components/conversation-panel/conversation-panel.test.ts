@@ -87,10 +87,9 @@ describe('ConversationPanel Web Component', () => {
       cleanup();
     });
 
-    it('should render with model info when show-stream-toggle is true', async () => {
+    it('should render with model info', async () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
-      element.setAttribute('show-stream-toggle', 'true');
       element.setAttribute('model-info', 'GPT-4 • 128k context');
       await waitForAsync();
 
@@ -102,7 +101,6 @@ describe('ConversationPanel Web Component', () => {
 
       const html = element.innerHTML;
       expect(html).toContain('GPT-4 • 128k context');
-      expect(html).toContain('Stream');
 
       cleanup();
     });
@@ -324,45 +322,6 @@ describe('ConversationPanel Web Component', () => {
 
       cleanup();
     });
-
-    it('should include shouldStream flag in message-sent event', async () => {
-      const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
-
-      element.setAttribute('show-stream-toggle', 'true');
-      await waitForAsync();
-
-      const mockAgent = createMockAgent({
-        config: {
-          ...createMockAgent().config,
-          apiConfig: { apiKeyRef: 'test-key' }
-        }
-      });
-      const mockProject = createMockProject();
-      const mockAPIKeys = [createMockAPIKey({ name: 'test-key' })];
-
-      element.setAgent(mockAgent, mockProject);
-      element.setAPIKeys(mockAPIKeys);
-      element.setRequireAPIKeyValidation(true);
-      await waitForAsync();
-
-      // Spy on the message-sent event
-      const eventPromise = spyOnEvent(element, 'message-sent');
-
-      const input = element.querySelector('#chat-input') as HTMLTextAreaElement;
-      const streamToggle = element.querySelector('#stream-toggle') as HTMLInputElement;
-      const sendBtn = element.querySelector('#send-btn') as HTMLElement;
-
-      if (input && streamToggle && sendBtn) {
-        streamToggle.checked = false; // Disable streaming
-        input.value = 'No streaming please';
-        sendBtn.click();
-
-        const event = await eventPromise;
-        expect(event.detail.shouldStream).toBe(false);
-      }
-
-      cleanup();
-    });
   });
 
   describe('Stream Handler Methods', () => {
@@ -520,8 +479,6 @@ describe('ConversationPanel Web Component', () => {
 
     it('should preserve newlines in messages', async () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
-
-      element.setAttribute('show-stream-toggle', 'true');
 
       await waitForAsync();
 

@@ -91,7 +91,6 @@ export class ChatPanel extends HTMLElement {
         <conversation-panel
           id="conversation"
           enable-file-tagging="true"
-          show-stream-toggle="true"
           placeholder="Type @ to mention files..."
           model-info="${this.currentAgent ? this.escapeHtml(this.currentAgent.config.model || '') : ''}">
         </conversation-panel>
@@ -142,14 +141,10 @@ export class ChatPanel extends HTMLElement {
     // This event is dispatched when user sends a message
     conversation.addEventListener('message-sent', async (e: Event) => {
       const customEvent = e as CustomEvent;
-      const { projectPath, agentName, message, filePaths, shouldStream } = customEvent.detail;
+      const { projectPath, agentName, message, filePaths } = customEvent.detail;
 
       try {
-        if (shouldStream) {
-          await this.handleStreamMessage(projectPath, agentName, message, filePaths, conversation);
-        } else {
-          await this.handleSendMessage(projectPath, agentName, message, filePaths, conversation);
-        }
+        await this.handleStreamMessage(projectPath, agentName, message, filePaths, conversation);
       } catch (error: any) {
         conversation.handleStreamError(`Failed to send message: ${error.message}`);
       }
@@ -164,43 +159,6 @@ export class ChatPanel extends HTMLElement {
     conversation.addEventListener('chat-cleared', () => {
       // Optional: Update parent state if needed
     });
-  }
-
-  /**
-   * Handle non-streaming message via chat-agent IPC
-   */
-  private async handleSendMessage(
-    projectPath: string,
-    agentName: string,
-    message: string,
-    filePaths: string[],
-    conversation: any
-  ): Promise<void> {
-    if (!window.electronAPI) return;
-
-    // Call new chat-agent IPC channel
-    // The handler returns the final message string directly
-    const assistantMessage = await (window.electronAPI as any).sendChatAgentMessage(
-      projectPath,
-      agentName,
-      message,
-      filePaths
-    );
-
-    if (assistantMessage) {
-      // Add assistant message to conversation-panel
-      const currentHistory = conversation.chatHistory || [];
-      conversation.chatHistory = [...currentHistory, { role: 'assistant', content: assistantMessage }];
-      conversation.render();
-      conversation.scrollToBottom();
-
-      // Emit stream-complete event for consistency
-      conversation.dispatchEvent(new CustomEvent('stream-complete', {
-        detail: { content: assistantMessage },
-        bubbles: true,
-        composed: true
-      }));
-    }
   }
 
   /**

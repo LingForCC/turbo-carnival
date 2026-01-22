@@ -18,7 +18,6 @@ export class ConversationPanel extends HTMLElement {
 
   // Configuration from attributes
   private enableFileTagging: boolean = false;
-  private showStreamToggle: boolean = false;
   private placeholder: string = 'Type a message...';
   private modelInfo: string = '';
 
@@ -38,7 +37,7 @@ export class ConversationPanel extends HTMLElement {
   }
 
   static get observedAttributes(): string[] {
-    return ['enable-file-tagging', 'show-stream-toggle', 'placeholder', 'model-info'];
+    return ['enable-file-tagging', 'placeholder', 'model-info'];
   }
 
   connectedCallback(): void {
@@ -68,7 +67,6 @@ export class ConversationPanel extends HTMLElement {
 
   private parseAttributes(): void {
     this.enableFileTagging = this.getAttribute('enable-file-tagging') === 'true';
-    this.showStreamToggle = this.getAttribute('show-stream-toggle') === 'true';
     this.placeholder = this.getAttribute('placeholder') || 'Type a message...';
     this.modelInfo = this.getAttribute('model-info') || '';
   }
@@ -408,20 +406,14 @@ export class ConversationPanel extends HTMLElement {
                   }
                 </button>
               </div>
-            </div>
 
-            ${this.showStreamToggle ? `
-              <div class="flex items-center gap-2 mt-2">
-                <label class="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
-                  <input type="checkbox" id="stream-toggle" class="rounded" checked />
-                  Stream
-                </label>
-                <span class="text-xs text-gray-400">•</span>
-                <span id="model-info" class="text-xs text-gray-500">
+              <!-- Model info display -->
+              ${this.modelInfo ? `
+                <div class="mt-2 text-xs text-gray-500">
                   ${this.escapeHtml(this.modelInfo)}
-                </span>
-              </div>
-            ` : ''}
+                </div>
+              ` : ''}
+            </div>
           </div>
         ` : `
           <div class="p-4 border-t border-gray-200 shrink-0">
@@ -702,10 +694,6 @@ export class ConversationPanel extends HTMLElement {
       }
     }
 
-    // Get streaming preference
-    const streamToggle = this.querySelector('#stream-toggle') as HTMLInputElement;
-    const shouldStream = streamToggle?.checked ?? true;
-
     // Collect file paths from tagged files
     const filePaths = this.taggedFiles.map(f => f.path);
 
@@ -721,8 +709,7 @@ export class ConversationPanel extends HTMLElement {
         projectPath: this.currentProject.path,
         agentName: this.currentAgent.name,
         message: message || '',
-        filePaths,
-        shouldStream
+        filePaths
       },
       bubbles: true,   // Allow event to bubble to parent
       composed: true   // Allow event to cross shadow DOM boundaries

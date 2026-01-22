@@ -38,7 +38,7 @@ The main process is organized into dedicated modules:
 
 **`src/main/openai-client.ts`**
 - Pure OpenAI API client (no business logic)
-- API client functions: `callOpenAICompatibleAPI`, `streamOpenAICompatibleAPI`
+- API client function: `streamOpenAICompatibleAPI`
 - Tool helper functions: `parseToolCalls`, `executeToolWithRouting`
 - Exports utilities for use by agent management modules
 
@@ -47,13 +47,13 @@ The main process is organized into dedicated modules:
 - System prompt generation: `generateChatAgentSystemPrompt` (includes tool descriptions)
 - Message building: `buildMessagesForChatAgent` (includes tool descriptions and file contents)
 - Tool description formatting: `formatToolDescriptions`
-- IPC handlers: `chat-agent:sendMessage` (non-streaming), `chat-agent:streamMessage` (streaming)
+- IPC handler: `chat-agent:streamMessage` (streaming)
 
 **`src/main/app-agent-management.ts`**
 - App agent logic (files only, no tools)
 - System prompt generation: `generateAppAgentSystemPrompt` (system prompt only)
 - Message building: `buildMessagesForAppAgent` (includes file contents, no tools)
-- IPC handlers: `app-agent:sendMessage` (non-streaming), `app-agent:streamMessage` (streaming)
+- IPC handler: `app-agent:streamMessage` (streaming)
 
 **`src/main/tool-management.ts`**
 - Tool CRUD operations
@@ -96,9 +96,7 @@ The main process is organized into dedicated modules:
   - `getFileTree(projectPath, options)` - Gets file tree structure
   - `listProjectFiles(projectPath, options)` - Lists .txt and .md files
   - `readFileContents(filePaths)` - Reads multiple file contents
-  - `sendChatAgentMessage(projectPath, agentName, message, filePaths)` - Sends non-streaming chat agent message
   - `streamChatAgentMessage(projectPath, agentName, message, filePaths, onChunk, onComplete, onError)` - Streams chat agent message
-  - `sendAppAgentMessage(projectPath, agentName, message, filePaths)` - Sends non-streaming app agent message
   - `streamAppAgentMessage(projectPath, agentName, message, filePaths, onChunk, onComplete, onError)` - Streams app agent message
 
 ### Renderer Process (`src/renderer.ts`)
@@ -122,7 +120,7 @@ The renderer uses vanilla JavaScript Web Components (not Vue/React). Each compon
 - `app-container` (`src/components/app-container.ts`) - Root layout container, manages panel visibility and toggle buttons, forwards events between components, manages API keys dialog, routes between chat-panel and app-panel based on agent type
 - `project-panel` (`src/components/project-panel.ts`) - Collapsible left sidebar (264px wide) that manages local folder projects
 - `project-agent-dashboard` (`src/components/project-agent-dashboard.ts`) - Center content area that displays agents in a grid, handles dashboard/chat view switching
-- `chat-panel` (`src/components/chat-panel.ts`) - Interactive chat interface with streaming/non-streaming support
+- `chat-panel` (`src/components/chat-panel.ts`) - Interactive chat interface with streaming support
 - `app-panel` (`src/components/app-panel.ts`) - Split-panel interface for App-type agents with chat (left 25%) and live app preview (right 75%)
 - `project-detail-panel` (`src/components/project-detail-panel.ts`) - Collapsible right sidebar (264px wide) that displays recursive file tree
 - `agent-form-dialog` (`src/components/agent-form-dialog.ts`) - Modal dialog for creating and editing agents
@@ -199,11 +197,9 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 ### Chat IPC Channels
 
 **Chat Agent (with tools):**
-- `chat-agent:sendMessage` - Sends non-streaming message with tool calling + file context
 - `chat-agent:streamMessage` - Initiates streaming message with tool calling + file context
 
 **App Agent (files only, no tools):**
-- `app-agent:sendMessage` - Sends non-streaming message with file context only
 - `app-agent:streamMessage` - Initiates streaming message with file context only
 
 **Note:** The old `chat:sendMessage` and `chat:streamMessage` channels have been removed in favor of the more specific `chat-agent:*` and `app-agent:*` channels.

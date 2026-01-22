@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import type { Agent } from '../global.d.ts';
 import { loadAgents, saveAgent } from './agent-management';
 import { getAPIKeyByName } from './apiKey-management';
-import { callOpenAICompatibleAPI, streamOpenAICompatibleAPI } from './openai-client';
+import { streamOpenAICompatibleAPI } from './openai-client';
 
 // ============ OPENAI API TYPES ============
 
@@ -86,57 +86,6 @@ async function buildMessagesForAppAgent(
  * Register app-agent IPC handlers
  */
 export function registerAppAgentIPCHandlers(): void {
-
-  // Handler: app-agent:sendMessage
-  ipcMain.handle('app-agent:sendMessage', async (event, projectPath: string, agentName: string, message: string, filePaths?: string[]) => {
-    // 1. Load agent
-    const agents = loadAgents(projectPath);
-    const agent = agents.find(a => a.name === agentName);
-
-    if (!agent) {
-      throw new Error(`Agent "${agentName}" not found`);
-    }
-
-    // 2. Get API key
-    const apiKeyName = agent.config.apiConfig?.apiKeyRef;
-    if (!apiKeyName) {
-      throw new Error('Agent does not have an API key configured');
-    }
-
-    const apiKeyEntry = getAPIKeyByName(apiKeyName);
-    if (!apiKeyEntry) {
-      throw new Error(`API key "${apiKeyName}" not found`);
-    }
-
-    // 3. Build messages (NO tools)
-    const messages = await buildMessagesForAppAgent(agent, message, filePaths);
-
-    // 4. Call API
-    const response = await callOpenAICompatibleAPI(
-      messages,
-      agent.config,
-      apiKeyEntry.apiKey,
-      agent.config.apiConfig?.baseURL || apiKeyEntry.baseURL
-    );
-
-    // 5. Extract assistant response
-    const assistantMessage = response.choices?.[0]?.message?.content;
-    if (!assistantMessage) {
-      throw new Error('No response content from API');
-    }
-
-    // 6. Update agent history (NO tool execution)
-    const timestamp = Date.now();
-    agent.history = agent.history || [];
-    agent.history.push(
-      { role: 'user', content: message, timestamp },
-      { role: 'assistant', content: assistantMessage, timestamp }
-    );
-
-    saveAgent(projectPath, agent);
-
-    return assistantMessage;
-  });
 
   // Handler: app-agent:streamMessage
   ipcMain.handle('app-agent:streamMessage', async (event, projectPath: string, agentName: string, message: string, filePaths?: string[]) => {

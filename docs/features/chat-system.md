@@ -5,7 +5,6 @@ The app provides a complete chat interface for interacting with AI agents throug
 ## Chat Features
 
 - **Streaming responses** - Real-time token streaming with loading indicators
-- **Non-streaming mode** - Full response at once (configurable via toggle)
 - **Conversation persistence** - Messages stored in agent `history` array
 - **Context awareness** - System prompt + full conversation history sent with each message
 - **Tool calling** - AI agents can call custom tools during conversations (chat agents only)
@@ -24,7 +23,7 @@ The chat system supports two distinct agent types:
   - Can call custom tools during conversations
   - File context via @mention
   - Full OpenAI tool calling support
-- **IPC Channels**: `chat-agent:sendMessage`, `chat-agent:streamMessage`
+- **IPC Channel**: `chat-agent:streamMessage`
 - **Module**: `src/main/chat-agent-management.ts`
 
 ### App Agents
@@ -33,7 +32,7 @@ The chat system supports two distinct agent types:
   - File context via @mention
   - NO tool calling (lighter weight, focused on app generation)
   - App code parsing (HTML, renderer JS, main process JS)
-- **IPC Channels**: `app-agent:sendMessage`, `app-agent:streamMessage`
+- **IPC Channel**: `app-agent:streamMessage`
 - **Module**: `src/main/app-agent-management.ts`
 
 ## Chat UI Components
@@ -48,7 +47,6 @@ Reusable Web Component that provides:
 - **Optional file tagging** area with removable badges (configurable via `enable-file-tagging` attribute)
 - **Optional autocomplete dropdown** for @mention file selection
 - Send button with keyboard shortcuts (Enter to send, Shift+Enter for new line)
-- **Optional streaming toggle** (configurable via `show-stream-toggle` attribute)
 - Configurable placeholder text
 - Empty state always shows "Start a conversation!" with chat icon
 - **Event-driven**: Dispatches `message-sent` events instead of calling IPC directly
@@ -60,7 +58,6 @@ Reusable Web Component that provides:
 ```html
 <conversation-panel
   enable-file-tagging="true"
-  show-stream-toggle="true"
   placeholder="Type @ to mention files..."
   model-info="gpt-4">
 </conversation-panel>
@@ -83,9 +80,8 @@ Reusable Web Component that provides:
    - `agentName` - Agent name
    - `message` - User message
    - `filePaths` - Array of tagged file paths
-   - `shouldStream` - Boolean flag for streaming preference
 3. Parent component (`chat-panel`) listens for `message-sent` event
-4. `chat-panel` calls `chat-agent:sendMessage` or `chat-agent:streamMessage` via IPC
+4. `chat-panel` calls `chat-agent:streamMessage` via IPC
 5. `chat-agent-management` module:
    - Loads agent and validates API key
    - Builds messages: system prompt + **tool descriptions** + file contents + conversation history + new message
@@ -101,7 +97,7 @@ Reusable Web Component that provides:
 1. User enters message in `conversation-panel` text area
 2. `conversation-panel` dispatches `message-sent` event (same as chat agent)
 3. Parent component (`app-panel`) listens for `message-sent` event
-4. `app-panel` calls `app-agent:streamMessage` via IPC (always streaming, no stream toggle)
+4. `app-panel` calls `app-agent:streamMessage` via IPC
 5. `app-agent-management` module:
    - Loads agent and validates API key
    - Builds messages: system prompt + **file contents** + conversation history + new message
@@ -142,7 +138,6 @@ The new event-driven architecture provides:
 Located in `src/main/openai-client.ts`:
 
 ### API Client Functions (Exported Utilities)
-- `callOpenAICompatibleAPI()` - Makes non-streaming API requests
 - `streamOpenAICompatibleAPI()` - Makes streaming API requests with SSE parsing
 - `parseToolCalls()` - Parses tool call markers from AI responses
 - `executeToolWithRouting()` - Executes tools in worker or renderer based on environment
@@ -160,7 +155,6 @@ Located in `src/main/chat-agent-management.ts`:
 - `buildMessagesForChatAgent(agent, message, filePaths)` - Complete message array with tools + files
 
 ### IPC Handlers
-- `chat-agent:sendMessage` - Non-streaming with tool detection and execution
 - `chat-agent:streamMessage` - Streaming with tool detection and execution
 
 ## App Agent Management Module
@@ -173,7 +167,6 @@ Located in `src/main/app-agent-management.ts`:
 - `buildMessagesForAppAgent(agent, message, filePaths)` - Complete message array with files only
 
 ### IPC Handlers
-- `app-agent:sendMessage` - Non-streaming (no tool logic)
 - `app-agent:streamMessage` - Streaming (no tool logic)
 
 ## Tool Calling (Chat Agents Only)

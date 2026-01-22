@@ -97,14 +97,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ============ CHAT-AGENT METHODS ============
 
-  // Send chat-agent message (non-streaming)
-  sendChatAgentMessage: (
-    projectPath: string,
-    agentName: string,
-    message: string,
-    filePaths?: string[]
-  ) => ipcRenderer.invoke('chat-agent:sendMessage', projectPath, agentName, message, filePaths),
-
   // Stream chat-agent message
   streamChatAgentMessage: (
     projectPath: string,
@@ -160,14 +152,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // ============ APP-AGENT METHODS ============
-
-  // Send app-agent message (non-streaming)
-  sendAppAgentMessage: (
-    projectPath: string,
-    agentName: string,
-    message: string,
-    filePaths?: string[]
-  ) => ipcRenderer.invoke('app-agent:sendMessage', projectPath, agentName, message, filePaths),
 
   // Stream app-agent message
   streamAppAgentMessage: (

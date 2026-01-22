@@ -24,44 +24,6 @@ interface StreamResult {
 // ============ OPENAI API CLIENT ============
 
 /**
- * Call OpenAI-compatible API (non-streaming)
- */
-async function callOpenAICompatibleAPI(
-  messages: OpenAIMessage[],
-  config: any,
-  apiKey: string,
-  baseURL?: string
-): Promise<any> {
-  const endpoint = baseURL || 'https://api.openai.com/v1';
-  const url = `${endpoint}/chat/completions`;
-
-  const requestBody: OpenAIRequest = {
-    messages,
-    model: config.model,
-    temperature: config.temperature,
-    max_tokens: config.maxTokens,
-    top_p: config.topP,
-    stream: false,
-  };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API request failed (${response.status}): ${errorText}`);
-  }
-
-  return response.json();
-}
-
-/**
  * Call OpenAI-compatible API with streaming
  * Returns the complete accumulated response content and whether tool calls were detected
  * If tool calls are detected during streaming, stops sending chunks to renderer
@@ -286,7 +248,6 @@ export function registerOpenAIClientIPCHandlers(): void {
 
 // Export utility functions for use by agent management modules
 export {
-  callOpenAICompatibleAPI,
   streamOpenAICompatibleAPI,
   parseToolCalls,
   executeToolWithRouting
