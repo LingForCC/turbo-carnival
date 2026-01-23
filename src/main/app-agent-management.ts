@@ -108,27 +108,26 @@ export function registerAppAgentIPCHandlers(): void {
       throw new Error(`Provider "${providerId}" not found`);
     }
 
-    // 1.5. Look up ModelConfig and merge with agent config
+    // 1.5. Look up ModelConfig to get actual model parameters
     let effectiveConfig = { ...agent.config };
 
     if (agent.config.modelId) {
       const modelConfig = getModelConfigById(agent.config.modelId);
       if (modelConfig) {
-        // Merge ModelConfig with agent config (ModelConfig takes precedence for model params)
+        // Merge ModelConfig parameters with agent config
         effectiveConfig = {
           ...agent.config,
           model: modelConfig.model,
           temperature: modelConfig.temperature,
           maxTokens: modelConfig.maxTokens,
           topP: modelConfig.topP,
-          // Keep providerId from agent config
-          providerId: agent.config.providerId,
-          // Merge extra properties
-          ...(modelConfig.extra && { extra: modelConfig.extra }),
+          extra: modelConfig.extra,
         };
       } else {
-        console.warn(`ModelConfig "${agent.config.modelId}" not found, using legacy config`);
+        throw new Error(`ModelConfig "${agent.config.modelId}" not found`);
       }
+    } else if (!agent.config.model) {
+      throw new Error('Agent must have either modelId or model configured');
     }
 
     // 2. Build messages (NO tools)
