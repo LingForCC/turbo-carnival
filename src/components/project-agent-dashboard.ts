@@ -98,9 +98,9 @@ export class ProjectAgentDashboard extends HTMLElement {
       `;
     }
 
-    // Render agents grid
+    // Render agents list
     return `
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="space-y-2">
         ${this.agents.map(agent => this.renderAgentCard(agent)).join('')}
       </div>
     `;
@@ -110,49 +110,53 @@ export class ProjectAgentDashboard extends HTMLElement {
     const isSelected = this.selectedAgent?.name === agent.name;
 
     return `
-      <div class="agent-card group border border-gray-200 rounded-lg p-4 cursor-pointer transition-all
+      <div class="agent-card group flex items-center gap-4 border border-gray-200 rounded-lg px-4 py-3 cursor-pointer transition-all
                      ${isSelected ? 'bg-blue-50 border-blue-300 shadow-sm' : 'hover:bg-gray-50 hover:border-gray-300'}"
            data-agent-name="${this.escapeHtml(agent.name)}">
 
-        <!-- Agent Header -->
-        <div class="flex items-start justify-between mb-3">
-          <div class="flex-1 min-w-0">
-            <h3 class="text-base font-semibold text-gray-800 truncate m-0">
-              ${this.escapeHtml(agent.name)}
-            </h3>
-            <span class="inline-block px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded mt-1">
-              ${this.escapeHtml(agent.type)}
-            </span>
-          </div>
-
-          <!-- Actions Menu -->
-          <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button class="edit-agent-btn p-1.5 hover:bg-gray-200 rounded cursor-pointer border-0 bg-transparent"
-                    data-agent-name="${this.escapeHtml(agent.name)}" title="Edit agent">
-              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-              </svg>
-            </button>
-            <button class="delete-agent-btn p-1.5 hover:bg-red-100 rounded cursor-pointer border-0 bg-transparent"
-                    data-agent-name="${this.escapeHtml(agent.name)}" title="Delete agent">
-              <svg class="w-4 h-4 text-gray-500 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-            </button>
+        <!-- Agent Icon -->
+        <div class="shrink-0">
+          <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
           </div>
         </div>
 
-        <!-- Agent Description -->
-        <p class="text-sm text-gray-600 m-0 mb-3 line-clamp-2">
-          ${this.escapeHtml(agent.description)}
-        </p>
+        <!-- Agent Info -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-semibold text-gray-800 truncate m-0">
+              ${this.escapeHtml(agent.name)}
+            </h3>
+            <span class="inline-block px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded shrink-0">
+              ${this.escapeHtml(agent.type)}
+            </span>
+          </div>
+          <p class="text-xs text-gray-500 m-0 mt-0.5 truncate">
+            ${this.escapeHtml(agent.description)}
+          </p>
+        </div>
 
-        <!-- Agent Config Preview -->
-        <div class="text-xs text-gray-400">
-          Model: ${this.escapeHtml(agent.config.model || 'N/A')}
-          ${agent.config.temperature ?
-            ` • Temp: ${agent.config.temperature}` : ''
-          }
+        <!-- Agent Config -->
+        <div class="shrink-0 text-xs text-gray-400">
+          ${this.escapeHtml(agent.config.model || 'N/A')}
+        </div>
+
+        <!-- Actions Menu -->
+        <div class="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button class="edit-agent-btn p-1.5 hover:bg-gray-200 rounded cursor-pointer border-0 bg-transparent"
+                  data-agent-name="${this.escapeHtml(agent.name)}" title="Edit agent">
+            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+          </button>
+          <button class="delete-agent-btn p-1.5 hover:bg-red-100 rounded cursor-pointer border-0 bg-transparent"
+                  data-agent-name="${this.escapeHtml(agent.name)}" title="Delete agent">
+            <svg class="w-4 h-4 text-gray-500 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
         </div>
       </div>
     `;
