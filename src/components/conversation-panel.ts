@@ -422,14 +422,30 @@ export class ConversationPanel extends HTMLElement {
       ? this.renderMarkdown(content)
       : this.escapeHtml(content);
 
+    // Copy button for assistant messages only
+    const copyButton = isAssistant ? `
+      <div class="flex justify-end mt-2">
+        <button
+          class="copy-msg-btn p-1.5 bg-white/80 hover:bg-white rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-0"
+          data-original-content="${this.escapeHtml(content)}"
+          title="Copy message"
+        >
+          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+        </button>
+      </div>
+    ` : '';
+
     return `
-      <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+      <div class="flex ${isUser ? 'justify-end' : 'justify-start'} group ${isAssistant ? 'relative' : ''}">
         <div class="max-w-[85%] rounded-lg px-4 py-2 ${
           isUser
             ? 'bg-blue-500 text-white'
             : 'bg-gray-100 text-gray-800'
         }">
           <div class="text-sm ${isAssistant ? 'prose prose-sm max-w-none' : 'whitespace-pre-wrap'} break-words">${renderedContent}</div>
+          ${copyButton}
         </div>
       </div>
     `;
@@ -648,6 +664,38 @@ export class ConversationPanel extends HTMLElement {
           details.classList.toggle('hidden');
           if (icon) {
             icon.style.transform = details.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(90deg)';
+          }
+        }
+      });
+    });
+
+    // Copy message buttons
+    this.querySelectorAll('.copy-msg-btn').forEach(btn => {
+      const newBtn = btn.cloneNode(true);
+      btn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const button = e.currentTarget as HTMLElement;
+        const originalContent = button.getAttribute('data-original-content');
+
+        if (originalContent) {
+          try {
+            await navigator.clipboard.writeText(originalContent);
+
+            // Show success feedback
+            const originalHTML = button.innerHTML;
+            button.innerHTML = `
+              <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+            `;
+
+            // Reset after 2 seconds
+            setTimeout(() => {
+              button.innerHTML = originalHTML;
+            }, 2000);
+          } catch (error) {
+            console.error('Failed to copy text:', error);
           }
         }
       });
