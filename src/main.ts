@@ -6,7 +6,9 @@ import { registerAgentIPCHandlers, loadAgents, saveAgent } from './main/agent-ma
 import { registerAppIPCHandlers } from './main/app-management';
 import { registerApiKeyIPCHandlers, getAPIKeyByName } from './main/apiKey-management';
 import { registerProviderIPCHandlers } from './main/provider-management';
+import { registerModelConfigIPCHandlers } from './main/model-config-management';
 import { migrateAPIKeysToProviders } from './main/migration';
+import { migrateAgentConfigsToModelConfigs } from './main/migration-model-config';
 import { registerOpenAIClientIPCHandlers } from './main/openai-client';
 import { registerToolIPCHandlers } from './main/tool-management';
 import { registerProjectIPCHandlers } from './main/project-management';
@@ -51,13 +53,22 @@ function createWindow(): void {
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(() => {
-  // Run migration on startup
+  // Run API key to provider migration on startup
   const migrationResult = migrateAPIKeysToProviders();
 
   if (migrationResult.success && migrationResult.migrated > 0) {
     console.log(`Migrated ${migrationResult.migrated} API keys to providers`);
   } else if (!migrationResult.success) {
     console.error('Migration failed:', migrationResult.errors);
+  }
+
+  // Run agent config to ModelConfig migration on startup
+  const modelConfigMigrationResult = migrateAgentConfigsToModelConfigs();
+
+  if (modelConfigMigrationResult.success && modelConfigMigrationResult.migrated > 0) {
+    console.log(`Migrated ${modelConfigMigrationResult.migrated} agents to use ModelConfig`);
+  } else if (!modelConfigMigrationResult.success) {
+    console.error('ModelConfig migration failed:', modelConfigMigrationResult.errors);
   }
 
   createWindow();
@@ -83,6 +94,9 @@ function registerIPCHandlers(): void {
 
   // ============ PROVIDER IPC HANDLERS ============
   registerProviderIPCHandlers();
+
+  // ============ MODEL CONFIG IPC HANDLERS ============
+  registerModelConfigIPCHandlers();
 
   // ============ API KEY IPC HANDLERS (DEPRECATED) ============
   // Kept for migration period

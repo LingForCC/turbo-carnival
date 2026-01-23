@@ -1,4 +1,4 @@
-import type { Agent } from '../global.d.ts';
+import type { Agent, ModelConfig } from '../global.d.ts';
 
 /**
  * AgentFormDialog Web Component
@@ -8,6 +8,8 @@ export class AgentFormDialog extends HTMLElement {
   private mode: 'create' | 'edit' = 'create';
   private agent: Agent | null = null;
   private form: HTMLFormElement | null = null;
+  private modelConfigs: ModelConfig[] = [];
+  private selectedModelConfig?: ModelConfig;
 
   constructor() {
     super();
@@ -30,6 +32,7 @@ export class AgentFormDialog extends HTMLElement {
     this.render();
     this.attachEventListeners();
     this.loadProviders();
+    this.loadModelConfigs();
   }
 
   private render(): void {
@@ -113,49 +116,33 @@ export class AgentFormDialog extends HTMLElement {
                 Model Configuration
               </h3>
 
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1" for="agent-model">
-                    Model <span class="text-red-500">*</span>
-                  </label>
-                  <input type="text" id="agent-model" name="model" required
-                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                         placeholder="e.g., claude-3.5"
-                         value="${this.escapeHtml(agent?.config?.model || 'claude-3.5')}">
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1" for="agent-temperature">
-                    Temperature
-                  </label>
-                  <input type="number" id="agent-temperature" name="temperature"
-                         min="0" max="2" step="0.1"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                         placeholder="0.7"
-                         value="${agent?.config?.temperature || 0.7}">
-                </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" for="model-config-ref">
+                  Model Configuration
+                </label>
+                <select id="model-config-ref" name="modelId"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Select a model configuration...</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1 mb-0">
+                  Choose a pre-configured model or
+                  <a href="#" id="manage-models-link" class="text-blue-500 hover:underline">manage models</a>
+                </p>
               </div>
 
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1" for="agent-max-tokens">
-                    Max Tokens
-                  </label>
-                  <input type="number" id="agent-max-tokens" name="maxTokens"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                         placeholder="Optional"
-                         value="${agent?.config?.maxTokens || ''}">
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1" for="agent-top-p">
-                    Top P
-                  </label>
-                  <input type="number" id="agent-top-p" name="topP"
-                         min="0" max="1" step="0.1"
-                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                         placeholder="Optional"
-                         value="${agent?.config?.topP || ''}">
+              <!-- Model details (shown when a model is selected) -->
+              <div id="model-details" class="hidden p-3 bg-gray-50 rounded border border-gray-200">
+                <div class="text-sm">
+                  <div class="grid grid-cols-2 gap-2">
+                    <div><strong>Model:</strong> <span id="detail-model"></span></div>
+                    <div><strong>Temperature:</strong> <span id="detail-temperature"></span></div>
+                    <div><strong>Max Tokens:</strong> <span id="detail-max-tokens"></span></div>
+                    <div><strong>Top P:</strong> <span id="detail-top-p"></span></div>
+                  </div>
+                  <div id="detail-extra-container" class="hidden mt-2">
+                    <strong>Extra Properties:</strong>
+                    <pre id="detail-extra" class="text-xs bg-white p-2 rounded mt-1 overflow-x-auto"></pre>
+                  </div>
                 </div>
               </div>
             </div>
@@ -251,6 +238,28 @@ export class AgentFormDialog extends HTMLElement {
       cancelBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.cancel());
     }
+
+    // Model config dropdown change listener
+    const modelConfigSelect = this.querySelector('#model-config-ref');
+    if (modelConfigSelect) {
+      const newSelect = modelConfigSelect.cloneNode(true);
+      modelConfigSelect.replaceWith(newSelect);
+      (newSelect as HTMLSelectElement).addEventListener('change', (e) => {
+        const select = e.target as HTMLSelectElement;
+        this.onModelConfigChange(select.value);
+      });
+    }
+
+    // Manage models link
+    const manageModelsLink = this.querySelector('#manage-models-link');
+    if (manageModelsLink) {
+      const newLink = manageModelsLink.cloneNode(true);
+      manageModelsLink.replaceWith(newLink);
+      (newLink as HTMLElement).addEventListener('click', (e) => {
+        e.preventDefault();
+        this.openModelConfigDialog();
+      });
+    }
   }
 
   private handleSubmit(event: Event): void {
@@ -266,10 +275,7 @@ export class AgentFormDialog extends HTMLElement {
       type: formData.get('type') as string,
       description: formData.get('description') as string,
       config: {
-        model: formData.get('model') as string,
-        temperature: parseFloat(formData.get('temperature') as string) || 0.7,
-        ...(formData.get('maxTokens') && { maxTokens: parseInt(formData.get('maxTokens') as string) }),
-        ...(formData.get('topP') && { topP: parseFloat(formData.get('topP') as string) }),
+        ...(formData.get('modelId') && { modelId: formData.get('modelId') as string }),
         ...(formData.get('providerId') && { providerId: formData.get('providerId') as string }),
       },
       prompts: {
@@ -342,6 +348,88 @@ export class AgentFormDialog extends HTMLElement {
     } catch (error) {
       console.error('Failed to load providers:', error);
     }
+  }
+
+  private async loadModelConfigs(): Promise<void> {
+    if (!window.electronAPI) return;
+
+    try {
+      this.modelConfigs = await window.electronAPI.getModelConfigs();
+      const select = this.querySelector('#model-config-ref') as HTMLSelectElement;
+      if (!select) return;
+
+      // Get current value
+      const currentValue = this.agent?.config?.modelId || '';
+
+      // Populate options
+      select.innerHTML = `
+        <option value="">Select a model configuration...</option>
+        ${this.modelConfigs.map(config => `
+          <option value="${this.escapeHtml(config.id)}" ${config.id === currentValue ? 'selected' : ''}>
+            ${this.escapeHtml(config.name)}
+          </option>
+        `).join('')}
+      `;
+
+      // If editing and has a modelId selected, show the details
+      if (currentValue) {
+        this.onModelConfigChange(currentValue);
+      }
+    } catch (error) {
+      console.error('Failed to load model configs:', error);
+    }
+  }
+
+  private onModelConfigChange(modelConfigId: string): void {
+    const modelConfig = this.modelConfigs.find(c => c.id === modelConfigId);
+    this.selectedModelConfig = modelConfig;
+
+    const detailsDiv = this.querySelector('#model-details') as HTMLElement;
+    if (!detailsDiv) return;
+
+    if (!modelConfig) {
+      detailsDiv.classList.add('hidden');
+      return;
+    }
+
+    // Show details
+    detailsDiv.classList.remove('hidden');
+
+    // Update detail fields
+    const modelSpan = this.querySelector('#detail-model');
+    if (modelSpan) modelSpan.textContent = modelConfig.model;
+
+    const tempSpan = this.querySelector('#detail-temperature');
+    if (tempSpan) tempSpan.textContent = modelConfig.temperature !== undefined ? modelConfig.temperature.toString() : 'N/A';
+
+    const maxTokensSpan = this.querySelector('#detail-max-tokens');
+    if (maxTokensSpan) maxTokensSpan.textContent = modelConfig.maxTokens || 'N/A';
+
+    const topPSpan = this.querySelector('#detail-top-p');
+    if (topPSpan) topPSpan.textContent = modelConfig.topP !== undefined ? modelConfig.topP.toString() : 'N/A';
+
+    // Handle extra properties
+    const extraContainer = this.querySelector('#detail-extra-container');
+    const extraPre = this.querySelector('#detail-extra');
+    if (extraContainer && extraPre) {
+      if (modelConfig.extra && Object.keys(modelConfig.extra).length > 0) {
+        extraContainer.classList.remove('hidden');
+        extraPre.textContent = JSON.stringify(modelConfig.extra, null, 2);
+      } else {
+        extraContainer.classList.add('hidden');
+      }
+    }
+  }
+
+  private openModelConfigDialog(): void {
+    const dialog = document.createElement('model-config-dialog');
+    document.body.appendChild(dialog);
+
+    dialog.addEventListener('model-config-dialog-close', async () => {
+      dialog.remove();
+      // Reload model configs when dialog closes
+      await this.loadModelConfigs();
+    });
   }
 }
 

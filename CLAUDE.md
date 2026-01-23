@@ -12,6 +12,7 @@ Turbo Carnival is an Electron desktop application built with TypeScript, using W
 - Conversational AI interface with streaming, tool calling, and visual tool call indicators
 - File tagging for including project files as context
 - LLM provider management (OpenAI, GLM, and extensible for other providers)
+- Model configuration management for reusing model settings across agents
 - Custom tool execution in Node.js or Browser environments
 - App agent type for generating interactive JavaScript + HTML applications
 
@@ -86,6 +87,7 @@ The documentation has been split into focused modules for better performance:
 - **[docs/features/chat-system.md](docs/features/chat-system.md)** - Conversational AI interface, streaming, tool calling, provider integration
 - **[docs/features/file-tagging.md](docs/features/file-tagging.md)** - File @mention system for including project context
 - **[docs/features/llm-providers.md](docs/features/llm-providers.md)** - LLM provider management (OpenAI, GLM, custom providers)
+- **[docs/features/model-configs.md](docs/features/model-configs.md)** - Model configuration management for reusing model settings
 - **[docs/features/project-panel.md](docs/features/project-panel.md)** - Project sidebar and file tree panel
 - **[docs/features/tool-management.md](docs/features/tool-management.md)** - Custom tools with Node.js/Browser execution
 - **[docs/features/app-agents.md](docs/features/app-agents.md)** - App agent type for generating interactive applications
@@ -104,7 +106,9 @@ The documentation has been split into focused modules for better performance:
 - `src/main/agent-management.ts` - Agent CRUD operations
 - `src/main/app-management.ts` - App CRUD operations, execution in main/renderer processes
 - `src/main/provider-management.ts` - LLM provider CRUD, validation, default URLs
+- `src/main/model-config-management.ts` - Model configuration CRUD, validation, storage
 - `src/main/migration.ts` - Migration utility for API keys to providers
+- `src/main/migration-model-config.ts` - Migration utility for agent configs to ModelConfig
 - `src/main/openai-client.ts` - Provider-aware API client with tool execution utilities
 - `src/main/chat-agent-management.ts` - Chat agent logic with tool calling + file context
 - `src/main/app-agent-management.ts` - App agent logic with file context only (no tools)
@@ -118,8 +122,9 @@ The documentation has been split into focused modules for better performance:
 - `chat-panel` - Right sidebar chat interface (uses conversation-panel, handles chat-agent IPC)
 - `app-panel` - Split-panel interface for App-type agents (uses conversation-panel, handles app-agent IPC)
 - `project-detail-panel` - Right sidebar, file tree
-- `agent-form-dialog` - Agent creation/editing with provider selection
+- `agent-form-dialog` - Agent creation/editing with model config and provider selection
 - `provider-dialog` - LLM provider management (OpenAI, GLM, custom providers)
+- `model-config-dialog` - Model configuration management with extra properties support
 - `tools-dialog` - Tool management with testing
 - `tool-test-dialog` - Tool execution testing
 
@@ -128,6 +133,7 @@ The documentation has been split into focused modules for better performance:
 - `agents:*` - Agent CRUD operations
 - `apps:*` - App CRUD operations, execution, data persistence
 - `providers:*` - LLM provider CRUD operations (get, add, update, remove, getById)
+- `model-configs:*` - Model configuration CRUD operations (get, add, update, remove, getById)
 - `tools:*` - Tool CRUD and execution
 - `project:getFileTree` - File tree structure
 - `files:list`, `files:readContents` - File operations for @mention
@@ -138,6 +144,7 @@ The documentation has been split into focused modules for better performance:
 ### Storage Locations
 - `app.getPath('userData')/projects.json` - Project list
 - `app.getPath('userData')/providers.json` - LLM providers
+- `app.getPath('userData')/model-configs.json` - Model configurations
 - `app.getPath('userData')/tools.json` - Custom tools
 - `{projectFolder}/agent-{name}.json` - Agent files (stored in project folders)
 - `{projectFolder}/app-{name}.json` - App files (stored in project folders, linked to agents)

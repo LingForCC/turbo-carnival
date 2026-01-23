@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { Project, Agent, APIKey, LLMProvider, Tool, ToolExecutionRequest, ToolCallEvent, App } from './global.d.ts';
+import type { Project, Agent, APIKey, LLMProvider, ModelConfig, Tool, ToolExecutionRequest, ToolCallEvent, App } from './global.d.ts';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -53,6 +53,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Get provider by ID
   getProviderById: (id: string) => ipcRenderer.invoke('providers:getById', id),
+
+  // ============ MODEL CONFIG METHODS ============
+
+  // Get all model configs
+  getModelConfigs: () => ipcRenderer.invoke('model-configs:get'),
+
+  // Add a new model config
+  addModelConfig: (config: ModelConfig) => ipcRenderer.invoke('model-configs:add', config),
+
+  // Update an existing model config
+  updateModelConfig: (id: string, config: ModelConfig) =>
+    ipcRenderer.invoke('model-configs:update', id, config),
+
+  // Remove a model config
+  removeModelConfig: (id: string) => ipcRenderer.invoke('model-configs:remove', id),
+
+  // Get model config by ID
+  getModelConfigById: (id: string) => ipcRenderer.invoke('model-configs:getById', id),
 
   // ============ API KEY METHODS (DEPRECATED) ============
   // Kept for migration period - use provider methods instead

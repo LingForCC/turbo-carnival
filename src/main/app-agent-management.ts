@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import type { Agent } from '../global.d.ts';
 import { loadAgents, saveAgent } from './agent-management';
 import { getProviderById } from './provider-management';
+import { getModelConfigById } from './model-config-management';
 import { streamOpenAICompatibleAPI } from './openai-client';
 
 // ============ OPENAI API TYPES ============
@@ -107,13 +108,36 @@ export function registerAppAgentIPCHandlers(): void {
       throw new Error(`Provider "${providerId}" not found`);
     }
 
+    // 1.5. Look up ModelConfig and merge with agent config
+    let effectiveConfig = { ...agent.config };
+
+    if (agent.config.modelId) {
+      const modelConfig = getModelConfigById(agent.config.modelId);
+      if (modelConfig) {
+        // Merge ModelConfig with agent config (ModelConfig takes precedence for model params)
+        effectiveConfig = {
+          ...agent.config,
+          model: modelConfig.model,
+          temperature: modelConfig.temperature,
+          maxTokens: modelConfig.maxTokens,
+          topP: modelConfig.topP,
+          // Keep providerId from agent config
+          providerId: agent.config.providerId,
+          // Merge extra properties
+          ...(modelConfig.extra && { extra: modelConfig.extra }),
+        };
+      } else {
+        console.warn(`ModelConfig "${agent.config.modelId}" not found, using legacy config`);
+      }
+    }
+
     // 2. Build messages (NO tools)
     const messages = await buildMessagesForAppAgent(agent, message, filePaths);
 
     // 3. Stream response (NO tool detection needed)
     const { content: fullResponse } = await streamOpenAICompatibleAPI(
       messages,
-      agent.config,
+      effectiveConfig,
       provider,
       undefined,
       event.sender

@@ -119,6 +119,113 @@ When the agent executes a request, the system:
 2. Extracts the API key and base URL from the provider
 3. Makes API calls with the provider's configuration
 
+## Integration with Model Configurations
+
+Model Configurations and Providers work together to provide a complete AI model setup while keeping concerns separated.
+
+### Separation of Concerns
+
+- **Providers** handle API access:
+  - API keys and authentication
+  - Endpoint URLs (base URL)
+  - Provider-specific connection settings
+
+- **Model Configurations** handle model behavior:
+  - Model identifier (e.g., "gpt-4", "claude-3.5-sonnet")
+  - Temperature, max tokens, top P
+  - Model-specific properties (e.g., thinking mode via `extra` field)
+
+### How They Work Together
+
+When creating or editing an agent, you configure both:
+
+1. **Model Configuration** - Selected from the "Model Configuration" dropdown
+   - Defines which model to use (e.g., "GPT-4 Creative")
+   - Sets model parameters (temperature: 0.9, maxTokens: 4000)
+   - Specifies model-specific features (e.g., `{"thinking": true}`)
+
+2. **Provider** - Selected from the "Provider" dropdown
+   - Defines which provider API to call (e.g., "OpenAI Production")
+   - Supplies the API key and endpoint
+   - Routes the request to the correct service
+
+### Example Agent Configuration
+
+```json
+{
+  "name": "Creative Writing Assistant",
+  "type": "chat",
+  "config": {
+    "modelId": "gpt4-creative",
+    "providerId": "openai-main"
+  }
+}
+```
+
+**Model Config** (`gpt4-creative`):
+```json
+{
+  "id": "gpt4-creative",
+  "name": "GPT-4 Creative",
+  "model": "gpt-4",
+  "temperature": 0.9,
+  "maxTokens": 4000,
+  "topP": 0.95
+}
+```
+
+**Provider** (`openai-main`):
+```json
+{
+  "id": "openai-main",
+  "type": "openai",
+  "name": "OpenAI Production",
+  "apiKey": "sk-...",
+  "baseURL": "https://api.openai.com/v1"
+}
+```
+
+### Execution Flow
+
+When the agent executes a request:
+
+1. System looks up the `ModelConfig` by `modelId`
+2. System looks up the `Provider` by `providerId`
+3. Configs are merged:
+   - Model parameters from ModelConfig (model, temperature, maxTokens, topP, extra)
+   - Provider credentials from Provider (apiKey, baseURL)
+4. API request is made with combined configuration
+
+### Benefits of Separation
+
+**Flexibility**: Use the same ModelConfig with different providers
+```
+ModelConfig: "GPT-4 Creative" (temperature: 0.9)
+├── Provider: "OpenAI Production" → Uses production API key
+└── Provider: "OpenAI Dev" → Uses dev API key (same behavior, different endpoint)
+```
+
+**Reusability**: Share model settings across agents
+```
+ModelConfig: "Code Review" (temperature: 0.3, model: claude-3.5)
+├── Agent: "Frontend Review" + Provider: "Anthropic"
+├── Agent: "Backend Review" + Provider: "Anthropic"
+└── Agent: "Security Review" + Provider: "Custom Provider"
+```
+
+**Easy Updates**: Change model settings in one place
+- Update "GPT-4 Creative" ModelConfig to change temperature
+- All agents using that config automatically get the new settings
+
+### Migration Note
+
+If you have agents created before Model Configurations was introduced:
+- Legacy inline model settings (model, temperature, etc.) were automatically migrated to ModelConfigs
+- Your agents now reference these new ModelConfigs via `modelId`
+- Provider configuration remains separate in `providerId`
+
+For more details, see **[Model Configurations](./model-configs.md)**.
+
 ## Migration from API Keys
 
 ### Automatic Migration

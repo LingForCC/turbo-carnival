@@ -81,6 +81,7 @@ interface OpenAIRequest {
   max_tokens?: number;
   top_p?: number;
   stream?: boolean;
+  [key: string]: any; // Allow extra properties for model-specific settings
 }
 
 interface StreamResult {
@@ -121,6 +122,8 @@ async function streamOpenAICompatibleAPI(
     max_tokens: config.maxTokens,
     top_p: config.topP,
     stream: true,
+    // Spread extra properties for model-specific settings
+    ...(config.extra || {}),
   };
 
   const controller = new AbortController();

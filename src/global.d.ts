@@ -26,12 +26,13 @@ export interface Agent {
  * Agent model configuration
  */
 export interface AgentConfig {
-  model: string;                   // e.g., "claude-3.5", "gpt-4"
-  temperature?: number;            // Default: 0.7
-  maxTokens?: number;              // Optional token limit
-  topP?: number;                   // Optional nucleus sampling
-  providerId?: string;             // Reference to LLM provider by ID
-  apiConfig?: APIConfig;           // @deprecated API configuration (use providerId instead)
+  modelId?: string;              // Reference to ModelConfig (NEW - primary way)
+  providerId?: string;           // Reference to LLM provider by ID (KEPT - still in AgentConfig)
+  model?: string;                // Direct model string (DEPRECATED - use modelId instead)
+  temperature?: number;          // DEPRECATED - use modelId instead
+  maxTokens?: number;            // DEPRECATED - use modelId instead
+  topP?: number;                 // DEPRECATED - use modelId instead
+  apiConfig?: APIConfig;         // @deprecated API configuration (use providerId instead)
 }
 
 /**
@@ -118,6 +119,21 @@ export interface APIKey {
   apiKey: string;                // The actual API key
   baseURL?: string;              // Optional default endpoint for this key
   createdAt: number;             // Timestamp
+}
+
+/**
+ * Model configuration for reusing model settings across agents
+ */
+export interface ModelConfig {
+  id: string;                    // Unique identifier (e.g., "gpt4-creative")
+  name: string;                  // Display name (e.g., "GPT-4 Creative")
+  model: string;                 // Model identifier (e.g., "gpt-4", "claude-3.5")
+  temperature?: number;          // Optional temperature (0-2)
+  maxTokens?: number;            // Optional max tokens
+  topP?: number;                 // Optional top_p (0-1)
+  extra?: Record<string, any>;   // Model-specific properties (e.g., thinking mode)
+  createdAt: number;             // Timestamp when created
+  updatedAt?: number;            // Timestamp when last updated
 }
 
 /**
@@ -268,6 +284,13 @@ interface ElectronAPI {
   updateProvider: (id: string, provider: LLMProvider) => Promise<LLMProvider[]>;
   removeProvider: (id: string) => Promise<LLMProvider[]>;
   getProviderById: (id: string) => Promise<LLMProvider>;
+
+  // Model Config management
+  getModelConfigs: () => Promise<ModelConfig[]>;
+  addModelConfig: (config: ModelConfig) => Promise<ModelConfig[]>;
+  updateModelConfig: (id: string, config: ModelConfig) => Promise<ModelConfig[]>;
+  removeModelConfig: (id: string) => Promise<ModelConfig[]>;
+  getModelConfigById: (id: string) => Promise<ModelConfig>;
 
   // @deprecated API key management (kept for migration period)
   getAPIKeys: () => Promise<APIKey[]>;

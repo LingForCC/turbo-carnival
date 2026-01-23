@@ -2,6 +2,7 @@ import './project-detail-panel';
 import './tools-dialog';
 import './tool-test-dialog';
 import './provider-dialog';
+import './model-config-dialog';
 import './app-panel';
 
 /**
@@ -42,6 +43,12 @@ export class AppContainer extends HTMLElement {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
             <span class="text-sm font-medium text-gray-700">Tools</span>
+          </button>
+          <button id="models-btn" class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 rounded cursor-pointer border-0 bg-transparent">
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            <span class="text-sm font-medium text-gray-700">Models</span>
           </button>
           <button id="providers-btn" class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 rounded cursor-pointer border-0 bg-transparent">
             <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,6 +121,14 @@ export class AppContainer extends HTMLElement {
       const newBtn = toolsBtn.cloneNode(true);
       toolsBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.openToolsDialog());
+    }
+
+    // Models button
+    const modelsBtn = this.querySelector('#models-btn');
+    if (modelsBtn) {
+      const newBtn = modelsBtn.cloneNode(true);
+      modelsBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.openModelsDialog());
     }
 
     // Providers button
@@ -274,6 +289,15 @@ export class AppContainer extends HTMLElement {
     document.body.appendChild(dialog);
 
     dialog.addEventListener('tools-dialog-close', () => {
+      dialog.remove();
+    });
+  }
+
+  private openModelsDialog(): void {
+    const dialog = document.createElement('model-config-dialog');
+    document.body.appendChild(dialog);
+
+    dialog.addEventListener('model-config-dialog-close', () => {
       dialog.remove();
     });
   }
