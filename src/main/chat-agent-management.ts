@@ -332,27 +332,23 @@ export function registerChatAgentIPCHandlers(): void {
       throw new Error(`Provider "${providerId}" not found`);
     }
 
-    // 1.5. Look up ModelConfig to get actual model parameters
-    let effectiveConfig = { ...agent.config };
-
-    if (agent.config.modelId) {
-      const modelConfig = getModelConfigById(agent.config.modelId);
-      if (modelConfig) {
-        // Merge ModelConfig parameters with agent config
-        effectiveConfig = {
-          ...agent.config,
-          model: modelConfig.model,
-          temperature: modelConfig.temperature,
-          maxTokens: modelConfig.maxTokens,
-          topP: modelConfig.topP,
-          extra: modelConfig.extra,
-        };
-      } else {
-        throw new Error(`ModelConfig "${agent.config.modelId}" not found`);
-      }
-    } else if (!agent.config.model) {
-      throw new Error('Agent must have either modelId or model configured');
+    // 1.5. Get ModelConfig
+    if (!agent.config.modelId) {
+      throw new Error('Agent must have a modelId configured');
     }
+
+    const modelConfig = getModelConfigById(agent.config.modelId);
+    if (!modelConfig) {
+      throw new Error(`ModelConfig "${agent.config.modelId}" not found`);
+    }
+
+    const effectiveConfig = {
+      model: modelConfig.model,
+      temperature: modelConfig.temperature,
+      maxTokens: modelConfig.maxTokens,
+      topP: modelConfig.topP,
+      extra: modelConfig.extra,
+    };
 
     // 2. Build messages with tools and files
     const messages = await buildMessagesForChatAgent(agent, message, filePaths);
