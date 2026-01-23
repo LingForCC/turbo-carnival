@@ -174,11 +174,6 @@ export class AgentFormDialog extends HTMLElement {
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">No provider selected</option>
                 </select>
-                <div class="flex items-center gap-2 mt-1">
-                  <button type="button" id="manage-providers-btn" class="text-sm text-blue-500 hover:text-blue-600 cursor-pointer border-0 bg-transparent p-0">
-                    Manage Providers
-                  </button>
-                </div>
                 <p class="text-xs text-gray-500 mt-1 mb-0">
                   Select an LLM provider for this agent
                 </p>
@@ -255,14 +250,6 @@ export class AgentFormDialog extends HTMLElement {
       const newBtn = cancelBtn.cloneNode(true);
       cancelBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.cancel());
-    }
-
-    // Manage providers button (must be attached AFTER form cloning since it's inside the form)
-    const manageProvidersBtn = this.querySelector('#manage-providers-btn');
-    if (manageProvidersBtn) {
-      const newBtn = manageProvidersBtn.cloneNode(true);
-      manageProvidersBtn.replaceWith(newBtn);
-      (newBtn as HTMLElement).addEventListener('click', () => this.openProviderDialog());
     }
   }
 
@@ -355,17 +342,6 @@ export class AgentFormDialog extends HTMLElement {
     } catch (error) {
       console.error('Failed to load providers:', error);
     }
-  }
-
-  private openProviderDialog(): void {
-    const dialog = document.createElement('provider-dialog');
-    document.body.appendChild(dialog);
-
-    dialog.addEventListener('provider-dialog-close', async () => {
-      dialog.remove();
-      // Reload providers after dialog closes
-      await this.loadProviders();
-    });
   }
 }
 
