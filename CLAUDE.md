@@ -11,7 +11,7 @@ Turbo Carnival is an Electron desktop application built with TypeScript, using W
 - AI agent system with OpenAI-compatible API integration
 - Conversational AI interface with streaming, tool calling, and visual tool call indicators
 - File tagging for including project files as context
-- Global API key management
+- LLM provider management (OpenAI, GLM, and extensible for other providers)
 - Custom tool execution in Node.js or Browser environments
 - App agent type for generating interactive JavaScript + HTML applications
 
@@ -83,8 +83,9 @@ The documentation has been split into focused modules for better performance:
 - **[docs/architecture.md](docs/architecture.md)** - Electron process structure, module organization, IPC channels, storage, and type definitions
 
 ### Features
-- **[docs/features/chat-system.md](docs/features/chat-system.md)** - Conversational AI interface, streaming, tool calling, OpenAI integration
+- **[docs/features/chat-system.md](docs/features/chat-system.md)** - Conversational AI interface, streaming, tool calling, provider integration
 - **[docs/features/file-tagging.md](docs/features/file-tagging.md)** - File @mention system for including project context
+- **[docs/features/llm-providers.md](docs/features/llm-providers.md)** - LLM provider management (OpenAI, GLM, custom providers)
 - **[docs/features/project-panel.md](docs/features/project-panel.md)** - Project sidebar and file tree panel
 - **[docs/features/tool-management.md](docs/features/tool-management.md)** - Custom tools with Node.js/Browser execution
 - **[docs/features/app-agents.md](docs/features/app-agents.md)** - App agent type for generating interactive applications
@@ -102,8 +103,9 @@ The documentation has been split into focused modules for better performance:
 - `src/main/project-management.ts` - Project CRUD, file tree, file listing
 - `src/main/agent-management.ts` - Agent CRUD operations
 - `src/main/app-management.ts` - App CRUD operations, execution in main/renderer processes
-- `src/main/apiKey-management.ts` - API key CRUD operations
-- `src/main/openai-client.ts` - OpenAI API client, tool execution utilities (pure API client)
+- `src/main/provider-management.ts` - LLM provider CRUD, validation, default URLs
+- `src/main/migration.ts` - Migration utility for API keys to providers
+- `src/main/openai-client.ts` - Provider-aware API client with tool execution utilities
 - `src/main/chat-agent-management.ts` - Chat agent logic with tool calling + file context
 - `src/main/app-agent-management.ts` - App agent logic with file context only (no tools)
 - `src/main/tool-management.ts` - Tool CRUD, JSON Schema validation, execution routing
@@ -116,8 +118,8 @@ The documentation has been split into focused modules for better performance:
 - `chat-panel` - Right sidebar chat interface (uses conversation-panel, handles chat-agent IPC)
 - `app-panel` - Split-panel interface for App-type agents (uses conversation-panel, handles app-agent IPC)
 - `project-detail-panel` - Right sidebar, file tree
-- `agent-form-dialog` - Agent creation/editing
-- `api-keys-dialog` - API key management
+- `agent-form-dialog` - Agent creation/editing with provider selection
+- `provider-dialog` - LLM provider management (OpenAI, GLM, custom providers)
 - `tools-dialog` - Tool management with testing
 - `tool-test-dialog` - Tool execution testing
 
@@ -125,7 +127,7 @@ The documentation has been split into focused modules for better performance:
 - `projects:*` - Project CRUD operations
 - `agents:*` - Agent CRUD operations
 - `apps:*` - App CRUD operations, execution, data persistence
-- `api-keys:*` - API key CRUD operations
+- `providers:*` - LLM provider CRUD operations (get, add, update, remove, getById)
 - `tools:*` - Tool CRUD and execution
 - `project:getFileTree` - File tree structure
 - `files:list`, `files:readContents` - File operations for @mention
@@ -135,7 +137,7 @@ The documentation has been split into focused modules for better performance:
 
 ### Storage Locations
 - `app.getPath('userData')/projects.json` - Project list
-- `app.getPath('userData')/api-keys.json` - Global API keys
+- `app.getPath('userData')/providers.json` - LLM providers
 - `app.getPath('userData')/tools.json` - Custom tools
 - `{projectFolder}/agent-{name}.json` - Agent files (stored in project folders)
 - `{projectFolder}/app-{name}.json` - App files (stored in project folders, linked to agents)

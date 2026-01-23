@@ -1,4 +1,4 @@
-import type { Agent, Project, APIKey, ToolCallData } from '../global.d.ts';
+import type { Agent, Project, ToolCallData } from '../global.d.ts';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
@@ -22,10 +22,6 @@ export class ConversationPanel extends HTMLElement {
   private enableFileTagging: boolean = false;
   private placeholder: string = 'Type a message...';
   private modelInfo: string = '';
-
-  // API key validation (optional, for components like chat-panel)
-  private apiKeys: APIKey[] = [];
-  private requireAPIKeyValidation: boolean = false;
 
   // File tagging state (always maintained, conditionally rendered)
   private taggedFiles: Array<{ name: string; path: string }> = [];
@@ -128,14 +124,6 @@ export class ConversationPanel extends HTMLElement {
 
     this.render();
     this.scrollToBottom();
-  }
-
-  public setAPIKeys(apiKeys: APIKey[]): void {
-    this.apiKeys = apiKeys;
-  }
-
-  public setRequireAPIKeyValidation(require: boolean): void {
-    this.requireAPIKeyValidation = require;
   }
 
   public clearChat(): void {
@@ -673,21 +661,6 @@ export class ConversationPanel extends HTMLElement {
     const message = input?.value.trim();
 
     if (!message && this.taggedFiles.length === 0) return;
-
-    // Validate API key if required
-    if (this.requireAPIKeyValidation) {
-      const apiKeyName = this.currentAgent.config.apiConfig?.apiKeyRef;
-      if (!apiKeyName) {
-        this.showError('Agent does not have an API key configured. Please edit the agent settings.');
-        return;
-      }
-
-      const apiKey = this.apiKeys.find(k => k.name === apiKeyName);
-      if (!apiKey) {
-        this.showError(`API key "${apiKeyName}" not found. Please add it in settings.`);
-        return;
-      }
-    }
 
     // Collect file paths from tagged files
     const filePaths = this.taggedFiles.map(f => f.path);

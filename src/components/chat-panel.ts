@@ -1,4 +1,4 @@
-import type { Agent, Project, APIKey, ToolCallEvent } from '../global.d.ts';
+import type { Agent, Project, ToolCallEvent } from '../global.d.ts';
 
 /**
  * ChatPanel Web Component
@@ -10,7 +10,6 @@ import type { Agent, Project, APIKey, ToolCallEvent } from '../global.d.ts';
 export class ChatPanel extends HTMLElement {
   private currentProject: Project | null = null;
   private currentAgent: Agent | null = null;
-  private apiKeys: APIKey[] = [];
   private toolCallListenerSetup = false;
 
   constructor() {
@@ -20,7 +19,6 @@ export class ChatPanel extends HTMLElement {
   connectedCallback(): void {
     this.render();
     this.attachConversationListeners();
-    this.loadAPIKeys();
 
     // Set up tool call listener ONCE when component connects (before any tool execution)
     if (!this.toolCallListenerSetup && window.electronAPI) {
@@ -131,12 +129,6 @@ export class ChatPanel extends HTMLElement {
     const conversation = this.querySelector('#conversation') as any;
     if (!conversation) return;
 
-    // Pass API keys to conversation component
-    if (conversation.setAPIKeys) {
-      conversation.setAPIKeys(this.apiKeys);
-      conversation.setRequireAPIKeyValidation(true);
-    }
-
     // Listen for message-sent events from conversation-panel
     // This event is dispatched when user sends a message
     conversation.addEventListener('message-sent', async (e: Event) => {
@@ -216,8 +208,6 @@ export class ChatPanel extends HTMLElement {
     const conversation = this.querySelector('#conversation') as any;
     if (conversation) {
       conversation.setAgent(agent, project);
-      conversation.setAPIKeys(this.apiKeys);
-      conversation.setRequireAPIKeyValidation(true);
     }
 
     // Update header
@@ -244,16 +234,6 @@ export class ChatPanel extends HTMLElement {
       bubbles: true,
       composed: true
     }));
-  }
-
-  private async loadAPIKeys(): Promise<void> {
-    if (window.electronAPI) {
-      try {
-        this.apiKeys = await window.electronAPI.getAPIKeys();
-      } catch (error) {
-        console.error('Failed to load API keys:', error);
-      }
-    }
   }
 
   private showError(message: string): void {

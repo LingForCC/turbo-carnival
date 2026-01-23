@@ -31,10 +31,17 @@ The main process is organized into dedicated modules:
 - App execution: `apps:executeMain` for running main process code
 - Data persistence: `apps:updateData` for updating app.data field
 
-**`src/main/apiKey-management.ts`**
-- API key CRUD operations
-- Storage helpers: `getAPIKeysPath`, `loadAPIKeys`, `saveAPIKeys`, `getAPIKeyByName`
-- IPC handler registration: `registerApiKeyIPCHandlers`
+**`src/main/provider-management.ts`**
+- LLM provider CRUD operations
+- Storage helpers: `getProvidersPath`, `loadProviders`, `saveProviders`, `getProviderById`
+- Validation: `validateProvider` (type-specific validation)
+- Default URLs: `getDefaultBaseURL` (returns default endpoints per provider type)
+- IPC handler registration: `registerProviderIPCHandlers`
+
+**`src/main/migration.ts`**
+- Migration utility from API keys to providers
+- `migrateAPIKeysToProviders()` - Converts api-keys.json to providers.json
+- `migrateAgentConfigs()` - Updates agent files to use providerId
 
 **`src/main/openai-client.ts`**
 - Pure OpenAI API client (no business logic)
@@ -67,10 +74,10 @@ The main process is organized into dedicated modules:
 - Runs tools in renderer context with access to browser APIs
 
 ### Module Dependencies
-- `chat-agent-management.ts` imports from: `agent-management.ts`, `apiKey-management.ts`, `tool-management.ts`, `openai-client.ts`
-- `app-agent-management.ts` imports from: `agent-management.ts`, `apiKey-management.ts`, `openai-client.ts`
+- `chat-agent-management.ts` imports from: `agent-management.ts`, `provider-management.ts`, `tool-management.ts`, `openai-client.ts`
+- `app-agent-management.ts` imports from: `agent-management.ts`, `provider-management.ts`, `openai-client.ts`
 - `tool-management.ts` imports from: `openai-client.ts` (executeToolWithRouting)
-- `main.ts` imports from: `project-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`
+- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `migration.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`
 
 ### Pattern for Creating New Modules
 1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)
@@ -89,7 +96,8 @@ The main process is organized into dedicated modules:
   - `getApp(projectPath, agentName)`, `saveApp(...)`, `deleteApp(...)` - App operations
   - `executeAppMain(...)` - Execute main process code from app
   - `updateAppData(...)` - Update app data storage
-  - `getAPIKeys()`, `addAPIKey(...)`, `removeAPIKey(name)` - API key operations
+  - `getProviders()`, `addProvider(...)`, `updateProvider(id, ...)`, `removeProvider(id)`, `getProviderById(id)` - Provider operations
+  - `getAPIKeys()`, `addAPIKey(...)`, `removeAPIKey(name)` - @deprecated API key operations (kept for migration period)
   - `getTools()`, `addTool(...)`, `updateTool(...)`, `removeTool(toolName)` - Tool operations
   - `executeTool(request)` - Executes a tool (routes based on environment)
   - `onBrowserToolExecution(callback)` - Listens for browser tool execution requests
@@ -118,7 +126,7 @@ The project uses **Vite** as the sole build tool (`vite.config.mjs`):
 The renderer uses vanilla JavaScript Web Components (not Vue/React). Each component is a TypeScript class extending `HTMLElement`:
 
 **Components:**
-- `app-container` (`src/components/app-container.ts`) - Root layout container, manages panel visibility and toggle buttons, forwards events between components, manages API keys dialog, routes between chat-panel and app-panel based on agent type
+- `app-container` (`src/components/app-container.ts`) - Root layout container, manages panel visibility and toggle buttons, forwards events between components, manages provider dialog, routes between chat-panel and app-panel based on agent type
 - `project-panel` (`src/components/project-panel.ts`) - Collapsible left sidebar (264px wide) that manages local folder projects
 - `project-agent-dashboard` (`src/components/project-agent-dashboard.ts`) - Center content area that displays agents in a grid, handles dashboard/chat view switching
 - `conversation-panel` (`src/components/conversation-panel.ts`) - Reusable chat interface with streaming, tool call indicators, and optional file tagging
@@ -126,7 +134,7 @@ The renderer uses vanilla JavaScript Web Components (not Vue/React). Each compon
 - `app-panel` (`src/components/app-panel.ts`) - Split-panel interface for App-type agents with chat (left 25%) and live app preview (right 75%)
 - `project-detail-panel` (`src/components/project-detail-panel.ts`) - Collapsible right sidebar (264px wide) that displays recursive file tree
 - `agent-form-dialog` (`src/components/agent-form-dialog.ts`) - Modal dialog for creating and editing agents
-- `api-keys-dialog` (`src/components/api-keys-dialog.ts`) - Modal dialog for managing global API keys
+- `provider-dialog` (`src/components/provider-dialog.ts`) - Modal dialog for managing LLM providers
 - `tools-dialog` (`src/components/tools-dialog.ts`) - Modal dialog for managing custom tools with add/edit/delete/test functionality
 - `tool-test-dialog` (`src/components/tool-test-dialog.ts`) - Modal dialog for testing tool execution
 
@@ -136,7 +144,7 @@ All Web Components follow this pattern:
 2. `render()` - Sets `innerHTML` with Tailwind classes, must re-attach listeners after render
 3. `attachEventListeners()` - Clones and replaces DOM nodes to prevent duplicate listeners
 4. Public methods for external control (e.g., `expand()`, `collapse()`, `getValue()`, `show()`, `hide()`)
-5. Custom events for parent communication (e.g., `panel-toggle`, `project-selected`, `agent-selected`, `chat-back`, `api-keys-dialog-close`)
+5. Custom events for parent communication (e.g., `panel-toggle`, `project-selected`, `agent-selected`, `chat-back`, `provider-dialog-close`)
 
 ### Event Flow
 1. User clicks project in `project-panel` → emits `project-selected` event (bubbles, composed)
@@ -176,10 +184,13 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - `agents:remove` - Removes an agent from a project (deletes agent-{name}.json)
 - `agents:update` - Updates an existing agent (validates, handles name changes)
 
-### API Key IPC Channels
-- `api-keys:get` - Returns all stored API keys
-- `api-keys:add` - Adds a new API key (validates and saves to api-keys.json)
-- `api-keys:remove` - Removes an API key by name
+### Provider IPC Channels
+- `providers:get` - Returns all stored providers
+- `providers:add` - Adds a new provider (validates and saves to providers.json)
+- `providers:update` - Updates an existing provider (preserves createdAt, sets updatedAt)
+- `providers:remove` - Removes a provider by ID
+- `providers:getById` - Gets a single provider by ID
+- `api-keys:get`, `api-keys:add`, `api-keys:remove` - @deprecated API key channels (kept for migration period)
 
 ### Tool IPC Channels
 - `tools:get` - Returns all stored tools
@@ -222,11 +233,13 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - Each agent file contains complete agent metadata including conversation history
 - Storage helpers and IPC handlers in `src/main/agent-management.ts`
 
-### API Key Storage
-- API keys stored in `app.getPath('userData')/api-keys.json`
-- Each key contains: `name`, `key` (secret), `baseURL` (optional), `addedAt` (timestamp)
-- Agents reference API keys by name via `config.apiKeyRef` property
-- Storage helpers and IPC handlers in `src/main/apiKey-management.ts`
+### Provider Storage
+- LLM providers stored in `app.getPath('userData')/providers.json`
+- Each provider contains: `id` (unique identifier), `type` (provider type discriminator), `name` (display name), `apiKey` (secret), `baseURL` (optional, overrides default), `createdAt` (timestamp), `updatedAt` (optional timestamp)
+- Agents reference providers by ID via `config.providerId` property
+- Storage helpers, validation, and IPC handlers in `src/main/provider-management.ts`
+- Migration utility in `src/main/migration.ts` converts legacy API keys to providers
+- Backup of `api-keys.json` created at `api-keys.json.backup` during migration
 
 ### Tool Storage
 - Tools stored in `app.getPath('userData')/tools.json`
@@ -242,11 +255,13 @@ Global types defined in `src/global.d.ts`:
 
 - `Project` - Local folder project with `path`, `name`, and `addedAt` properties
 - `Agent` - AI agent with full metadata including conversation history
-- `AgentConfig` - Model configuration (model, temperature, maxTokens, topP, apiKeyRef, baseURL)
+- `AgentConfig` - Model configuration (model, temperature, maxTokens, topP, providerId, apiConfig @deprecated)
 - `AgentPrompts` - System and user prompts
 - `ConversationMessage` - Messages in conversation history (role, content, timestamp, optional toolCall metadata)
 - `AgentSettings` - Flexible settings object
-- `APIKey` - Global API key storage (name, key, baseURL, addedAt)
+- `LLMProviderType` - Union type for provider types ('openai' | 'glm' | 'azure' | 'anthropic' | 'custom')
+- `LLMProvider` - LLM provider storage (id, type, name, apiKey, baseURL?, createdAt, updatedAt?)
+- `APIKey` - @deprecated Global API key storage (name, key, baseURL, addedAt)
 - `Tool` - Custom tool definition (name, description, code, parameters, returns, timeout, environment, enabled, createdAt, updatedAt)
 - `ToolExecutionRequest` - Request for tool execution (toolName, parameters, optional tool)
 - `ToolExecutionResult` - Result from tool execution (success, result, error, executionTime)

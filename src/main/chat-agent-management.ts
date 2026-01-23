@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import type { Agent } from '../global.d.ts';
 import { loadAgents, saveAgent } from './agent-management';
-import { getAPIKeyByName } from './apiKey-management';
+import { getProviderById } from './provider-management';
 import { loadTools, getToolByName, validateJSONSchema } from './tool-management';
 import { streamOpenAICompatibleAPI, parseToolCalls, executeToolWithRouting } from './openai-client';
 
@@ -321,14 +321,14 @@ export function registerChatAgentIPCHandlers(): void {
       throw new Error(`Agent "${agentName}" not found`);
     }
 
-    const apiKeyName = agent.config.apiConfig?.apiKeyRef;
-    if (!apiKeyName) {
-      throw new Error('Agent does not have an API key configured');
+    const providerId = agent.config.providerId;
+    if (!providerId) {
+      throw new Error('Agent does not have a provider configured');
     }
 
-    const apiKeyEntry = getAPIKeyByName(apiKeyName);
-    if (!apiKeyEntry) {
-      throw new Error(`API key "${apiKeyName}" not found`);
+    const provider = getProviderById(providerId);
+    if (!provider) {
+      throw new Error(`Provider "${providerId}" not found`);
     }
 
     // 2. Build messages with tools and files
@@ -349,8 +349,8 @@ export function registerChatAgentIPCHandlers(): void {
       const { content: response, hasToolCalls } = await streamOpenAICompatibleAPI(
         messages,
         agent.config,
-        apiKeyEntry.apiKey,
-        agent.config.apiConfig?.baseURL || apiKeyEntry.baseURL,
+        provider,
+        undefined,
         event.sender
       );
 

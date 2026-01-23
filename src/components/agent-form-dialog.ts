@@ -29,7 +29,7 @@ export class AgentFormDialog extends HTMLElement {
 
     this.render();
     this.attachEventListeners();
-    this.loadAPIKeys();
+    this.loadProviders();
   }
 
   private render(): void {
@@ -160,37 +160,27 @@ export class AgentFormDialog extends HTMLElement {
               </div>
             </div>
 
-            <!-- API Configuration -->
+            <!-- LLM Provider -->
             <div class="space-y-4">
               <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                API Configuration
+                LLM Provider
               </h3>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="api-key-ref">
-                  API Key
+                <label class="block text-sm font-medium text-gray-700 mb-1" for="provider-ref">
+                  Provider
                 </label>
-                <select id="api-key-ref" name="apiKeyRef"
+                <select id="provider-ref" name="providerId"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">No API key selected</option>
+                  <option value="">No provider selected</option>
                 </select>
                 <div class="flex items-center gap-2 mt-1">
-                  <button type="button" id="manage-keys-btn" class="text-sm text-blue-500 hover:text-blue-600 cursor-pointer border-0 bg-transparent p-0">
-                    Manage API Keys
+                  <button type="button" id="manage-providers-btn" class="text-sm text-blue-500 hover:text-blue-600 cursor-pointer border-0 bg-transparent p-0">
+                    Manage Providers
                   </button>
                 </div>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="api-baseurl">
-                  Custom Base URL (Optional)
-                </label>
-                <input type="text" id="api-baseurl" name="baseURL"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       placeholder="https://api.openai.com/v1"
-                       value="${this.escapeHtml(agent?.config?.apiConfig?.baseURL || '')}">
                 <p class="text-xs text-gray-500 mt-1 mb-0">
-                  Override the default API endpoint (e.g., for local LLMs or compatible services)
+                  Select an LLM provider for this agent
                 </p>
               </div>
             </div>
@@ -267,12 +257,12 @@ export class AgentFormDialog extends HTMLElement {
       (newBtn as HTMLElement).addEventListener('click', () => this.cancel());
     }
 
-    // Manage keys button (must be attached AFTER form cloning since it's inside the form)
-    const manageKeysBtn = this.querySelector('#manage-keys-btn');
-    if (manageKeysBtn) {
-      const newBtn = manageKeysBtn.cloneNode(true);
-      manageKeysBtn.replaceWith(newBtn);
-      (newBtn as HTMLElement).addEventListener('click', () => this.openAPIKeysDialog());
+    // Manage providers button (must be attached AFTER form cloning since it's inside the form)
+    const manageProvidersBtn = this.querySelector('#manage-providers-btn');
+    if (manageProvidersBtn) {
+      const newBtn = manageProvidersBtn.cloneNode(true);
+      manageProvidersBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.openProviderDialog());
     }
   }
 
@@ -293,12 +283,7 @@ export class AgentFormDialog extends HTMLElement {
         temperature: parseFloat(formData.get('temperature') as string) || 0.7,
         ...(formData.get('maxTokens') && { maxTokens: parseInt(formData.get('maxTokens') as string) }),
         ...(formData.get('topP') && { topP: parseFloat(formData.get('topP') as string) }),
-        ...(formData.get('apiKeyRef') || formData.get('baseURL') ? {
-          apiConfig: {
-            ...(formData.get('apiKeyRef') && { apiKeyRef: formData.get('apiKeyRef') as string }),
-            ...(formData.get('baseURL') && { baseURL: formData.get('baseURL') as string }),
-          }
-        } : {}),
+        ...(formData.get('providerId') && { providerId: formData.get('providerId') as string }),
       },
       prompts: {
         ...(formData.get('systemPrompt') && { system: formData.get('systemPrompt') as string }),
@@ -330,39 +315,56 @@ export class AgentFormDialog extends HTMLElement {
     return div.innerHTML;
   }
 
-  private async loadAPIKeys(): Promise<void> {
+  private async loadProviders(): Promise<void> {
     if (!window.electronAPI) return;
 
     try {
-      const apiKeys = await window.electronAPI.getAPIKeys();
-      const select = this.querySelector('#api-key-ref') as HTMLSelectElement;
+      const providers = await window.electronAPI.getProviders();
+      const select = this.querySelector('#provider-ref') as HTMLSelectElement;
       if (!select) return;
 
-      // Get current value
-      const currentValue = this.agent?.config?.apiConfig?.apiKeyRef || '';
+      // Get current value - handle both old apiKeyRef and new providerId
+      let currentValue = this.agent?.config?.providerId || '';
+
+      // If no providerId but has apiKeyRef, try to find matching provider
+      if (!currentValue && this.agent?.config?.apiConfig?.apiKeyRef) {
+        const apiKeyRef = this.agent.config.apiConfig.apiKeyRef;
+        // Sanitize the apiKeyRef to match provider ID format
+        const sanitizedId = apiKeyRef
+          .toLowerCase()
+          .replace(/[^a-z0-9-_]/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '');
+
+        // Check if a provider with this ID exists
+        const matchingProvider = providers.find(p => p.id === sanitizedId);
+        if (matchingProvider) {
+          currentValue = matchingProvider.id;
+        }
+      }
 
       // Populate options
       select.innerHTML = `
-        <option value="">No API key selected</option>
-        ${apiKeys.map(key => `
-          <option value="${this.escapeHtml(key.name)}" ${key.name === currentValue ? 'selected' : ''}>
-            ${this.escapeHtml(key.name)} ${key.baseURL ? `(${this.escapeHtml(key.baseURL)})` : ''}
+        <option value="">No provider selected</option>
+        ${providers.map(provider => `
+          <option value="${this.escapeHtml(provider.id)}" ${provider.id === currentValue ? 'selected' : ''}>
+            ${this.escapeHtml(provider.name)} (${provider.type.toUpperCase()})
           </option>
         `).join('')}
       `;
     } catch (error) {
-      console.error('Failed to load API keys:', error);
+      console.error('Failed to load providers:', error);
     }
   }
 
-  private openAPIKeysDialog(): void {
-    const dialog = document.createElement('api-keys-dialog');
+  private openProviderDialog(): void {
+    const dialog = document.createElement('provider-dialog');
     document.body.appendChild(dialog);
 
-    dialog.addEventListener('api-keys-dialog-close', async () => {
+    dialog.addEventListener('provider-dialog-close', async () => {
       dialog.remove();
-      // Reload API keys after dialog closes
-      await this.loadAPIKeys();
+      // Reload providers after dialog closes
+      await this.loadProviders();
     });
   }
 }

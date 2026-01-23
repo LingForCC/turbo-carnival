@@ -8,8 +8,6 @@ import { createMockAgent, createMockAPIKey } from '../../helpers/mocks';
 // Type for the ConversationPanel element
 interface ConversationPanel extends HTMLElement {
   setAgent(agent: any, project: any): void;
-  setAPIKeys(apiKeys: any[]): void;
-  setRequireAPIKeyValidation(require: boolean): void;
   clearChat(): void;
   scrollToBottom(): void;
   handleStreamChunk(chunk: string): void;
@@ -177,41 +175,6 @@ describe('ConversationPanel Web Component', () => {
       cleanup();
     });
 
-    it('should set API keys', async () => {
-      const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
-
-      await waitForAsync();
-
-      const apiKeys = [createMockAPIKey()];
-      element.setAPIKeys(apiKeys);
-
-      // API keys should be stored (tested by validation on send)
-      const mockAgent = createMockAgent();
-      const mockProject = createMockProject();
-
-      element.setAgent(mockAgent, mockProject);
-      element.setRequireAPIKeyValidation(true);
-
-      // Mock alert to capture error messages
-      const alertSpy = jest.spyOn(window, 'alert').mockImplementation();
-
-      const input = element.querySelector('#chat-input') as HTMLTextAreaElement;
-      const sendBtn = element.querySelector('#send-btn') as HTMLElement;
-
-      if (input && sendBtn) {
-        input.value = 'test';
-        sendBtn.click();
-        await waitForAsync(100);
-
-        // Should show error about missing API key
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('API key'));
-      }
-
-      alertSpy.mockRestore();
-
-      cleanup();
-    });
-
     it('should clear chat history', async () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
@@ -250,11 +213,8 @@ describe('ConversationPanel Web Component', () => {
         }
       });
       const mockProject = createMockProject();
-      const mockAPIKeys = [createMockAPIKey({ name: 'test-key' })];
 
       element.setAgent(mockAgent, mockProject);
-      element.setAPIKeys(mockAPIKeys);
-      element.setRequireAPIKeyValidation(true);
       await waitForAsync();
 
       // Spy on the message-sent event
@@ -294,11 +254,8 @@ describe('ConversationPanel Web Component', () => {
         }
       });
       const mockProject = createMockProject();
-      const mockAPIKeys = [createMockAPIKey({ name: 'test-key' })];
 
       element.setAgent(mockAgent, mockProject);
-      element.setAPIKeys(mockAPIKeys);
-      element.setRequireAPIKeyValidation(true);
       await waitForAsync();
 
       // Manually add tagged files
@@ -501,67 +458,6 @@ describe('ConversationPanel Web Component', () => {
       expect(html).toContain('Line 2');
       // Check that newlines are preserved (whitespace-pre-wrap)
       expect(html).toContain('whitespace-pre-wrap');
-
-      cleanup();
-    });
-  });
-
-  describe('Validation', () => {
-    it('should validate API key when required', async () => {
-      const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
-
-      await waitForAsync();
-
-      const mockAgent = createMockAgent(); // No API key configured
-      const mockProject = createMockProject();
-
-      element.setAgent(mockAgent, mockProject);
-      element.setRequireAPIKeyValidation(true);
-      await waitForAsync();
-
-      const alertSpy = jest.spyOn(window, 'alert').mockImplementation();
-
-      const input = element.querySelector('#chat-input') as HTMLTextAreaElement;
-      const sendBtn = element.querySelector('#send-btn') as HTMLElement;
-
-      if (input && sendBtn) {
-        input.value = 'Test message';
-        sendBtn.click();
-
-        await waitForAsync(100);
-
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('API key'));
-      }
-
-      alertSpy.mockRestore();
-
-      cleanup();
-    });
-
-    it('should not validate API key when not required', async () => {
-      const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
-
-      await waitForAsync();
-
-      const mockAgent = createMockAgent();
-      const mockProject = createMockProject();
-
-      element.setAgent(mockAgent, mockProject);
-      element.setRequireAPIKeyValidation(false);
-      await waitForAsync();
-
-      const eventPromise = spyOnEvent(element, 'message-sent');
-
-      const input = element.querySelector('#chat-input') as HTMLTextAreaElement;
-      const sendBtn = element.querySelector('#send-btn') as HTMLElement;
-
-      if (input && sendBtn) {
-        input.value = 'Test message';
-        sendBtn.click();
-
-        // Event should still be dispatched even without API key validation
-        await eventPromise;
-      }
 
       cleanup();
     });

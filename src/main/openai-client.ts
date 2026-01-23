@@ -1,4 +1,71 @@
 import { ipcMain } from 'electron';
+import { getDefaultBaseURL } from './provider-management';
+import type { LLMProvider, APIKey, LLMProviderType } from '../global.d.ts';
+
+// ============ PROVIDER CONFIG EXTRACTION ============
+
+/**
+ * Provider-specific configuration for API calls
+ */
+interface ProviderCallConfig {
+  apiKey: string;
+  baseURL: string;
+  headers?: Record<string, string>;
+}
+
+/**
+ * Extract API configuration from provider
+ * Supports both new provider system and legacy APIKey references
+ */
+export function getProviderConfig(
+  providerOrApiKey: LLMProvider | APIKey | string,
+  providerType?: LLMProviderType
+): ProviderCallConfig {
+  let apiKey: string;
+  let baseURL: string;
+
+  // NEW: Provider object
+  if (typeof providerOrApiKey === 'object' && 'type' in providerOrApiKey) {
+    const provider = providerOrApiKey as LLMProvider;
+    apiKey = provider.apiKey;
+    baseURL = provider.baseURL || getDefaultBaseURL(provider.type) || '';
+
+    // Provider-specific headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    };
+
+    return { apiKey, baseURL, headers };
+  }
+
+  // LEGACY: APIKey object (for backward compatibility)
+  if (typeof providerOrApiKey === 'object' && 'name' in providerOrApiKey) {
+    const apiKeyObj = providerOrApiKey as APIKey;
+    apiKey = apiKeyObj.apiKey;
+    baseURL = apiKeyObj.baseURL || getDefaultBaseURL(providerType || 'openai') || '';
+    return {
+      apiKey,
+      baseURL,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      }
+    };
+  }
+
+  // LEGACY: API key string (for backward compatibility)
+  apiKey = providerOrApiKey as string;
+  baseURL = getDefaultBaseURL(providerType || 'openai') || '';
+  return {
+    apiKey,
+    baseURL,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    }
+  };
+}
 
 // ============ OPENAI API TYPES ============
 
@@ -27,17 +94,25 @@ interface StreamResult {
  * Call OpenAI-compatible API with streaming
  * Returns the complete accumulated response content and whether tool calls were detected
  * If tool calls are detected during streaming, stops sending chunks to renderer
+ *
+ * Now accepts LLMProvider, APIKey, or string (for backward compatibility)
  */
 async function streamOpenAICompatibleAPI(
   messages: OpenAIMessage[],
   config: any,
-  apiKey: string,
-  baseURL: string | undefined,
+  providerOrKey: LLMProvider | APIKey | string,
+  baseURLOverride: string | undefined,
   webContents: Electron.WebContents,
   timeout: number = 60000
 ): Promise<StreamResult> {
-  const endpoint = baseURL || 'https://api.openai.com/v1';
-  const url = `${endpoint}/chat/completions`;
+  // Extract configuration from provider or legacy API key
+  const providerConfig = getProviderConfig(
+    providerOrKey,
+    config.providerType // Optional hint for legacy string keys
+  );
+
+  const baseURL = baseURLOverride || providerConfig.baseURL;
+  const url = `${baseURL}/chat/completions`;
 
   const requestBody: OpenAIRequest = {
     messages,
@@ -54,9 +129,9 @@ async function streamOpenAICompatibleAPI(
   try {
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
+      headers: providerConfig.headers || {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${providerConfig.apiKey}`,
       },
       body: JSON.stringify(requestBody),
       signal: controller.signal,

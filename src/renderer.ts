@@ -8,7 +8,7 @@ import './components/app-panel';
 import './components/project-agent-dashboard';
 import './components/app-container';
 import './components/agent-form-dialog';
-import './components/api-keys-dialog';
+import './components/provider-dialog';
 import './components/project-detail-panel';
 import './components/conversation-panel';
 

@@ -30,7 +30,8 @@ export interface AgentConfig {
   temperature?: number;            // Default: 0.7
   maxTokens?: number;              // Optional token limit
   topP?: number;                   // Optional nucleus sampling
-  apiConfig?: APIConfig;           // API configuration
+  providerId?: string;             // Reference to LLM provider by ID
+  apiConfig?: APIConfig;           // @deprecated API configuration (use providerId instead)
 }
 
 /**
@@ -81,7 +82,26 @@ export interface App {
 }
 
 /**
+ * LLM Provider type discriminator
+ */
+export type LLMProviderType = 'openai' | 'glm' | 'azure' | 'anthropic' | 'custom';
+
+/**
+ * LLM Provider configuration
+ */
+export interface LLMProvider {
+  id: string;                    // Unique identifier (e.g., "openai-main")
+  type: LLMProviderType;         // Provider type discriminator
+  name: string;                  // Display name
+  apiKey: string;                // API key/secret
+  baseURL?: string;              // Custom endpoint (overrides default)
+  createdAt: number;             // Timestamp when created
+  updatedAt?: number;            // Timestamp when last updated
+}
+
+/**
  * API configuration for OpenAI-compatible endpoints
+ * @deprecated Use providerId in AgentConfig instead
  */
 export interface APIConfig {
   baseURL?: string;              // Custom API endpoint (e.g., "https://api.openai.com/v1")
@@ -91,6 +111,7 @@ export interface APIConfig {
 
 /**
  * Named API key for global storage
+ * @deprecated Use LLMProvider instead
  */
 export interface APIKey {
   name: string;                  // Unique identifier (e.g., "openai-main", "local-llm")
@@ -241,7 +262,14 @@ interface ElectronAPI {
   removeAgent: (projectPath: string, agentName: string) => Promise<Agent[]>;
   updateAgent: (projectPath: string, agentName: string, agent: Agent) => Promise<Agent>;
 
-  // API key management
+  // LLM Provider management
+  getProviders: () => Promise<LLMProvider[]>;
+  addProvider: (provider: LLMProvider) => Promise<LLMProvider[]>;
+  updateProvider: (id: string, provider: LLMProvider) => Promise<LLMProvider[]>;
+  removeProvider: (id: string) => Promise<LLMProvider[]>;
+  getProviderById: (id: string) => Promise<LLMProvider>;
+
+  // @deprecated API key management (kept for migration period)
   getAPIKeys: () => Promise<APIKey[]>;
   addAPIKey: (apiKey: APIKey) => Promise<APIKey[]>;
   removeAPIKey: (name: string) => Promise<APIKey[]>;

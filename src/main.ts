@@ -5,6 +5,8 @@ import type { Agent } from './global.d.ts';
 import { registerAgentIPCHandlers, loadAgents, saveAgent } from './main/agent-management';
 import { registerAppIPCHandlers } from './main/app-management';
 import { registerApiKeyIPCHandlers, getAPIKeyByName } from './main/apiKey-management';
+import { registerProviderIPCHandlers } from './main/provider-management';
+import { migrateAPIKeysToProviders } from './main/migration';
 import { registerOpenAIClientIPCHandlers } from './main/openai-client';
 import { registerToolIPCHandlers } from './main/tool-management';
 import { registerProjectIPCHandlers } from './main/project-management';
@@ -49,6 +51,15 @@ function createWindow(): void {
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(() => {
+  // Run migration on startup
+  const migrationResult = migrateAPIKeysToProviders();
+
+  if (migrationResult.success && migrationResult.migrated > 0) {
+    console.log(`Migrated ${migrationResult.migrated} API keys to providers`);
+  } else if (!migrationResult.success) {
+    console.error('Migration failed:', migrationResult.errors);
+  }
+
   createWindow();
 
   // Register IPC handlers
@@ -70,7 +81,11 @@ function registerIPCHandlers(): void {
   // ============ AGENT IPC HANDLERS ============
   registerAgentIPCHandlers();
 
-  // ============ API KEY IPC HANDLERS ============
+  // ============ PROVIDER IPC HANDLERS ============
+  registerProviderIPCHandlers();
+
+  // ============ API KEY IPC HANDLERS (DEPRECATED) ============
+  // Kept for migration period
   registerApiKeyIPCHandlers();
 
   // ============ TOOL IPC HANDLERS ============
