@@ -38,10 +38,9 @@ The main process is organized into dedicated modules:
 - Default URLs: `getDefaultBaseURL` (returns default endpoints per provider type)
 - IPC handler registration: `registerProviderIPCHandlers`
 
-**`src/main/migration.ts`**
-- Migration utility from API keys to providers
-- `migrateAPIKeysToProviders()` - Converts api-keys.json to providers.json
-- `migrateAgentConfigs()` - Updates agent files to use providerId
+**`src/main/migration-model-config.ts`**
+- Migration utility from agent configs to ModelConfig
+- `migrateAgentConfigsToModelConfigs()` - Converts agent model configs to reusable ModelConfig objects
 
 **`src/main/openai-client.ts`**
 - Pure OpenAI API client (no business logic)
@@ -77,7 +76,7 @@ The main process is organized into dedicated modules:
 - `chat-agent-management.ts` imports from: `agent-management.ts`, `provider-management.ts`, `tool-management.ts`, `openai-client.ts`
 - `app-agent-management.ts` imports from: `agent-management.ts`, `provider-management.ts`, `openai-client.ts`
 - `tool-management.ts` imports from: `openai-client.ts` (executeToolWithRouting)
-- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `migration.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`
+- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `migration-model-config.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`
 
 ### Pattern for Creating New Modules
 1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)
@@ -97,7 +96,6 @@ The main process is organized into dedicated modules:
   - `executeAppMain(...)` - Execute main process code from app
   - `updateAppData(...)` - Update app data storage
   - `getProviders()`, `addProvider(...)`, `updateProvider(id, ...)`, `removeProvider(id)`, `getProviderById(id)` - Provider operations
-  - `getAPIKeys()`, `addAPIKey(...)`, `removeAPIKey(name)` - @deprecated API key operations (kept for migration period)
   - `getTools()`, `addTool(...)`, `updateTool(...)`, `removeTool(toolName)` - Tool operations
   - `executeTool(request)` - Executes a tool (routes based on environment)
   - `onBrowserToolExecution(callback)` - Listens for browser tool execution requests
@@ -190,7 +188,6 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - `providers:update` - Updates an existing provider (preserves createdAt, sets updatedAt)
 - `providers:remove` - Removes a provider by ID
 - `providers:getById` - Gets a single provider by ID
-- `api-keys:get`, `api-keys:add`, `api-keys:remove` - @deprecated API key channels (kept for migration period)
 
 ### Tool IPC Channels
 - `tools:get` - Returns all stored tools
@@ -238,8 +235,6 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - Each provider contains: `id` (unique identifier), `type` (provider type discriminator), `name` (display name), `apiKey` (secret), `baseURL` (optional, overrides default), `createdAt` (timestamp), `updatedAt` (optional timestamp)
 - Agents reference providers by ID via `config.providerId` property
 - Storage helpers, validation, and IPC handlers in `src/main/provider-management.ts`
-- Migration utility in `src/main/migration.ts` converts legacy API keys to providers
-- Backup of `api-keys.json` created at `api-keys.json.backup` during migration
 
 ### Tool Storage
 - Tools stored in `app.getPath('userData')/tools.json`
@@ -255,13 +250,14 @@ Global types defined in `src/global.d.ts`:
 
 - `Project` - Local folder project with `path`, `name`, and `addedAt` properties
 - `Agent` - AI agent with full metadata including conversation history
-- `AgentConfig` - Model configuration (model, temperature, maxTokens, topP, providerId, apiConfig @deprecated)
+- `AgentConfig` - Model configuration (modelId, providerId, model @deprecated, temperature @deprecated, maxTokens @deprecated, topP @deprecated, apiConfig @deprecated)
 - `AgentPrompts` - System and user prompts
 - `ConversationMessage` - Messages in conversation history (role, content, timestamp, optional toolCall metadata)
 - `AgentSettings` - Flexible settings object
 - `LLMProviderType` - Union type for provider types ('openai' | 'glm' | 'azure' | 'anthropic' | 'custom')
 - `LLMProvider` - LLM provider storage (id, type, name, apiKey, baseURL?, createdAt, updatedAt?)
-- `APIKey` - @deprecated Global API key storage (name, key, baseURL, addedAt)
+- `APIConfig` - API configuration for OpenAI-compatible endpoints (baseURL, apiKeyRef, timeout) @deprecated
+- `ModelConfig` - Model configuration for reusing model settings (id, name, model, temperature, maxTokens, topP, extra, createdAt, updatedAt)
 - `Tool` - Custom tool definition (name, description, code, parameters, returns, timeout, environment, enabled, createdAt, updatedAt)
 - `ToolExecutionRequest` - Request for tool execution (toolName, parameters, optional tool)
 - `ToolExecutionResult` - Result from tool execution (success, result, error, executionTime)

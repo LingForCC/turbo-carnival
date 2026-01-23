@@ -159,12 +159,8 @@ Agents are stored as `agent-{sanitized-name}.json` files in project folders:
   "type": "chat",
   "description": "Helpful assistant",
   "config": {
-    "model": "gpt-4",
-    "temperature": 0.7,
-    "maxTokens": 2000,
-    "topP": 1.0,
-    "apiKeyRef": "openai-main",
-    "baseURL": "https://api.openai.com/v1"
+    "modelId": "gpt4-default",
+    "providerId": "openai-main"
   },
   "prompts": {
     "system": "You are a helpful assistant.",
@@ -175,27 +171,14 @@ Agents are stored as `agent-{sanitized-name}.json` files in project folders:
 }
 ```
 
-## API Key Management
-
-API keys stored globally in `app.getPath('userData')/api-keys.json`:
-
-```json
-{
-  "name": "openai-main",
-  "key": "sk-...",
-  "baseURL": "https://api.openai.com/v1",
-  "addedAt": "2024-01-01T00:00:00.000Z"
-}
-```
-
-Agents reference keys by name via `config.apiKeyRef`.
+Agents reference providers and model configurations via `config.providerId` and `config.modelId`.
 
 ## Debugging Tips
 
 ### Main Process
 - Use `console.log()` - output in terminal where app was launched
 - DevTools open automatically in dev mode
-- Check userData path for stored files (projects, agents, API keys, tools)
+- Check userData path for stored files (projects, providers, model-configs, tools)
 
 ### Renderer Process
 - Use DevTools (open automatically in dev mode)

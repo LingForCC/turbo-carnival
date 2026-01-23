@@ -101,7 +101,6 @@ Located in `src/__tests__/helpers/`:
 - `createMockProject(overrides)` - Creates a mock Project object
 - `createMockAgent(overrides)` - Creates a mock Agent object
 - `createMockApp(overrides)` - Creates a mock App object
-- `createMockAPIKey(overrides)` - Creates a mock APIKey object
 - `createMockFileSystem()` - Creates an in-memory file system object
 - `createTestProjectStructure(path, agents)` - Creates mock files for a project with agents
 
@@ -115,10 +114,6 @@ Tests are organized in `src/__tests__/` by feature:
 - `file-listing.test.ts` - File listing helper tests (listFilesRecursive)
 - `ipc-handlers.test.ts` - IPC handler tests (projects:add, projects:remove, project:getFileTree, files:list, files:readContents)
 
-### `src/__tests__/main/apiKey-management/`
-- `api-keys.test.ts` - Storage helper tests (getAPIKeysPath, loadAPIKeys, saveAPIKeys, getAPIKeyByName)
-- `ipc-handlers.test.ts` - IPC handler tests (api-keys:get, api-keys:add, api-keys:remove)
-
 ### `src/__tests__/main/app-management/`
 - `app-storage.test.ts` - Storage helper tests (sanitizeAppName, getAppFilePath, createApp, saveApp, loadApp, deleteAppFile)
 - `ipc-handlers.test.ts` - IPC handler tests (apps:get, apps:save, apps:delete, apps:executeMain, apps:updateData)
@@ -129,7 +124,7 @@ Tests are organized in `src/__tests__/` by feature:
 - `ipc-handlers.test.ts` - IPC handler tests (agents:get, agents:add, agents:remove, agents:update)
 
 ### `src/__tests__/components/`
-- `conversation-panel/conversation-panel.test.ts` - Web Component UI tests (rendering, file tagging, message sending, streaming, API key validation, XSS prevention)
+- `conversation-panel/conversation-panel.test.ts` - Web Component UI tests (rendering, file tagging, message sending, streaming, tool calls, XSS prevention)
 - `project-panel/project-panel.test.ts` - Web Component UI tests (rendering, interactions, events, XSS prevention)
 - `app-panel/app-panel.test.ts` - Web Component UI tests for App-type agents (rendering, code view toggle, streaming, XSS prevention)
 

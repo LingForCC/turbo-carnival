@@ -111,17 +111,6 @@ export interface APIConfig {
 }
 
 /**
- * Named API key for global storage
- * @deprecated Use LLMProvider instead
- */
-export interface APIKey {
-  name: string;                  // Unique identifier (e.g., "openai-main", "local-llm")
-  apiKey: string;                // The actual API key
-  baseURL?: string;              // Optional default endpoint for this key
-  createdAt: number;             // Timestamp
-}
-
-/**
  * Model configuration for reusing model settings across agents
  */
 export interface ModelConfig {
@@ -291,11 +280,6 @@ interface ElectronAPI {
   updateModelConfig: (id: string, config: ModelConfig) => Promise<ModelConfig[]>;
   removeModelConfig: (id: string) => Promise<ModelConfig[]>;
   getModelConfigById: (id: string) => Promise<ModelConfig>;
-
-  // @deprecated API key management (kept for migration period)
-  getAPIKeys: () => Promise<APIKey[]>;
-  addAPIKey: (apiKey: APIKey) => Promise<APIKey[]>;
-  removeAPIKey: (name: string) => Promise<APIKey[]>;
 
   // Tool management
   getTools: () => Promise<Tool[]>;

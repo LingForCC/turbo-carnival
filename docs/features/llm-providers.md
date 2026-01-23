@@ -226,38 +226,6 @@ If you have agents created before Model Configurations was introduced:
 
 For more details, see **[Model Configurations](./model-configs.md)**.
 
-## Migration from API Keys
-
-### Automatic Migration
-
-When you first run the updated application:
-- Existing API keys are automatically converted to OpenAI providers
-- Provider IDs are generated from API key names (sanitized format)
-- Original `api-keys.json` is backed up to `api-keys.json.backup`
-- Agent configurations are NOT automatically updated (see below)
-
-### Manual Agent Migration
-
-After API keys are migrated to providers, you must update each agent:
-
-1. **Edit the agent** - The provider dropdown will show the migrated provider as selected
-2. **Save the agent** - This updates the agent config to use `providerId`
-3. **Verify** - Try sending a message to confirm it works
-
-### Migration Rollback
-
-If migration causes issues:
-1. Close the application
-2. Delete `providers.json` from your user data directory
-3. Rename `api-keys.json.backup` back to `api-keys.json`
-4. Restart the application
-
-### Finding User Data Directory
-
-- **macOS**: `~/Library/Application Support/Turbo Carnival/`
-- **Windows**: `%APPDATA%/Turbo Carnival/`
-- **Linux**: `~/.config/Turbo Carnival/`
-
 ## Provider Validation Rules
 
 ### ID Validation
@@ -368,23 +336,12 @@ if (provider.type === 'your-provider') {
 4. Rate limits haven't been exceeded
 5. Network connectivity
 
-### Migration Issues
-
-**If API keys didn't migrate**:
-1. Check if `api-keys.json.backup` exists
-2. Verify backup has your API keys
-3. Manually create providers with the same API keys
-
-**If agents don't work after migration**:
-1. Edit each agent to re-select the provider
-2. Save the agent to update its configuration
-
 ## Architecture
 
 ### Main Process Modules
 
 - **`src/main/provider-management.ts`**: Provider CRUD operations, validation, storage helpers
-- **`src/main/migration.ts`**: Migration utility from API keys to providers
+- **`src/main/migration-model-config.ts`**: Migration utility for agent configs to ModelConfig
 - **`src/main/openai-client.ts`**: Provider-aware API client with config extraction
 - **`src/main/chat-agent-management.ts`**: Uses providers for chat agents
 - **`src/main/app-agent-management.ts`**: Uses providers for app agents
@@ -406,7 +363,6 @@ if (provider.type === 'your-provider') {
 
 - **Location**: `{userData}/providers.json`
 - **Format**: JSON with `providers` array
-- **Backup**: `api-keys.json.backup` created during migration
 
 ## Security Considerations
 
