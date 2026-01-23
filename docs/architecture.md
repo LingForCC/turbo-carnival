@@ -38,10 +38,6 @@ The main process is organized into dedicated modules:
 - Default URLs: `getDefaultBaseURL` (returns default endpoints per provider type)
 - IPC handler registration: `registerProviderIPCHandlers`
 
-**`src/main/migration-model-config.ts`**
-- Migration utility from agent configs to ModelConfig
-- `migrateAgentConfigsToModelConfigs()` - Converts agent model configs to reusable ModelConfig objects
-
 **`src/main/openai-client.ts`**
 - Pure OpenAI API client (no business logic)
 - API client function: `streamOpenAICompatibleAPI`
@@ -76,7 +72,7 @@ The main process is organized into dedicated modules:
 - `chat-agent-management.ts` imports from: `agent-management.ts`, `provider-management.ts`, `tool-management.ts`, `openai-client.ts`
 - `app-agent-management.ts` imports from: `agent-management.ts`, `provider-management.ts`, `openai-client.ts`
 - `tool-management.ts` imports from: `openai-client.ts` (executeToolWithRouting)
-- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `migration-model-config.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`
+- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`
 
 ### Pattern for Creating New Modules
 1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)

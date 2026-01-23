@@ -341,7 +341,6 @@ if (provider.type === 'your-provider') {
 ### Main Process Modules
 
 - **`src/main/provider-management.ts`**: Provider CRUD operations, validation, storage helpers
-- **`src/main/migration-model-config.ts`**: Migration utility for agent configs to ModelConfig
 - **`src/main/openai-client.ts`**: Provider-aware API client with config extraction
 - **`src/main/chat-agent-management.ts`**: Uses providers for chat agents
 - **`src/main/app-agent-management.ts`**: Uses providers for app agents

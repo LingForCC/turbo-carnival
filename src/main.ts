@@ -6,7 +6,6 @@ import { registerAgentIPCHandlers, loadAgents, saveAgent } from './main/agent-ma
 import { registerAppIPCHandlers } from './main/app-management';
 import { registerProviderIPCHandlers } from './main/provider-management';
 import { registerModelConfigIPCHandlers } from './main/model-config-management';
-import { migrateAgentConfigsToModelConfigs } from './main/migration-model-config';
 import { registerOpenAIClientIPCHandlers } from './main/openai-client';
 import { registerToolIPCHandlers } from './main/tool-management';
 import { registerProjectIPCHandlers } from './main/project-management';
@@ -51,15 +50,6 @@ function createWindow(): void {
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(() => {
-  // Run agent config to ModelConfig migration on startup
-  const modelConfigMigrationResult = migrateAgentConfigsToModelConfigs();
-
-  if (modelConfigMigrationResult.success && modelConfigMigrationResult.migrated > 0) {
-    console.log(`Migrated ${modelConfigMigrationResult.migrated} agents to use ModelConfig`);
-  } else if (!modelConfigMigrationResult.success) {
-    console.error('ModelConfig migration failed:', modelConfigMigrationResult.errors);
-  }
-
   createWindow();
 
   // Register IPC handlers

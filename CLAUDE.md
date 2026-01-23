@@ -107,7 +107,6 @@ The documentation has been split into focused modules for better performance:
 - `src/main/app-management.ts` - App CRUD operations, execution in main/renderer processes
 - `src/main/provider-management.ts` - LLM provider CRUD, validation, default URLs
 - `src/main/model-config-management.ts` - Model configuration CRUD, validation, storage
-- `src/main/migration-model-config.ts` - Migration utility for agent configs to ModelConfig
 - `src/main/openai-client.ts` - Provider-aware API client with tool execution utilities
 - `src/main/chat-agent-management.ts` - Chat agent logic with tool calling + file context
 - `src/main/app-agent-management.ts` - App agent logic with file context only (no tools)
