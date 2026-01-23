@@ -1,4 +1,4 @@
-import type { Project, Agent } from '../global.d.ts';
+import type { Project, Agent, ModelConfig } from '../global.d.ts';
 
 /**
  * ProjectAgentDashboard Web Component
@@ -8,6 +8,7 @@ export class ProjectAgentDashboard extends HTMLElement {
   private currentProject: Project | null = null;
   private agents: Agent[] = [];
   private selectedAgent: Agent | null = null;
+  private modelConfigs: ModelConfig[] = [];
 
   constructor() {
     super();
@@ -140,7 +141,7 @@ export class ProjectAgentDashboard extends HTMLElement {
 
         <!-- Agent Config -->
         <div class="shrink-0 text-xs text-gray-400">
-          ${this.escapeHtml(agent.config.model || 'N/A')}
+          ${this.getModelDisplayName(agent)}
         </div>
 
         <!-- Actions Menu -->
@@ -220,6 +221,7 @@ export class ProjectAgentDashboard extends HTMLElement {
   private async handleProjectSelected(project: Project): Promise<void> {
     this.currentProject = project;
     await this.loadAgents();
+    await this.loadModelConfigs();
     this.render();
   }
 
@@ -237,6 +239,23 @@ export class ProjectAgentDashboard extends HTMLElement {
     } catch (error) {
       console.error('Failed to load agents:', error);
       this.agents = [];
+    }
+  }
+
+  /**
+   * Load all model configs
+   */
+  private async loadModelConfigs(): Promise<void> {
+    if (!window.electronAPI) {
+      this.modelConfigs = [];
+      return;
+    }
+
+    try {
+      this.modelConfigs = await window.electronAPI.getModelConfigs();
+    } catch (error) {
+      console.error('Failed to load model configs:', error);
+      this.modelConfigs = [];
     }
   }
 
@@ -292,8 +311,9 @@ export class ProjectAgentDashboard extends HTMLElement {
           );
         }
 
-        // Reload agents
+        // Reload agents and model configs
         await this.loadAgents();
+        await this.loadModelConfigs();
         this.render();
       } catch (error: any) {
         console.error('Failed to save agent:', error);
@@ -344,6 +364,23 @@ export class ProjectAgentDashboard extends HTMLElement {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  /**
+   * Get model display name for an agent
+   * Handles both new modelId system and legacy model field
+   */
+  private getModelDisplayName(agent: Agent): string {
+    // Try to get model config if modelId is set
+    if (agent.config.modelId) {
+      const modelConfig = this.modelConfigs.find(m => m.id === agent.config.modelId);
+      if (modelConfig) {
+        return modelConfig.model;
+      }
+    }
+
+    // Fall back to deprecated model field
+    return agent.config.model || 'N/A';
   }
 
   /**

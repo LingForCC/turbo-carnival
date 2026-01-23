@@ -3,7 +3,7 @@
  */
 
 import { mountComponent, createMockProject, mockElectronAPI, waitForAsync, spyOnEvent } from '../../helpers/component-testing';
-import { createMockAgent, createMockAPIKey } from '../../helpers/mocks';
+import { createMockAgent } from '../../helpers/mocks';
 
 // Type for the ConversationPanel element
 interface ConversationPanel extends HTMLElement {
@@ -209,7 +209,7 @@ describe('ConversationPanel Web Component', () => {
       const mockAgent = createMockAgent({
         config: {
           ...createMockAgent().config,
-          apiConfig: { apiKeyRef: 'test-key' }
+          providerId: 'test-provider'
         }
       });
       const mockProject = createMockProject();
@@ -250,7 +250,7 @@ describe('ConversationPanel Web Component', () => {
       const mockAgent = createMockAgent({
         config: {
           ...createMockAgent().config,
-          apiConfig: { apiKeyRef: 'test-key' }
+          providerId: 'test-provider'
         }
       });
       const mockProject = createMockProject();

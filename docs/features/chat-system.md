@@ -293,15 +293,14 @@ Round 3:
 
 ## Agent Configuration
 
-Agents can reference global API keys by name:
+Agents reference providers and model configurations:
 
 ```typescript
 {
   "name": "Chat Assistant",
   "config": {
-    "model": "gpt-4",
-    "apiKeyRef": "openai-main",  // References named API key
-    "baseURL": "https://api.openai.com/v1"  // Optional override
+    "modelId": "gpt4-creative",  // References ModelConfig
+    "providerId": "openai-main"  // References LLM Provider
   }
 }
 ```

@@ -246,13 +246,12 @@ Global types defined in `src/global.d.ts`:
 
 - `Project` - Local folder project with `path`, `name`, and `addedAt` properties
 - `Agent` - AI agent with full metadata including conversation history
-- `AgentConfig` - Model configuration (modelId, providerId, model @deprecated, temperature @deprecated, maxTokens @deprecated, topP @deprecated, apiConfig @deprecated)
+- `AgentConfig` - Model configuration (modelId, providerId, model @deprecated, temperature @deprecated, maxTokens @deprecated, topP @deprecated)
 - `AgentPrompts` - System and user prompts
 - `ConversationMessage` - Messages in conversation history (role, content, timestamp, optional toolCall metadata)
 - `AgentSettings` - Flexible settings object
 - `LLMProviderType` - Union type for provider types ('openai' | 'glm' | 'azure' | 'anthropic' | 'custom')
 - `LLMProvider` - LLM provider storage (id, type, name, apiKey, baseURL?, createdAt, updatedAt?)
-- `APIConfig` - API configuration for OpenAI-compatible endpoints (baseURL, apiKeyRef, timeout) @deprecated
 - `ModelConfig` - Model configuration for reusing model settings (id, name, model, temperature, maxTokens, topP, extra, createdAt, updatedAt)
 - `Tool` - Custom tool definition (name, description, code, parameters, returns, timeout, environment, enabled, createdAt, updatedAt)
 - `ToolExecutionRequest` - Request for tool execution (toolName, parameters, optional tool)

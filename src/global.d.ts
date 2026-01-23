@@ -27,12 +27,11 @@ export interface Agent {
  */
 export interface AgentConfig {
   modelId?: string;              // Reference to ModelConfig (NEW - primary way)
-  providerId?: string;           // Reference to LLM provider by ID (KEPT - still in AgentConfig)
+  providerId?: string;           // Reference to LLM provider by ID
   model?: string;                // Direct model string (DEPRECATED - use modelId instead)
   temperature?: number;          // DEPRECATED - use modelId instead
   maxTokens?: number;            // DEPRECATED - use modelId instead
   topP?: number;                 // DEPRECATED - use modelId instead
-  apiConfig?: APIConfig;         // @deprecated API configuration (use providerId instead)
 }
 
 /**
@@ -98,16 +97,6 @@ export interface LLMProvider {
   baseURL?: string;              // Custom endpoint (overrides default)
   createdAt: number;             // Timestamp when created
   updatedAt?: number;            // Timestamp when last updated
-}
-
-/**
- * API configuration for OpenAI-compatible endpoints
- * @deprecated Use providerId in AgentConfig instead
- */
-export interface APIConfig {
-  baseURL?: string;              // Custom API endpoint (e.g., "https://api.openai.com/v1")
-  apiKeyRef?: string;            // Reference to named API key in global storage
-  timeout?: number;              // Request timeout in milliseconds (default: 60000)
 }
 
 /**

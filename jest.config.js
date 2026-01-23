@@ -58,7 +58,6 @@ module.exports = {
     '!src/components/project-agent-dashboard.ts',
     '!src/components/project-detail-panel.ts',
     '!src/components/agent-form-dialog.ts',
-    '!src/components/api-keys-dialog.ts',
     '!src/components/tools-dialog.ts',
     '!src/components/tool-test-dialog.ts',
   ],

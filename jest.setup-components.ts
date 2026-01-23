@@ -33,11 +33,6 @@ const mockElectronAPI = {
   removeAgent: jest.fn(),
   updateAgent: jest.fn(),
 
-  // API Key methods
-  getAPIKeys: jest.fn(),
-  addAPIKey: jest.fn(),
-  removeAPIKey: jest.fn(),
-
   // Tool methods
   getTools: jest.fn(),
   addTool: jest.fn(),

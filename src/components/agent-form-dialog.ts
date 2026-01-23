@@ -316,25 +316,8 @@ export class AgentFormDialog extends HTMLElement {
       const select = this.querySelector('#provider-ref') as HTMLSelectElement;
       if (!select) return;
 
-      // Get current value - handle both old apiKeyRef and new providerId
-      let currentValue = this.agent?.config?.providerId || '';
-
-      // If no providerId but has apiKeyRef, try to find matching provider
-      if (!currentValue && this.agent?.config?.apiConfig?.apiKeyRef) {
-        const apiKeyRef = this.agent.config.apiConfig.apiKeyRef;
-        // Sanitize the apiKeyRef to match provider ID format
-        const sanitizedId = apiKeyRef
-          .toLowerCase()
-          .replace(/[^a-z0-9-_]/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '');
-
-        // Check if a provider with this ID exists
-        const matchingProvider = providers.find(p => p.id === sanitizedId);
-        if (matchingProvider) {
-          currentValue = matchingProvider.id;
-        }
-      }
+      // Get current value
+      const currentValue = this.agent?.config?.providerId || '';
 
       // Populate options
       select.innerHTML = `
