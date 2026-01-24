@@ -38,19 +38,26 @@ The main process is organized into dedicated modules:
 - Default URLs: `getDefaultBaseURL` (returns default endpoints per provider type)
 - IPC handler registration: `registerProviderIPCHandlers`
 
+**`src/main/llm/` - LLM Streaming Module**
+- `index.ts` - Main routing interface with `streamLLM()` function and `StreamLLMOptions` interface
+- `openai.ts` - OpenAI-compatible streaming with native tool calling and tool call iteration
+  - Single streaming: `streamOpenAISingle()` - handles SSE parsing, tool_calls extraction
+  - Tool execution: `executeToolCalls()` - validates and executes tools, sends IPC events
+  - Message building: `buildCompleteMessages()` - constructs API message array
+  - Complete flow: `streamOpenAI()` - handles tool call iteration loop (max 10 rounds)
+- `glm.ts` - GLM (Zhipu AI) streaming with native tool calling
+  - Same structure as openai.ts: `streamGLM()`, `streamGLMSingle()`, `executeToolCalls()`, `buildCompleteMessages()`
+  - Uses OpenAI-compatible tool calling format (tools array, tool_calls in delta, tool_call_id for results)
+
 **`src/main/openai-client.ts`**
-- Pure OpenAI API client (no business logic)
-- API client function: `streamOpenAICompatibleAPI`
-- Tool helper functions: `parseToolCalls`, `executeToolWithRouting`
-- Exports utilities for use by agent management modules
+- Tool execution routing only (no API client)
+- `executeToolWithRouting()` - Routes tools to Node.js worker or browser based on environment
 
 **`src/main/chat-agent-management.ts`**
 - Chat agent logic (tools + files)
-- System prompt generation: `generateChatAgentSystemPrompt` (includes tool descriptions)
-- Message building: `buildMessagesForChatAgent` (includes tool descriptions and file contents)
-- Tool description formatting: `formatToolDescriptions`
-- Tool execution with real-time status updates via `chat-agent:toolCall` IPC events
-- IPC handlers: `chat-agent:streamMessage` (streaming), emits `chat-agent:toolCall` events during tool execution
+- Simplified to single `streamLLM()` call (tool iteration handled internally)
+- System prompt generation: `generateChatAgentSystemPrompt()`
+- IPC handlers: `chat-agent:streamMessage`, emits `chat-agent:toolCall` events during tool execution
 
 **`src/main/app-agent-management.ts`**
 - App agent logic (files only, no tools)
@@ -69,10 +76,13 @@ The main process is organized into dedicated modules:
 - Runs tools in renderer context with access to browser APIs
 
 ### Module Dependencies
-- `chat-agent-management.ts` imports from: `agent-management.ts`, `provider-management.ts`, `tool-management.ts`, `openai-client.ts`
-- `app-agent-management.ts` imports from: `agent-management.ts`, `provider-management.ts`, `openai-client.ts`
+- `llm/index.ts` imports from: `llm/openai.ts`, `llm/glm.ts`
+- `llm/openai.ts` imports from: `provider-management.ts`, `tool-management.ts`, `openai-client.ts`
+- `llm/glm.ts` imports from: `provider-management.ts`, `tool-management.ts`, `openai-client.ts`
+- `chat-agent-management.ts` imports from: `llm/index.ts` (streamLLM), `agent-management.ts`, `provider-management.ts`, `model-config-management.ts`, `tool-management.ts`
+- `app-agent-management.ts` imports from: `llm/index.ts` (streamLLM), `agent-management.ts`, `provider-management.ts`, `model-config-management.ts`
 - `tool-management.ts` imports from: `openai-client.ts` (executeToolWithRouting)
-- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`
+- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `model-config-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`
 
 ### Pattern for Creating New Modules
 1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)
@@ -248,11 +258,11 @@ Global types defined in `src/global.d.ts`:
 - `Agent` - AI agent with full metadata including conversation history
 - `AgentConfig` - Model configuration (modelId, providerId, model @deprecated, temperature @deprecated, maxTokens @deprecated, topP @deprecated)
 - `AgentPrompts` - System and user prompts
-- `ConversationMessage` - Messages in conversation history (role, content, timestamp, optional toolCall metadata)
+- `ConversationMessage` - Messages in conversation history (role as string, content, timestamp, optional tool_call_id, optional toolCall metadata)
 - `AgentSettings` - Flexible settings object
-- `LLMProviderType` - Union type for provider types ('openai' | 'glm' | 'azure' | 'anthropic' | 'custom')
+- `LLMProviderType` - Union type for provider types ('openai' | 'glm' | 'azure' | 'custom')
 - `LLMProvider` - LLM provider storage (id, type, name, apiKey, baseURL?, createdAt, updatedAt?)
-- `ModelConfig` - Model configuration for reusing model settings (id, name, model, temperature, maxTokens, topP, extra, createdAt, updatedAt)
+- `ModelConfig` - Model configuration for reusing model settings (id, name, model, type as LLMProviderType, temperature, maxTokens, topP, extra, createdAt, updatedAt)
 - `Tool` - Custom tool definition (name, description, code, parameters, returns, timeout, environment, enabled, createdAt, updatedAt)
 - `ToolExecutionRequest` - Request for tool execution (toolName, parameters, optional tool)
 - `ToolExecutionResult` - Result from tool execution (success, result, error, executionTime)

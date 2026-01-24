@@ -61,9 +61,7 @@ export function migrateModelConfigs(): void {
     // Infer type from model name
     let inferredType: LLMProviderType = 'openai'; // Default
 
-    if (config.model.startsWith('claude') || config.model.startsWith('anthropic')) {
-      inferredType = 'anthropic';
-    } else if (config.model.startsWith('glm') || config.model.startsWith('chatglm')) {
+    if (config.model.startsWith('glm') || config.model.startsWith('chatglm')) {
       inferredType = 'glm';
     }
     // Add more heuristics as needed
@@ -109,8 +107,8 @@ export function validateModelConfig(modelConfig: ModelConfig): { valid: boolean;
   }
 
   // Validate type
-  if (!modelConfig.type || !['openai', 'anthropic', 'glm', 'azure', 'custom'].includes(modelConfig.type)) {
-    return { valid: false, error: 'Model Config must have a valid type (openai, anthropic, glm, azure, custom)' };
+  if (!modelConfig.type || !['openai', 'glm', 'azure', 'custom'].includes(modelConfig.type)) {
+    return { valid: false, error: 'Model Config must have a valid type (openai, glm, azure, custom)' };
   }
 
   // Validate temperature range

@@ -172,7 +172,6 @@ export class ModelConfigDialog extends HTMLElement {
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">Select provider type...</option>
             <option value="openai" ${config?.type === 'openai' ? 'selected' : ''}>OpenAI</option>
-            <option value="anthropic" ${config?.type === 'anthropic' ? 'selected' : ''}>Anthropic (Claude)</option>
             <option value="glm" ${config?.type === 'glm' ? 'selected' : ''}>GLM (Zhipu AI)</option>
             <option value="azure" ${config?.type === 'azure' ? 'selected' : ''}>Azure OpenAI</option>
             <option value="custom" ${config?.type === 'custom' ? 'selected' : ''}>Custom Provider</option>

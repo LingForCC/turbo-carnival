@@ -1,9 +1,38 @@
 import { getDefaultBaseURL } from '../provider-management';
-import type { ModelConfig, LLMProvider } from '../../global.d.ts';
+import type { ModelConfig, LLMProvider, Tool, ConversationMessage } from '../../global.d.ts';
+import { getToolByName, validateJSONSchema } from '../tool-management';
+import { executeToolWithRouting } from '../openai-client';
+
+// ============ TYPE DEFINITIONS ============
+
+export interface StreamLLMOptions {
+  systemPrompt: string;
+  messages: ConversationMessage[];
+  provider: LLMProvider;
+  modelConfig: ModelConfig;
+  tools: Tool[];
+  webContents: Electron.WebContents;
+  enableTools?: boolean;
+  timeout?: number;
+  agent?: any;
+  maxIterations?: number;
+}
+
+export interface StreamResult {
+  content: string;
+  hasToolCalls: boolean;
+}
+
+export interface ToolCall {
+  toolName: string;
+  parameters: Record<string, any>;
+  toolCallId?: string;
+}
 
 interface OpenAIMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content?: string;
+  tool_call_id?: string;
 }
 
 interface OpenAIRequest {
@@ -13,27 +42,146 @@ interface OpenAIRequest {
   max_tokens?: number;
   top_p?: number;
   stream?: boolean;
-  [key: string]: any; // Allow extra properties for model-specific settings
+  tools?: any[];
+  tool_choice?: 'auto' | 'none';
+  [key: string]: any;
 }
 
-interface StreamResult {
-  content: string;
-  hasToolCalls: boolean;
+// ============ MAIN STREAMING FUNCTION ============
+
+/**
+ * Stream GLM (Zhipu AI) API with native tool calling
+ * GLM uses OpenAI-compatible tool calling format
+ */
+export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult> {
+  const {
+    systemPrompt,
+    messages,
+    provider,
+    modelConfig,
+    tools,
+    webContents,
+    enableTools = true,
+    timeout = 60000,
+    agent,
+    maxIterations = 10
+  } = options;
+
+  // If tools disabled, single pass streaming
+  if (!enableTools) {
+    const completeMessages = buildCompleteMessages({
+      systemPrompt,
+      messages,
+      tools: undefined
+    });
+    return await streamGLMSingle(completeMessages, modelConfig, provider, webContents, timeout, undefined);
+  }
+
+  // Tool call iteration loop
+  let apiMessages = [...messages];
+  let iterationCount = 0;
+
+  while (iterationCount < maxIterations) {
+    iterationCount++;
+
+    const completeMessages = buildCompleteMessages({
+      systemPrompt,
+      messages: apiMessages,
+      tools
+    });
+
+    const { content: response, hasToolCalls, toolCalls } = await streamGLMSingle(
+      completeMessages,
+      modelConfig,
+      provider,
+      webContents,
+      timeout,
+      tools
+    );
+
+    // If no tool calls, return response
+    if (!hasToolCalls || !toolCalls || toolCalls.length === 0) {
+      return { content: response, hasToolCalls: false };
+    }
+
+    // Deduplicate tool calls
+    let uniqueToolCalls = toolCalls;
+    if (toolCalls.length > 0) {
+      const seen = new Set<string>();
+      uniqueToolCalls = toolCalls.filter(call => {
+        const key = `${call.toolName}|${JSON.stringify(call.parameters)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      if (uniqueToolCalls.length !== toolCalls.length) {
+        console.warn(`Detected ${toolCalls.length - uniqueToolCalls.length} duplicate tool calls, removing them`);
+      }
+    }
+
+    // Execute tools and add results to messages
+    const toolResults = await executeToolCalls(uniqueToolCalls, agent, webContents);
+
+    // Add tool results to messages for next iteration (GLM native format)
+    for (const result of toolResults) {
+      apiMessages.push({
+        role: 'tool',
+        tool_call_id: result.toolCallId!,
+        content: result.content
+      });
+    }
+  }
+
+  // Max iterations reached - return last response with warning
+  const completeMessages = buildCompleteMessages({
+    systemPrompt,
+    messages: apiMessages,
+    tools
+  });
+  const { content: lastResponse } = await streamGLMSingle(completeMessages, modelConfig, provider, webContents, timeout, undefined);
+
+  return {
+    content: lastResponse + '\n\n[Note: Maximum tool call rounds reached. Some tool calls may not have been executed.]',
+    hasToolCalls: false
+  };
+}
+
+// ============ SINGLE STREAMING REQUEST ============
+
+/**
+ * Convert Tool to GLM's native tool format (same as OpenAI)
+ */
+function convertToolToGLMFormat(tool: Tool): any {
+  return {
+    type: 'function',
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.parameters
+    }
+  };
 }
 
 /**
- * Stream GLM (Zhipu AI) API
- * GLM uses OpenAI-compatible format with some differences
+ * Single GLM streaming request with native tool calling
+ * GLM uses OpenAI-compatible format for tools
  */
-export async function streamGLM(
+async function streamGLMSingle(
   messages: any[],
   modelConfig: ModelConfig,
   provider: LLMProvider,
   webContents: Electron.WebContents,
-  timeout: number = 60000
-): Promise<StreamResult> {
+  timeout: number = 60000,
+  tools?: Tool[]
+): Promise<{ content: string; hasToolCalls: boolean; toolCalls?: ToolCall[] }> {
   const baseURL = provider.baseURL || getDefaultBaseURL(provider.type) || '';
   const url = `${baseURL}/chat/completions`;
+
+  // Convert tools to GLM format if provided (same as OpenAI)
+  const glmTools = tools && tools.length > 0
+    ? tools.filter(t => t.enabled).map(convertToolToGLMFormat)
+    : undefined;
 
   const requestBody: OpenAIRequest = {
     messages,
@@ -42,7 +190,10 @@ export async function streamGLM(
     max_tokens: modelConfig.maxTokens,
     top_p: modelConfig.topP,
     stream: true,
-    // Spread extra properties for model-specific settings
+    ...(glmTools && glmTools.length > 0 ? {
+      tools: glmTools,
+      tool_choice: 'auto'
+    } : {}),
     ...(modelConfig.extra || {}),
   };
 
@@ -73,14 +224,7 @@ export async function streamGLM(
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
     let fullResponse = '';
-    let detectedToolCalls = false;
-    let sendBuffer = ''; // Buffer for chunks to be sent to renderer
-
-    // Helper to check for partial tool call marker
-    const hasPartialToolCallMarker = (text: string): boolean => {
-      const partialPrefixes = ['{', '{"', '{"t', '{"to', '{"too', '{"tool', '{"tooln', '{"toolna', '{"toolnam', '{"toolname'];
-      return partialPrefixes.some(prefix => text.endsWith(prefix));
-    };
+    let toolCalls: ToolCall[] = [];
 
     while (true) {
       const { done, value } = await reader.read();
@@ -99,41 +243,69 @@ export async function streamGLM(
           const jsonStr = trimmedLine.slice(6);
           const chunk = JSON.parse(jsonStr);
 
-          const content = chunk.choices?.[0]?.delta?.content;
-          if (content) {
-            fullResponse += content;
+          const delta = chunk.choices?.[0]?.delta;
 
-            // If we already detected tool calls, skip all sending logic
-            if (detectedToolCalls) {
-              continue;
-            }
+          // Handle GLM native tool calling (same format as OpenAI)
+          if (delta?.tool_calls) {
+            for (const toolCall of delta.tool_calls) {
+              if (toolCall.index !== undefined) {
+                while (toolCalls.length <= toolCall.index) {
+                  toolCalls.push({ toolName: '', parameters: {} });
+                }
 
-            sendBuffer += content;
+                const targetCall = toolCalls[toolCall.index];
 
-            // Check if buffer contains tool call marker
-            if (sendBuffer.includes('"toolname"')) {
-              // Tool call detected - stop sending chunks
-              detectedToolCalls = true;
-              sendBuffer = ''; // Clear buffer, don't send
-            } else if (hasPartialToolCallMarker(sendBuffer)) {
-              // Might be start of tool call marker - wait for more chunks
-              continue;
-            } else {
-              // Safe to send
-              if (sendBuffer.length > 0) {
-                webContents.send('chat-chunk', sendBuffer);
-                sendBuffer = '';
+                if (toolCall.id) {
+                  targetCall.toolCallId = toolCall.id;
+                }
+
+                if (toolCall.function?.name) {
+                  targetCall.toolName = toolCall.function.name;
+                }
+
+                if (toolCall.function?.arguments) {
+                  if (!targetCall._argumentsBuffer) {
+                    targetCall._argumentsBuffer = '';
+                  }
+                  targetCall._argumentsBuffer += toolCall.function.arguments;
+                  try {
+                    targetCall.parameters = JSON.parse(targetCall._argumentsBuffer);
+                    delete targetCall._argumentsBuffer;
+                  } catch (e) {
+                    // Not complete yet, keep buffering
+                  }
+                }
               }
             }
           }
 
+          // Extract content (AFTER tool calls to match OpenAI structure)
+          const content = delta?.content;
+          if (content) {
+            fullResponse += content;
+            webContents.send('chat-chunk', content);
+          }
+
           const finishReason = chunk.choices?.[0]?.finish_reason;
           if (finishReason) {
-            // Send any remaining safe buffer before returning
-            if (!detectedToolCalls && sendBuffer.length > 0) {
-              webContents.send('chat-chunk', sendBuffer);
+            // Parse any remaining buffered arguments
+            for (const toolCall of toolCalls) {
+              if (toolCall._argumentsBuffer) {
+                try {
+                  toolCall.parameters = JSON.parse(toolCall._argumentsBuffer);
+                  delete toolCall._argumentsBuffer;
+                } catch (e) {
+                  console.warn('Failed to parse tool call arguments:', toolCall._argumentsBuffer);
+                }
+              }
             }
-            return { content: fullResponse, hasToolCalls: detectedToolCalls };
+
+            const hasToolCalls = toolCalls.some(tc => tc.toolName);
+
+            // Return with appropriate hasToolCalls flag
+            // If finish_reason is 'tool_calls', we need to execute tools and make another call
+            // Otherwise this is the final response
+            return { content: fullResponse, hasToolCalls, toolCalls: hasToolCalls ? toolCalls : undefined };
           }
         } catch (parseError) {
           console.warn('Failed to parse GLM SSE chunk:', parseError);
@@ -141,13 +313,168 @@ export async function streamGLM(
       }
     }
 
-    // Send any remaining safe buffer on loop completion
-    if (!detectedToolCalls && sendBuffer.length > 0) {
-      webContents.send('chat-chunk', sendBuffer);
-    }
-
-    return { content: fullResponse, hasToolCalls: detectedToolCalls };
+    return { content: fullResponse, hasToolCalls: false, toolCalls: toolCalls.length > 0 ? toolCalls : undefined };
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+// ============ MESSAGE BUILDING ============
+
+function buildCompleteMessages(options: {
+  systemPrompt: string;
+  messages: ConversationMessage[];
+  tools?: Tool[];
+}): any[] {
+  const { systemPrompt, messages } = options;
+
+  const result: any[] = [];
+
+  // Add system prompt (tool descriptions now handled natively by GLM)
+  result.push({
+    role: 'system',
+    content: systemPrompt
+  });
+
+  // Add conversation history, preserving tool_call_id for GLM native format
+  result.push(...messages.map(msg => {
+    const mapped: any = {
+      role: msg.role,
+      content: msg.content
+    };
+    if (msg.tool_call_id) {
+      mapped.tool_call_id = msg.tool_call_id;
+    }
+    return mapped;
+  }));
+
+  return result;
+}
+
+// ============ TOOL EXECUTION ============
+
+async function executeToolCalls(
+  toolCalls: ToolCall[],
+  agent: any,
+  webContents: Electron.WebContents
+): Promise<Array<{ toolCallId: string; content: string }>> {
+  const toolResults: Array<{ toolCallId: string; content: string }> = [];
+
+  // Send started events and add to history
+  for (const toolCall of toolCalls) {
+    webContents.send('chat-agent:toolCall', {
+      toolName: toolCall.toolName,
+      parameters: toolCall.parameters,
+      status: 'started'
+    });
+
+    agent.history.push({
+      role: 'assistant',
+      content: `Calling tool: ${toolCall.toolName}`,
+      timestamp: Date.now(),
+      toolCall: {
+        type: 'start',
+        toolName: toolCall.toolName,
+        parameters: toolCall.parameters,
+        status: 'executing'
+      }
+    });
+  }
+
+  // Execute tools
+  for (const toolCall of toolCalls) {
+    try {
+      const tool = getToolByName(toolCall.toolName);
+      if (!tool) {
+        const errorMsg = `Tool "${toolCall.toolName}" not found`;
+        toolResults.push({ toolCallId: toolCall.toolCallId!, content: `Error: ${errorMsg}` });
+        handleToolError(webContents, agent, toolCall, errorMsg);
+        continue;
+      }
+
+      if (!tool.enabled) {
+        const errorMsg = `Tool "${toolCall.toolName}" is disabled`;
+        toolResults.push({ toolCallId: toolCall.toolCallId!, content: `Error: ${errorMsg}` });
+        handleToolError(webContents, agent, toolCall, errorMsg);
+        continue;
+      }
+
+      const validationError = validateJSONSchema(toolCall.parameters, tool.parameters);
+      if (validationError) {
+        toolResults.push({ toolCallId: toolCall.toolCallId!, content: `Error: ${validationError}` });
+        handleToolError(webContents, agent, toolCall, validationError);
+        continue;
+      }
+
+      const result = await executeToolWithRouting(tool, toolCall.parameters, webContents);
+      toolResults.push({
+        toolCallId: toolCall.toolCallId!,
+        content: `Tool "${toolCall.toolName}" executed successfully:\n${JSON.stringify(result.result, null, 2)}\n(Execution time: ${result.executionTime}ms)`
+      });
+
+      handleToolSuccess(webContents, agent, toolCall, result);
+    } catch (error: any) {
+      const errorMsg = error.message;
+      toolResults.push({ toolCallId: toolCall.toolCallId!, content: `Tool "${toolCall.toolName}" failed: ${errorMsg}` });
+      handleToolError(webContents, agent, toolCall, errorMsg);
+    }
+  }
+
+  return toolResults;
+}
+
+function handleToolSuccess(
+  webContents: Electron.WebContents,
+  agent: any,
+  toolCall: ToolCall,
+  result: any
+): void {
+  webContents.send('chat-agent:toolCall', {
+    toolName: toolCall.toolName,
+    parameters: toolCall.parameters,
+    status: 'completed',
+    result: result.result,
+    executionTime: result.executionTime
+  });
+
+  agent.history.push({
+    role: 'user',
+    content: `Tool "${toolCall.toolName}" executed successfully`,
+    timestamp: Date.now(),
+    toolCall: {
+      type: 'result',
+      toolName: toolCall.toolName,
+      parameters: toolCall.parameters,
+      result: result.result,
+      executionTime: result.executionTime,
+      status: 'completed'
+    }
+  });
+}
+
+function handleToolError(
+  webContents: Electron.WebContents,
+  agent: any,
+  toolCall: ToolCall,
+  errorMsg: string
+): void {
+  webContents.send('chat-agent:toolCall', {
+    toolName: toolCall.toolName,
+    parameters: toolCall.parameters,
+    status: 'failed',
+    error: errorMsg
+  });
+
+  agent.history.push({
+    role: 'user',
+    content: `Tool "${toolCall.toolName}" failed`,
+    timestamp: Date.now(),
+    toolCall: {
+      type: 'result',
+      toolName: toolCall.toolName,
+      parameters: toolCall.parameters,
+      status: 'failed',
+      error: errorMsg
+    }
+  });
 }

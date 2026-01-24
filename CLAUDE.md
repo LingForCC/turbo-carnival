@@ -107,7 +107,11 @@ The documentation has been split into focused modules for better performance:
 - `src/main/app-management.ts` - App CRUD operations, execution in main/renderer processes
 - `src/main/provider-management.ts` - LLM provider CRUD, validation, default URLs
 - `src/main/model-config-management.ts` - Model configuration CRUD, validation, storage
-- `src/main/openai-client.ts` - Provider-aware API client with tool execution utilities
+- `src/main/llm/` - LLM streaming module with provider-specific implementations
+  - `index.ts` - Main routing interface (streamLLM, StreamLLMOptions)
+  - `openai.ts` - OpenAI-compatible streaming with native tool calling
+  - `glm.ts` - GLM streaming with native tool calling
+- `src/main/openai-client.ts` - Tool execution routing (Node.js/Browser environments)
 - `src/main/chat-agent-management.ts` - Chat agent logic with tool calling + file context
 - `src/main/app-agent-management.ts` - App agent logic with file context only (no tools)
 - `src/main/tool-management.ts` - Tool CRUD, JSON Schema validation, execution routing

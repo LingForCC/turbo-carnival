@@ -1,6 +1,6 @@
 # Conversational AI Feature
 
-The app provides a complete chat interface for interacting with AI agents through OpenAI-compatible APIs.
+The app provides a complete chat interface for interacting with AI agents through multiple LLM providers.
 
 ## Chat Features
 
@@ -23,7 +23,7 @@ The chat system supports two distinct agent types:
 - **Features**:
   - Can call custom tools during conversations
   - File context via @mention
-  - Full OpenAI tool calling support
+  - Native tool calling for OpenAI, GLM, Azure, and custom providers
 - **IPC Channel**: `chat-agent:streamMessage`
 - **Module**: `src/main/chat-agent-management.ts`
 
@@ -85,19 +85,23 @@ Reusable Web Component that provides:
 3. Parent component (`chat-panel`) listens for `message-sent` event
 4. `chat-panel` calls `chat-agent:streamMessage` via IPC
 5. `chat-agent-management` module:
-   - Loads agent and validates API key
-   - Builds messages: system prompt + **tool descriptions** + file contents + conversation history + new message
-   - Calls OpenAI API via `openai-client.ts`
-   - **For streaming**: Adds empty assistant message, calls parent's `handleStreamChunk()` for each chunk
-   - **Detects tool calls**: Emits `chat-agent:toolCall` IPC events for each tool call status update
-   - **Tool execution**: Executes tools, saves tool call messages to history with `toolCall` metadata
-   - Makes follow-up API call with tool results (formatted as user messages)
-   - Calls parent's `handleStreamComplete()` when done
-6. `chat-panel` listens for `chat-agent:toolCall` IPC events and calls corresponding `conversation-panel` methods:
+   - Loads agent, validates ModelConfig and Provider
+   - Builds messages: system prompt + file contents + conversation history + new message
+   - Calls `streamLLM()` from `llm/index.ts` with `enableTools: true`
+6. `llm/index.ts` routes to provider-specific implementation based on `modelConfig.type`
+7. Provider-specific module (`llm/openai.ts` or `llm/glm.ts`):
+   - **For streaming**: Sends chunks via `chat-chunk` IPC events to renderer
+   - **Detects tool calls**: Parses native tool_calls from SSE stream
+   - **Tool execution loop** (internal, up to 10 iterations):
+     - Execute tools, validate parameters, send `chat-agent:toolCall` IPC events
+     - Add tool results to messages (OpenAI format: `{role: 'tool', tool_call_id, content}`)
+     - Make follow-up API call with tool results
+   - Calls `handleStreamComplete()` when done
+8. `chat-panel` listens for `chat-agent:toolCall` IPC events and calls corresponding `conversation-panel` methods:
    - `handleToolCallComplete()` - Shows collapsed tool call indicator with results and execution time
    - `handleToolCallFailed()` - Shows collapsed tool call indicator with error message
-7. `conversation-panel` updates UI in real-time, renders tool call messages with visual indicators
-8. Parent components can listen for `stream-complete` to trigger additional processing
+9. `conversation-panel` updates UI in real-time, renders tool call messages with visual indicators
+10. Parent components can listen for `stream-complete` to trigger additional processing
 
 ### App Agent Flow (Files Only, No Tools)
 
@@ -106,10 +110,9 @@ Reusable Web Component that provides:
 3. Parent component (`app-panel`) listens for `message-sent` event
 4. `app-panel` calls `app-agent:streamMessage` via IPC
 5. `app-agent-management` module:
-   - Loads agent and validates API key
+   - Loads agent, validates ModelConfig and Provider
    - Builds messages: system prompt + **file contents** + conversation history + new message
-   - NO tool descriptions (app agents don't use tools)
-   - Calls OpenAI API via `openai-client.ts`
+   - Calls `streamLLM()` from `llm/index.ts` with `enableTools: false`
    - Streams response to parent via `handleStreamChunk()`
    - Calls `handleStreamComplete()` when done
 6. `app-panel` listens for `stream-complete` event
@@ -140,32 +143,64 @@ The new event-driven architecture provides:
    - Easy to add new agent types with different capabilities
    - Parent components can customize behavior (e.g., `app-panel` parsing app code)
 
-## OpenAI Client Module
+## LLM Module
 
-Located in `src/main/openai-client.ts`:
+Located in `src/main/llm/`:
 
-### API Client Functions (Exported Utilities)
-- `streamOpenAICompatibleAPI()` - Makes streaming API requests with SSE parsing
-- `parseToolCalls()` - Parses tool call markers from AI responses
-- `executeToolWithRouting()` - Executes tools in worker or renderer based on environment
+### Overview
+The LLM module provides a unified streaming interface for multiple LLM providers (OpenAI, GLM, Azure, custom). Each provider implementation handles its own streaming logic, native tool calling, and tool execution loop.
 
-**Note:** `openai-client.ts` is now a pure API client. Business logic (system prompt generation, file loading, tool description formatting) has been moved to `chat-agent-management.ts` and `app-agent-management.ts`.
+### `llm/index.ts` - Main Routing Interface
+- **`streamLLM(options: StreamLLMOptions)`** - Main entry point that routes to provider-specific implementations
+  - Routes based on `modelConfig.type` (openai, glm, azure, custom)
+  - Delegates to `streamOpenAI()` or `streamGLM()`
+- **`StreamLLMOptions`** - Options interface including systemPrompt, messages, provider, modelConfig, tools, webContents, enableTools, timeout, agent, maxIterations
+- **`StreamResult`** - Result interface with content and hasToolCalls
+
+### `llm/openai.ts` - OpenAI-Compatible Streaming
+- **`streamOpenAI(options)`** - Complete OpenAI streaming with tool call iteration
+  - Handles up to 10 iterations of tool calls
+  - Deduplicates tool calls before execution
+  - Adds tool results to messages in OpenAI native format
+  - Sends `chat-chunk` events during streaming
+- **`streamOpenAISingle()`** - Single streaming request (no iteration)
+  - Sends tools array in request body
+  - Parses tool_calls from SSE delta chunks
+  - Handles chunked arguments (arguments may span multiple chunks)
+  - Returns tool calls with toolCallId for result mapping
+- **`executeToolCalls()`** - Tool execution with IPC events
+  - Validates tools, parameters, and executes them
+  - Sends `chat-agent:toolCall` IPC events for status updates
+  - Returns tool results with toolCallId
+- **`buildCompleteMessages()`** - Constructs API message array
+  - Adds system prompt
+  - Preserves tool_call_id for tool result messages
+- **Tool helper functions** - `convertToolToOpenAIFormat()`, `handleToolSuccess()`, `handleToolError()`
+
+### `llm/glm.ts` - GLM (Zhipu AI) Streaming
+- Same structure as `openai.ts` but adapted for GLM
+- Uses OpenAI-compatible tool calling format
+- Handles GLM-specific SSE parsing differences
+- All functions have same signatures for consistency
+
+### Tool Execution Architecture
+- **Tool validation** - Checks if tool exists, is enabled, and parameters match schema
+- **Environment routing** - Routes to Node.js worker or browser renderer
+- **IPC events** - Sends `chat-agent:toolCall` events (started, completed, failed)
+- **Agent history** - Updates agent.history with tool call metadata
+- **Error handling** - Graceful failure with error messages
 
 ## Chat Agent Management Module
 
 Located in `src/main/chat-agent-management.ts`:
 
 ### Key Functions
-- `generateChatAgentSystemPrompt(agent)` - Builds system prompt including tool descriptions
-- `formatToolDescriptions(tools)` - Formats available tools for AI consumption
+- `generateChatAgentSystemPrompt(agent)` - Returns agent's system prompt
 - `buildFileContentMessages(filePaths)` - Loads tagged files as system messages
-- `buildMessagesForChatAgent(agent, message, filePaths)` - Complete message array with tools + files
 
 ### IPC Handlers
-- `chat-agent:streamMessage` - Streaming with tool detection and execution
-- `chat-agent:toolCall` - Real-time tool call status updates (one-way IPC from main to renderer)
-  - Sent when tool execution starts, completes, or fails
-  - Includes tool name, parameters, status, result/error, and execution time
+- `chat-agent:streamMessage` - Initiates streaming via `streamLLM()`
+- `chat-agent:clearHistory` - Clears agent conversation history
 
 ## App Agent Management Module
 
@@ -174,84 +209,88 @@ Located in `src/main/app-agent-management.ts`:
 ### Key Functions
 - `generateAppAgentSystemPrompt(agent)` - Returns agent's system prompt (no tools)
 - `buildFileContentMessages(filePaths)` - Loads tagged files as system messages
-- `buildMessagesForAppAgent(agent, message, filePaths)` - Complete message array with files only
 
 ### IPC Handlers
-- `app-agent:streamMessage` - Streaming (no tool logic)
+- `app-agent:streamMessage` - Initiates streaming via `streamLLM()` with tools disabled
+- `app-agent:clearHistory` - Clears agent conversation history
 
 ## Tool Calling (Chat Agents Only)
 
-AI agents can call custom tools during conversations:
+AI agents can call custom tools during conversations using **native tool calling formats**.
+
+### Native Tool Calling (OpenAI, GLM, Azure, Custom)
 
 **Tool Call Format:**
-AI agents output tool calls as JSON objects: `{"toolname":"tool_name","arguments":{"param":"value"}}`
+- Tools sent in request body as `tools` array
+- Each tool: `{type: 'function', function: {name, description, parameters}}`
+- LLM returns `tool_calls` in SSE delta chunks
+- Each tool call has: `id`, `index`, `function.name`, `function.arguments` (chunked)
 
 **Tool Call Detection:**
-- Streaming detects tool calls by checking for `"toolname"` key in response chunks
-- Tool call deduplication removes duplicate tool calls with same tool name and parameters before execution
+- Parsed from SSE stream in `delta.tool_calls`
+- Arguments accumulated across multiple chunks
+- Deduplicated by tool name + parameters before execution
 
 **Tool Execution Flow:**
-1. `chat-agent-management` detects tool call in AI response
-2. Saves assistant message to history with `toolCall` metadata (type: 'start')
-3. Tool call parsed via `parseToolCalls()`
-4. Tool executed via `executeToolWithRouting()` (Node.js worker or browser)
-5. On success:
-   - Emits `chat-agent:toolCall` IPC event with `status: 'completed'` and results
-   - Saves user message to history with `toolCall` metadata (type: 'result', status: 'completed', result, executionTime, parameters)
-6. On failure:
-   - Emits `chat-agent:toolCall` IPC event with `status: 'failed'` and error
-   - Saves user message to history with `toolCall` metadata (type: 'result', status: 'failed', error, parameters)
-7. Tool results formatted as user messages and sent in second API call
-8. Final response delivered to renderer
+1. Provider module detects `tool_calls` in SSE stream
+2. Accumulates arguments across chunks
+3. On `finish_reason`, returns tool calls to iteration loop
+4. Deduplicates tool calls (same tool + parameters)
+5. Executes tools via `executeToolCalls()`:
+   - Validates tool exists, is enabled, parameters match schema
+   - Sends `chat-agent:toolCall` IPC event with `status: 'started'`
+   - Routes to Node.js worker or browser renderer
+   - On success: Sends `chat-agent:toolCall` with `status: 'completed'`
+   - On failure: Sends `chat-agent:toolCall` with `status: 'failed'`
+6. Adds tool results to messages in OpenAI format: `{role: 'tool', tool_call_id, content}`
+7. Makes follow-up API call with tool results
+8. Continues until no tool calls or max iterations (10) reached
 
 **Tool Call Indicators:**
 The conversation panel displays tool calls with visual indicators showing:
 - **Collapsed by default**: Tool calls show as expandable entries (click to expand)
+- **Executing state**: Yellow spinner, tool name, parameters
 - **Completed state**: Green checkmark, tool name, parameters, formatted result, execution time
 - **Failed state**: Red X, tool name, parameters, error message
-- Parameters are displayed for both completed and failed tool calls
 
-**Tool Call Messages in History:**
-Messages with `toolCall` metadata are rendered differently:
-- Assistant messages with `toolCall.type: 'start'` show the tool being called
-- User messages with `toolCall.type: 'result'` show the tool result (completed or failed)
-- Tool call results stored in `toolCall` metadata (not in message.content)
-- Messages include expandable sections for parameters and results (collapsed by default)
+**Tool Call Messages in Conversation Panel:**
+The conversation panel has special handling for tool call messages:
+- **`handleToolCallStarted()`** - Shows executing indicator
+- **`handleToolCallComplete()`** - Shows completed indicator with results
+- **`handleToolCallFailed()`** - Shows failed indicator with error
 
-**Streaming with Tool Calls:**
-- Tool call detection pauses chunk delivery to renderer during execution
-- Tools executed and status updates sent via IPC events (completed/failed)
-- Tool call indicators appear in conversation panel (collapsed by default)
-- Tool results sent in subsequent API call (as user messages)
-- Final response streamed to renderer
+**Important: Tool Call Message Handling**
+When the final LLM response arrives after tool execution, the conversation panel must **replace** the "Executing tool" message with the actual answer, not append to it. This is handled in `conversation-panel.ts:158-187`:
+- Checks if last message is an assistant message with `toolCall` property
+- If yes, replaces it with new assistant message for final response
+- This prevents the final answer from being appended to the tool execution message
 
 ### Iterative Tool Calling
 
-Chat agents now support **multiple rounds of tool calls** in a single conversation:
+Chat agents support **multiple rounds of tool calls** in a single conversation:
 
 **How It Works:**
-- The system enters a loop that continues until the LLM stops requesting tool calls
+- Provider modules (`openai.ts`, `glm.ts`) handle tool call iteration internally
 - Maximum of 10 iterations (safety safeguard to prevent infinite loops)
 - Each iteration:
   1. Makes API call with accumulated messages
-  2. Detects and parses tool calls from response
-  3. Deduplicates tool calls (removes duplicates with same tool name + parameters)
+  2. Parses tool_calls from SSE stream (native format)
+  3. Deduplicates tool calls (same tool name + parameters)
   4. If tool calls detected:
      - Executes all tools with IPC status updates
-     - Saves tool call starts and results to history
-     - Adds formatted tool results to messages array
+     - Adds tool results to messages (OpenAI format: `{role: 'tool', tool_call_id, content}`)
      - Loops back to step 1
   5. If no tool calls:
-     - Saves final assistant response to history
+     - Returns final response
+     - Saves to history
      - Sends completion event
-     - Exits loop
 
 **History Growth Across Iterations:**
 - User message saved ONCE at the start
-- Each iteration with tool calls adds multiple history entries:
+- Each tool execution adds history entries:
   - Assistant message: "Calling tool: {toolName}" (with toolCall.start metadata)
   - User message: "Tool executed successfully" or "Tool failed" (with toolCall.result metadata)
-- Final iteration (no tools): Saves the conversational assistant response
+- Final iteration: Saves the conversational assistant response
 
 **Example Multi-Round Flow:**
 ```
@@ -261,35 +300,65 @@ Round 1:
   → API call detects tool call for weather Tokyo
   → Execute weather tool for Tokyo
   → IPC: { toolName: "weather", status: "completed", result: {...} }
+  → Messages: adds {role: 'tool', tool_call_id: 'call_123', content: '...'}
   → History: assistant message (start) + user message (result)
 
 Round 2:
-  → API call with Tokyo weather detects tool call for weather Paris
+  → API call with Tokyo weather result detects tool call for weather Paris
   → Execute weather tool for Paris
   → IPC: { toolName: "weather", status: "completed", result: {...} }
+  → Messages: adds {role: 'tool', tool_call_id: 'call_456', content: '...'}
   → History: assistant message (start) + user message (result)
 
 Round 3:
   → API call with both weather results - no tool calls detected
-  → Save final assistant response comparing both cities
+  → Returns final response comparing both cities
   → IPC: chat-complete event
 ```
 
 **Safeguards:**
-- **Maximum iterations**: 10 rounds maximum (configurable via `MAX_ITERATIONS`)
+- **Maximum iterations**: 10 rounds maximum (configurable via `maxIterations` parameter)
 - **Deduplication**: Duplicate tool calls with identical parameters removed before execution
-- **Error handling**: Tool failures don't stop the loop - error messages added to messages and execution continues
+- **Error handling**: Tool failures don't stop the loop - error messages added to tool results and execution continues
 
 **Messages Array vs History Array:**
-- **Messages array** (sent to API): Simple format with tool results, grows with each iteration
+- **Messages array** (sent to API): OpenAI format with role: 'tool' messages, grows with each iteration
 - **History array** (saved to disk): Structured format with toolCall metadata, used for conversation persistence and UI display
 
 ## API Integration
 
-- Supports OpenAI and compatible APIs (via custom `baseURL`)
-- Configurable model, temperature, maxTokens, topP per agent
-- Request timeout: 60 seconds
+The chat system supports multiple LLM providers:
+
+### Supported Providers
+- **OpenAI** - GPT models (gpt-4, gpt-3.5-turbo, etc.)
+- **GLM** - Zhipu AI models (glm-4, glm-4-plus, etc.)
+- **Azure** - Azure OpenAI Service
+- **Custom** - Any OpenAI-compatible API
+
+### Provider Configuration
+Each provider requires:
+- `type` - Provider type discriminator ('openai', 'glm', 'azure', 'custom')
+- `name` - Display name
+- `apiKey` - API key for authentication
+- `baseURL` (optional) - Override default endpoint
+- Stored in `app.getPath('userData')/providers.json`
+
+### Model Configuration
+ModelConfig allows reusing model settings across agents:
+- `type` - Provider type (required)
+- `name` - Display name
+- `model` - Model identifier (e.g., 'gpt-4', 'glm-4')
+- `temperature` - Sampling temperature (0-2)
+- `maxTokens` - Maximum tokens in response
+- `topP` - Nucleus sampling parameter
+- `extra` - Additional model-specific parameters
+- Stored in `app.getPath('userData')/model-configs.json`
+
+### Request Configuration
+- Request timeout: 60 seconds (configurable)
 - Server-Sent Events (SSE) for streaming responses
+- Native tool calling via `tools` array in request body
+- Tool choice: 'auto' (model decides when to call tools)
 
 ## Agent Configuration
 
@@ -305,29 +374,39 @@ Agents reference providers and model configurations:
 }
 ```
 
+When `modelId` is set:
+- ModelConfig.type determines which provider implementation to use
+- ModelConfig.model, temperature, maxTokens, etc. are used for API requests
+- Provider determined by ModelConfig → providerId → LLM Provider lookup
+
 ## Streaming Implementation
 
 Streaming responses use Server-Sent Events (SSE) parsing:
 - Response chunks parsed line-by-line for `data: ` prefix
 - JSON chunks extracted and accumulated
+- **Tool calls parsed from `delta.tool_calls`** in SSE stream
+- **Arguments accumulated across multiple chunks**
 - Final accumulated content saved to agent history
-- Real-time UI updates via parent component callbacks (`handleStreamChunk()`, `handleStreamComplete()`, `handleStreamError()`)
+- Real-time UI updates via `chat-chunk` IPC events
 - Error handling for malformed chunks and network failures
 
 ## Message Storage
 
 - Messages stored in agent `history` array
-- Each message includes: `role` (user/assistant), `content`, `timestamp`, and optional `toolCall` metadata
+- Each message includes:
+  - `role` (string) - Message role: 'user', 'assistant', 'system', 'tool'
+  - `content` (string) - Message text
+  - `timestamp` (number) - When message was created
+  - `tool_call_id` (string, optional) - For OpenAI tool result messages
+  - `toolCall` (object, optional) - Tool call metadata for UI display
 - `toolCall` metadata includes:
   - `type` - 'start' (assistant message) or 'result' (user message)
   - `toolName` - Name of the tool being called
   - `parameters` - Tool input parameters
   - `result` - Tool output (for 'result' type with 'completed' status)
   - `executionTime` - Execution time in milliseconds (for 'result' type with 'completed' status)
-  - `status` - 'completed' or 'failed'
+  - `status` - 'executing', 'completed', or 'failed'
   - `error` - Error message (for 'result' type with 'failed' status)
-- **Only `toolCall` metadata format supported** - backward compatibility for system message format removed
-- Tool results stored in `toolCall` metadata (not in message.content)
 - History automatically saved after each message exchange
 - Full conversation history sent with each new message for context
-- System messages and tool call messages filtered from regular display, rendered with special indicators in `conversation-panel`
+- System messages and tool result messages rendered with special indicators in `conversation-panel`

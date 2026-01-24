@@ -169,10 +169,17 @@ export class ConversationPanel extends HTMLElement {
           role: 'assistant',
           content: ''
         });
+      } else if (lastMessage.toolCall) {
+        // Last message IS an assistant message with a tool call
+        // Replace it with a new assistant message for the final response
+        this.chatHistory[this.chatHistory.length - 1] = {
+          role: 'assistant',
+          content: ''
+        };
       }
-      // If last message IS an assistant message (e.g., from tool call start), reuse it
+      // If last message IS an assistant message without tool call, reuse it
     }
-
+    
     this.currentStreamedContent += chunk;
     this.chatHistory[this.chatHistory.length - 1].content = this.currentStreamedContent;
     this.render();

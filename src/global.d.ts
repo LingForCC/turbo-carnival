@@ -46,7 +46,7 @@ export interface AgentPrompts {
  * Conversation message for history
  */
 export interface ConversationMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: string;
   content: string;
   timestamp: number;
   toolCall?: {
@@ -84,7 +84,7 @@ export interface App {
 /**
  * LLM Provider type discriminator
  */
-export type LLMProviderType = 'openai' | 'glm' | 'azure' | 'anthropic' | 'custom';
+export type LLMProviderType = 'openai' | 'glm' | 'azure' | 'custom';
 
 /**
  * LLM Provider configuration
@@ -106,7 +106,7 @@ export interface ModelConfig {
   id: string;                    // Unique identifier (e.g., "gpt4-creative")
   name: string;                  // Display name (e.g., "GPT-4 Creative")
   model: string;                 // Model identifier (e.g., "gpt-4", "claude-3.5")
-  type: LLMProviderType;         // Provider type discriminator (openai, anthropic, glm, azure, custom)
+  type: LLMProviderType;         // Provider type discriminator (openai, glm, azure, custom)
   temperature?: number;          // Optional temperature (0-2)
   maxTokens?: number;            // Optional max tokens
   topP?: number;                 // Optional top_p (0-1)
