@@ -342,14 +342,6 @@ export function registerChatAgentIPCHandlers(): void {
       throw new Error(`ModelConfig "${agent.config.modelId}" not found`);
     }
 
-    const effectiveConfig = {
-      model: modelConfig.model,
-      temperature: modelConfig.temperature,
-      maxTokens: modelConfig.maxTokens,
-      topP: modelConfig.topP,
-      extra: modelConfig.extra,
-    };
-
     // 2. Build messages with tools and files
     const messages = await buildMessagesForChatAgent(agent, message, filePaths);
 
@@ -367,9 +359,8 @@ export function registerChatAgentIPCHandlers(): void {
       // 4.1. Make API call
       const { content: response, hasToolCalls } = await streamOpenAICompatibleAPI(
         messages,
-        effectiveConfig,
+        modelConfig,
         provider,
-        undefined,
         event.sender
       );
 

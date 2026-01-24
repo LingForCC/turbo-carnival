@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import { getDefaultBaseURL } from './provider-management';
-import type { LLMProvider, LLMProviderType } from '../global.d.ts';
+import type { LLMProvider, LLMProviderType, ModelConfig } from '../global.d.ts';
 
 // ============ PROVIDER CONFIG EXTRACTION ============
 
@@ -62,16 +62,15 @@ interface StreamResult {
  */
 async function streamOpenAICompatibleAPI(
   messages: OpenAIMessage[],
-  config: any,
+  config: ModelConfig,
   provider: LLMProvider,
-  baseURLOverride: string | undefined,
   webContents: Electron.WebContents,
   timeout: number = 60000
 ): Promise<StreamResult> {
   // Extract configuration from provider
   const providerConfig = getProviderConfig(provider);
 
-  const baseURL = baseURLOverride || providerConfig.baseURL;
+  const baseURL = providerConfig.baseURL;
   const url = `${baseURL}/chat/completions`;
 
   const requestBody: OpenAIRequest = {

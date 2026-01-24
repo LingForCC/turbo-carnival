@@ -118,23 +118,14 @@ export function registerAppAgentIPCHandlers(): void {
       throw new Error(`ModelConfig "${agent.config.modelId}" not found`);
     }
 
-    const effectiveConfig = {
-      model: modelConfig.model,
-      temperature: modelConfig.temperature,
-      maxTokens: modelConfig.maxTokens,
-      topP: modelConfig.topP,
-      extra: modelConfig.extra,
-    };
-
     // 2. Build messages (NO tools)
     const messages = await buildMessagesForAppAgent(agent, message, filePaths);
 
     // 3. Stream response (NO tool detection needed)
     const { content: fullResponse } = await streamOpenAICompatibleAPI(
       messages,
-      effectiveConfig,
+      modelConfig,
       provider,
-      undefined,
       event.sender
     );
 
