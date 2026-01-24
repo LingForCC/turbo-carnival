@@ -1,7 +1,7 @@
 import { ipcMain, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { ModelConfig } from '../global.d.ts';
+import type { ModelConfig, LLMProviderType } from '../global.d.ts';
 
 // ============ MODEL CONFIG STORAGE HELPERS ============
 
@@ -43,6 +43,45 @@ export function saveModelConfigs(modelConfigs: ModelConfig[]): void {
 }
 
 /**
+ * Migrate existing ModelConfigs to include type field
+ * Infers type from model name
+ */
+export function migrateModelConfigs(): void {
+  const modelConfigs = loadModelConfigs();
+
+  let needsMigration = false;
+  const migratedConfigs = modelConfigs.map(config => {
+    // Skip if already has type field
+    if ('type' in config && config.type) {
+      return config;
+    }
+
+    needsMigration = true;
+
+    // Infer type from model name
+    let inferredType: LLMProviderType = 'openai'; // Default
+
+    if (config.model.startsWith('claude') || config.model.startsWith('anthropic')) {
+      inferredType = 'anthropic';
+    } else if (config.model.startsWith('glm') || config.model.startsWith('chatglm')) {
+      inferredType = 'glm';
+    }
+    // Add more heuristics as needed
+
+    return {
+      ...config,
+      type: inferredType,
+      updatedAt: Date.now()
+    };
+  });
+
+  if (needsMigration) {
+    saveModelConfigs(migratedConfigs);
+    console.log('ModelConfigs migrated to include type field');
+  }
+}
+
+/**
  * Get a model config by ID
  */
 export function getModelConfigById(id: string): ModelConfig | undefined {
@@ -67,6 +106,11 @@ export function validateModelConfig(modelConfig: ModelConfig): { valid: boolean;
   // Validate model
   if (!modelConfig.model || modelConfig.model.trim().length === 0) {
     return { valid: false, error: 'Model is required' };
+  }
+
+  // Validate type
+  if (!modelConfig.type || !['openai', 'anthropic', 'glm', 'azure', 'custom'].includes(modelConfig.type)) {
+    return { valid: false, error: 'Model Config must have a valid type (openai, anthropic, glm, azure, custom)' };
   }
 
   // Validate temperature range

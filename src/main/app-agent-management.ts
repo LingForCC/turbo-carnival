@@ -5,7 +5,7 @@ import type { Agent } from '../global.d.ts';
 import { loadAgents, saveAgent } from './agent-management';
 import { getProviderById } from './provider-management';
 import { getModelConfigById } from './model-config-management';
-import { streamOpenAICompatibleAPI } from './openai-client';
+import { streamLLM } from './llm';
 
 // ============ OPENAI API TYPES ============
 
@@ -47,40 +47,6 @@ function generateAppAgentSystemPrompt(agent: Agent): string {
   return agent.prompts?.system || '';
 }
 
-/**
- * Build complete messages array for app agent API call
- */
-async function buildMessagesForAppAgent(
-  agent: Agent,
-  userMessage: string,
-  filePaths?: string[]
-): Promise<OpenAIMessage[]> {
-  const messages: OpenAIMessage[] = [];
-
-  // 1. System prompt (NO tools)
-  const systemPrompt = generateAppAgentSystemPrompt(agent);
-  messages.push({ role: 'system', content: systemPrompt });
-
-  // 2. File contents (if provided)
-  if (filePaths && filePaths.length > 0) {
-    const fileMessages = await buildFileContentMessages(filePaths);
-    messages.push(...fileMessages);
-  }
-
-  // 3. Conversation history
-  if (agent.history && agent.history.length > 0) {
-    messages.push(...agent.history.map(msg => ({
-      role: msg.role as 'system' | 'user' | 'assistant',
-      content: msg.content
-    })));
-  }
-
-  // 4. New user message
-  messages.push({ role: 'user', content: userMessage });
-
-  return messages;
-}
-
 // ============ IPC HANDLERS ============
 
 /**
@@ -119,15 +85,30 @@ export function registerAppAgentIPCHandlers(): void {
     }
 
     // 2. Build messages (NO tools)
-    const messages = await buildMessagesForAppAgent(agent, message, filePaths);
+    const systemPrompt = generateAppAgentSystemPrompt(agent);
+    const fileMessages = await buildFileContentMessages(filePaths || []);
 
-    // 3. Stream response (NO tool detection needed)
-    const { content: fullResponse } = await streamOpenAICompatibleAPI(
-      messages,
-      modelConfig,
+    const conversationMessages = agent.history.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
+
+    const allMessages = [
+      ...fileMessages,
+      ...conversationMessages,
+      { role: 'user', content: message }
+    ];
+
+    // 3. Stream response using streamLLM (tools disabled)
+    const { content: fullResponse } = await streamLLM({
+      systemPrompt,
+      messages: allMessages,
       provider,
-      event.sender
-    );
+      modelConfig,
+      tools: [],  // No tools for app agents
+      webContents: event.sender,
+      enableTools: false
+    });
 
     // 4. Update agent history
     const timestamp = Date.now();

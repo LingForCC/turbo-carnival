@@ -106,6 +106,7 @@ export interface ModelConfig {
   id: string;                    // Unique identifier (e.g., "gpt4-creative")
   name: string;                  // Display name (e.g., "GPT-4 Creative")
   model: string;                 // Model identifier (e.g., "gpt-4", "claude-3.5")
+  type: LLMProviderType;         // Provider type discriminator (openai, anthropic, glm, azure, custom)
   temperature?: number;          // Optional temperature (0-2)
   maxTokens?: number;            // Optional max tokens
   topP?: number;                 // Optional top_p (0-1)

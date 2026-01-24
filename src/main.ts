@@ -5,8 +5,7 @@ import type { Agent } from './global.d.ts';
 import { registerAgentIPCHandlers, loadAgents, saveAgent } from './main/agent-management';
 import { registerAppIPCHandlers } from './main/app-management';
 import { registerProviderIPCHandlers } from './main/provider-management';
-import { registerModelConfigIPCHandlers } from './main/model-config-management';
-import { registerOpenAIClientIPCHandlers } from './main/openai-client';
+import { registerModelConfigIPCHandlers, migrateModelConfigs } from './main/model-config-management';
 import { registerToolIPCHandlers } from './main/tool-management';
 import { registerProjectIPCHandlers } from './main/project-management';
 import { registerChatAgentIPCHandlers } from './main/chat-agent-management';
@@ -50,6 +49,9 @@ function createWindow(): void {
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(() => {
+  // Run migrations before registering IPC handlers
+  migrateModelConfigs();
+
   createWindow();
 
   // Register IPC handlers
@@ -88,10 +90,6 @@ function registerIPCHandlers(): void {
 
   // ============ APP-AGENT IPC HANDLERS ============
   registerAppAgentIPCHandlers();
-
-  // ============ OPENAI CLIENT IPC HANDLERS ============
-  // Now a no-op - handlers are registered in agent management modules
-  registerOpenAIClientIPCHandlers();
 }
 
 // Quit when all windows are closed, except on macOS

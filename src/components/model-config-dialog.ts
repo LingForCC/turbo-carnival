@@ -163,6 +163,25 @@ export class ModelConfigDialog extends HTMLElement {
                  value="${this.escapeHtml(config?.model || '')}">
         </div>
 
+        <!-- Provider Type -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="model-config-type">
+            Provider Type <span class="text-red-500">*</span>
+          </label>
+          <select id="model-config-type" name="type" required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Select provider type...</option>
+            <option value="openai" ${config?.type === 'openai' ? 'selected' : ''}>OpenAI</option>
+            <option value="anthropic" ${config?.type === 'anthropic' ? 'selected' : ''}>Anthropic (Claude)</option>
+            <option value="glm" ${config?.type === 'glm' ? 'selected' : ''}>GLM (Zhipu AI)</option>
+            <option value="azure" ${config?.type === 'azure' ? 'selected' : ''}>Azure OpenAI</option>
+            <option value="custom" ${config?.type === 'custom' ? 'selected' : ''}>Custom Provider</option>
+          </select>
+          <p class="text-xs text-gray-500 mt-1 mb-0">
+            Select the provider type for this model configuration
+          </p>
+        </div>
+
         <!-- Temperature -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1" for="model-config-temperature">
@@ -340,6 +359,7 @@ export class ModelConfigDialog extends HTMLElement {
       id: formData.get('id') as string,
       name: formData.get('name') as string,
       model: formData.get('model') as string,
+      type: formData.get('type') as any,
       temperature: formData.get('temperature') ? parseFloat(formData.get('temperature') as string) : undefined,
       maxTokens: formData.get('maxTokens') ? parseInt(formData.get('maxTokens') as string) : undefined,
       topP: formData.get('topP') ? parseFloat(formData.get('topP') as string) : undefined,
