@@ -86,17 +86,19 @@ Reusable Web Component that provides:
 4. `chat-panel` calls `chat-agent:streamMessage` via IPC
 5. `chat-agent-management` module:
    - Loads agent, validates ModelConfig and Provider
-   - Builds messages: system prompt + file contents + conversation history + new message
-   - Calls `streamLLM()` from `llm/index.ts` with `enableTools: true`
+   - Builds system prompt
+   - Calls `streamLLM()` from `llm/index.ts` with `filePaths`, `userMessage`, `agent`, and `enableTools: true`
 6. `llm/index.ts` routes to provider-specific implementation based on `modelConfig.type`
 7. Provider-specific module (`llm/openai.ts` or `llm/glm.ts`):
+   - **Saves user message** to `agent.history`
+   - **Builds messages** from system prompt, file contents, agent history, and user message
    - **For streaming**: Sends chunks via `chat-chunk` IPC events to renderer
    - **Detects tool calls**: Parses native tool_calls from SSE stream
    - **Tool execution loop** (internal, up to 10 iterations):
      - Execute tools, validate parameters, send `chat-agent:toolCall` IPC events
      - Add tool results to messages (OpenAI format: `{role: 'tool', tool_call_id, content}`)
      - Make follow-up API call with tool results
-   - Calls `handleStreamComplete()` when done
+   - **Saves assistant response** to `agent.history` before returning
 8. `chat-panel` listens for `chat-agent:toolCall` IPC events and calls corresponding `conversation-panel` methods:
    - `handleToolCallComplete()` - Shows collapsed tool call indicator with results and execution time
    - `handleToolCallFailed()` - Shows collapsed tool call indicator with error message
@@ -111,12 +113,15 @@ Reusable Web Component that provides:
 4. `app-panel` calls `app-agent:streamMessage` via IPC
 5. `app-agent-management` module:
    - Loads agent, validates ModelConfig and Provider
-   - Builds messages: system prompt + **file contents** + conversation history + new message
-   - Calls `streamLLM()` from `llm/index.ts` with `enableTools: false`
-   - Streams response to parent via `handleStreamChunk()`
-   - Calls `handleStreamComplete()` when done
-6. `app-panel` listens for `stream-complete` event
-7. On `stream-complete`, `app-panel` parses AI response for app code blocks:
+   - Builds system prompt
+   - Calls `streamLLM()` from `llm/index.ts` with `filePaths`, `userMessage`, `agent`, and `enableTools: false`
+6. Provider-specific module (`llm/openai.ts` or `llm/glm.ts`):
+   - **Saves user message** to `agent.history`
+   - **Builds messages** from system prompt, file contents, agent history, and user message
+   - **For streaming**: Sends chunks via `chat-chunk` IPC events to renderer
+   - **Saves assistant response** to `agent.history` before returning
+7. `app-panel` listens for `stream-complete` event
+8. On `stream-complete`, `app-panel` parses AI response for app code blocks:
    - ````html ... ```` - HTML content
    - ````renderer-js ... ```` - Renderer process JavaScript
    - ````main-js ... ```` - Main process JavaScript
@@ -154,15 +159,31 @@ The LLM module provides a unified streaming interface for multiple LLM providers
 - **`streamLLM(options: StreamLLMOptions)`** - Main entry point that routes to provider-specific implementations
   - Routes based on `modelConfig.type` (openai, glm, azure, custom)
   - Delegates to `streamOpenAI()` or `streamGLM()`
-- **`StreamLLMOptions`** - Options interface including systemPrompt, messages, provider, modelConfig, tools, webContents, enableTools, timeout, agent, maxIterations
+- **`StreamLLMOptions`** - Options interface including:
+  - `systemPrompt` - System prompt for the LLM
+  - `filePaths` - Optional array of file paths to include as context
+  - `userMessage` - Current user message
+  - `agent` - Agent instance (required) for conversation history
+  - `provider` - LLM provider configuration
+  - `modelConfig` - Model configuration
+  - `tools` - Array of available tools
+  - `webContents` - WebContents for IPC events
+  - `enableTools` - Whether to enable tool calling (default: true)
+  - `timeout` - Request timeout in milliseconds (default: 60000)
+  - `maxIterations` - Maximum tool call rounds (default: 10)
 - **`StreamResult`** - Result interface with content and hasToolCalls
+- **`buildFileContentMessages(filePaths)`** - Reads file contents and formats as system messages
+- **`buildAllMessages(options)`** - Builds complete message array from system prompt, files, agent history, and user message
 
 ### `llm/openai.ts` - OpenAI-Compatible Streaming
 - **`streamOpenAI(options)`** - Complete OpenAI streaming with tool call iteration
+  - Saves user message to `agent.history` at start
+  - Builds messages using `buildAllMessages()`
   - Handles up to 10 iterations of tool calls
   - Deduplicates tool calls before execution
   - Adds tool results to messages in OpenAI native format
   - Sends `chat-chunk` events during streaming
+  - Saves assistant response to `agent.history` before returning
 - **`streamOpenAISingle()`** - Single streaming request (no iteration)
   - Sends tools array in request body
   - Parses tool_calls from SSE delta chunks
@@ -172,9 +193,6 @@ The LLM module provides a unified streaming interface for multiple LLM providers
   - Validates tools, parameters, and executes them
   - Sends `chat-agent:toolCall` IPC events for status updates
   - Returns tool results with toolCallId
-- **`buildCompleteMessages()`** - Constructs API message array
-  - Adds system prompt
-  - Preserves tool_call_id for tool result messages
 - **Tool helper functions** - `convertToolToOpenAIFormat()`, `handleToolSuccess()`, `handleToolError()`
 
 ### `llm/glm.ts` - GLM (Zhipu AI) Streaming
@@ -196,11 +214,12 @@ Located in `src/main/chat-agent-management.ts`:
 
 ### Key Functions
 - `generateChatAgentSystemPrompt(agent)` - Returns agent's system prompt
-- `buildFileContentMessages(filePaths)` - Loads tagged files as system messages
 
 ### IPC Handlers
 - `chat-agent:streamMessage` - Initiates streaming via `streamLLM()`
-- `chat-agent:clearHistory` - Clears agent conversation history
+  - LLM handlers manage conversation history (saving user/assistant messages)
+  - No need to manually save agent history after streaming
+- `chat-agent:clearHistory` - Clears agent conversation history and saves to disk
 
 ## App Agent Management Module
 
@@ -208,11 +227,12 @@ Located in `src/main/app-agent-management.ts`:
 
 ### Key Functions
 - `generateAppAgentSystemPrompt(agent)` - Returns agent's system prompt (no tools)
-- `buildFileContentMessages(filePaths)` - Loads tagged files as system messages
 
 ### IPC Handlers
 - `app-agent:streamMessage` - Initiates streaming via `streamLLM()` with tools disabled
-- `app-agent:clearHistory` - Clears agent conversation history
+  - LLM handlers manage conversation history (saving user/assistant messages)
+  - No need to manually save agent history after streaming
+- `app-agent:clearHistory` - Clears agent conversation history and saves to disk
 
 ## Tool Calling (Chat Agents Only)
 
@@ -286,11 +306,11 @@ Chat agents support **multiple rounds of tool calls** in a single conversation:
      - Sends completion event
 
 **History Growth Across Iterations:**
-- User message saved ONCE at the start
-- Each tool execution adds history entries:
+- User message saved ONCE at the start by LLM handler
+- Each tool execution adds history entries via `executeToolCalls()`:
   - Assistant message: "Calling tool: {toolName}" (with toolCall.start metadata)
   - User message: "Tool executed successfully" or "Tool failed" (with toolCall.result metadata)
-- Final iteration: Saves the conversational assistant response
+- Final iteration: LLM handler saves the conversational assistant response before returning
 
 **Example Multi-Round Flow:**
 ```

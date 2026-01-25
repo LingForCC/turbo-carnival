@@ -108,12 +108,12 @@ The documentation has been split into focused modules for better performance:
 - `src/main/provider-management.ts` - LLM provider CRUD, validation, default URLs
 - `src/main/model-config-management.ts` - Model configuration CRUD, validation, storage
 - `src/main/llm/` - LLM streaming module with provider-specific implementations
-  - `index.ts` - Main routing interface (streamLLM, StreamLLMOptions)
-  - `openai.ts` - OpenAI-compatible streaming with native tool calling
-  - `glm.ts` - GLM streaming with native tool calling
+  - `index.ts` - Main routing interface (streamLLM, buildFileContentMessages, buildAllMessages)
+  - `openai.ts` - OpenAI-compatible streaming with conversation history management and native tool calling
+  - `glm.ts` - GLM streaming with conversation history management and native tool calling
 - `src/main/openai-client.ts` - Tool execution routing (Node.js/Browser environments)
-- `src/main/chat-agent-management.ts` - Chat agent logic with tool calling + file context
-- `src/main/app-agent-management.ts` - App agent logic with file context only (no tools)
+- `src/main/chat-agent-management.ts` - Chat agent system prompt generation, IPC handlers
+- `src/main/app-agent-management.ts` - App agent system prompt generation, IPC handlers
 - `src/main/tool-management.ts` - Tool CRUD, JSON Schema validation, execution routing
 
 ### UI Components (Web Components)
@@ -139,9 +139,11 @@ The documentation has been split into focused modules for better performance:
 - `tools:*` - Tool CRUD and execution
 - `project:getFileTree` - File tree structure
 - `files:list`, `files:readContents` - File operations for @mention
-- `chat-agent:sendMessage`, `chat-agent:streamMessage` - Chat agent operations (with tools + files)
+- `chat-agent:streamMessage` - Chat agent streaming (with tools + files)
+- `chat-agent:clearHistory` - Clear chat agent conversation history
 - `chat-agent:toolCall` - Real-time tool call status updates (one-way IPC from main to renderer)
-- `app-agent:sendMessage`, `app-agent:streamMessage` - App agent operations (files only, no tools)
+- `app-agent:streamMessage` - App agent streaming (files only, no tools)
+- `app-agent:clearHistory` - Clear app agent conversation history
 
 ### Storage Locations
 - `app.getPath('userData')/projects.json` - Project list

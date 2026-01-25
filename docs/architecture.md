@@ -40,13 +40,14 @@ The main process is organized into dedicated modules:
 
 **`src/main/llm/` - LLM Streaming Module**
 - `index.ts` - Main routing interface with `streamLLM()` function and `StreamLLMOptions` interface
+  - Helper functions: `buildFileContentMessages()`, `buildAllMessages()`
 - `openai.ts` - OpenAI-compatible streaming with native tool calling and tool call iteration
+  - Complete flow: `streamOpenAI()` - saves user/assistant messages, handles tool call iteration loop (max 10 rounds)
   - Single streaming: `streamOpenAISingle()` - handles SSE parsing, tool_calls extraction
   - Tool execution: `executeToolCalls()` - validates and executes tools, sends IPC events
-  - Message building: `buildCompleteMessages()` - constructs API message array
-  - Complete flow: `streamOpenAI()` - handles tool call iteration loop (max 10 rounds)
+  - Tool helpers: `convertToolToOpenAIFormat()`, `handleToolSuccess()`, `handleToolError()`
 - `glm.ts` - GLM (Zhipu AI) streaming with native tool calling
-  - Same structure as openai.ts: `streamGLM()`, `streamGLMSingle()`, `executeToolCalls()`, `buildCompleteMessages()`
+  - Same structure as openai.ts: `streamGLM()`, `streamGLMSingle()`, `executeToolCalls()`
   - Uses OpenAI-compatible tool calling format (tools array, tool_calls in delta, tool_call_id for results)
 
 **`src/main/openai-client.ts`**
@@ -55,15 +56,15 @@ The main process is organized into dedicated modules:
 
 **`src/main/chat-agent-management.ts`**
 - Chat agent logic (tools + files)
-- Simplified to single `streamLLM()` call (tool iteration handled internally)
 - System prompt generation: `generateChatAgentSystemPrompt()`
-- IPC handlers: `chat-agent:streamMessage`, emits `chat-agent:toolCall` events during tool execution
+- IPC handlers: `chat-agent:streamMessage`, `chat-agent:clearHistory`
+- LLM handlers manage conversation history (saves user/assistant messages)
 
 **`src/main/app-agent-management.ts`**
 - App agent logic (files only, no tools)
-- System prompt generation: `generateAppAgentSystemPrompt` (system prompt only)
-- Message building: `buildMessagesForAppAgent` (includes file contents, no tools)
-- IPC handler: `app-agent:streamMessage` (streaming)
+- System prompt generation: `generateAppAgentSystemPrompt()` (system prompt only)
+- IPC handlers: `app-agent:streamMessage`, `app-agent:clearHistory`
+- LLM handlers manage conversation history (saves user/assistant messages)
 
 **`src/main/tool-management.ts`**
 - Tool CRUD operations
