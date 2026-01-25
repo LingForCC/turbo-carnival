@@ -1,20 +1,22 @@
 import { getDefaultBaseURL } from '../provider-management';
-import type { ModelConfig, LLMProvider, Tool, ConversationMessage } from '../../global.d.ts';
+import type { ModelConfig, LLMProvider, Tool, Agent } from '../../global.d.ts';
 import { getToolByName, validateJSONSchema } from '../tool-management';
 import { executeToolWithRouting } from '../openai-client';
+import { buildAllMessages } from './index';
 
 // ============ TYPE DEFINITIONS ============
 
 export interface StreamLLMOptions {
   systemPrompt: string;
-  messages: ConversationMessage[];
+  filePaths?: string[];
+  userMessage: string;
   provider: LLMProvider;
   modelConfig: ModelConfig;
   tools: Tool[];
   webContents: Electron.WebContents;
   enableTools?: boolean;
   timeout?: number;
-  agent?: any;
+  agent: Agent;
   maxIterations?: number;
 }
 
@@ -56,7 +58,8 @@ interface OpenAIRequest {
 export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult> {
   const {
     systemPrompt,
-    messages,
+    filePaths,
+    userMessage,
     provider,
     modelConfig,
     tools,
@@ -67,31 +70,34 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
     maxIterations = 10
   } = options;
 
+  // Save user message to agent history
+  agent.history = agent.history || [];
+  agent.history.push({ role: 'user', content: userMessage, timestamp: Date.now() });
+
+  // Build initial messages
+  let apiMessages = buildAllMessages({
+    systemPrompt,
+    filePaths,
+    agent,
+    userMessage
+  });
+
   // If tools disabled, single pass streaming
   if (!enableTools) {
-    const completeMessages = buildCompleteMessages({
-      systemPrompt,
-      messages,
-      tools: undefined
-    });
-    return await streamGLMSingle(completeMessages, modelConfig, provider, webContents, timeout, undefined);
+    const { content: response } = await streamGLMSingle(apiMessages, modelConfig, provider, webContents, timeout, undefined);
+    // Save assistant response to agent history
+    agent.history.push({ role: 'assistant', content: response, timestamp: Date.now() });
+    return { content: response, hasToolCalls: false };
   }
 
   // Tool call iteration loop
-  let apiMessages = [...messages];
   let iterationCount = 0;
 
   while (iterationCount < maxIterations) {
     iterationCount++;
 
-    const completeMessages = buildCompleteMessages({
-      systemPrompt,
-      messages: apiMessages,
-      tools
-    });
-
     const { content: response, hasToolCalls, toolCalls } = await streamGLMSingle(
-      completeMessages,
+      apiMessages,
       modelConfig,
       provider,
       webContents,
@@ -101,6 +107,8 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
 
     // If no tool calls, return response
     if (!hasToolCalls || !toolCalls || toolCalls.length === 0) {
+      // Save assistant response to agent history
+      agent.history.push({ role: 'assistant', content: response, timestamp: Date.now() });
       return { content: response, hasToolCalls: false };
     }
 
@@ -134,15 +142,14 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
   }
 
   // Max iterations reached - return last response with warning
-  const completeMessages = buildCompleteMessages({
-    systemPrompt,
-    messages: apiMessages,
-    tools
-  });
-  const { content: lastResponse } = await streamGLMSingle(completeMessages, modelConfig, provider, webContents, timeout, undefined);
+  const { content: lastResponse } = await streamGLMSingle(apiMessages, modelConfig, provider, webContents, timeout, undefined);
+
+  const finalResponse = lastResponse + '\n\n[Note: Maximum tool call rounds reached. Some tool calls may not have been executed.]';
+  // Save assistant response to agent history
+  agent.history.push({ role: 'assistant', content: finalResponse, timestamp: Date.now() });
 
   return {
-    content: lastResponse + '\n\n[Note: Maximum tool call rounds reached. Some tool calls may not have been executed.]',
+    content: finalResponse,
     hasToolCalls: false
   };
 }
@@ -319,43 +326,11 @@ async function streamGLMSingle(
   }
 }
 
-// ============ MESSAGE BUILDING ============
-
-function buildCompleteMessages(options: {
-  systemPrompt: string;
-  messages: ConversationMessage[];
-  tools?: Tool[];
-}): any[] {
-  const { systemPrompt, messages } = options;
-
-  const result: any[] = [];
-
-  // Add system prompt (tool descriptions now handled natively by GLM)
-  result.push({
-    role: 'system',
-    content: systemPrompt
-  });
-
-  // Add conversation history, preserving tool_call_id for GLM native format
-  result.push(...messages.map(msg => {
-    const mapped: any = {
-      role: msg.role,
-      content: msg.content
-    };
-    if (msg.tool_call_id) {
-      mapped.tool_call_id = msg.tool_call_id;
-    }
-    return mapped;
-  }));
-
-  return result;
-}
-
 // ============ TOOL EXECUTION ============
 
 async function executeToolCalls(
   toolCalls: ToolCall[],
-  agent: any,
+  agent: Agent,
   webContents: Electron.WebContents
 ): Promise<Array<{ toolCallId: string; content: string }>> {
   const toolResults: Array<{ toolCallId: string; content: string }> = [];
@@ -425,7 +400,7 @@ async function executeToolCalls(
 
 function handleToolSuccess(
   webContents: Electron.WebContents,
-  agent: any,
+  agent: Agent,
   toolCall: ToolCall,
   result: any
 ): void {
@@ -454,7 +429,7 @@ function handleToolSuccess(
 
 function handleToolError(
   webContents: Electron.WebContents,
-  agent: any,
+  agent: Agent,
   toolCall: ToolCall,
   errorMsg: string
 ): void {

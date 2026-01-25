@@ -1,43 +1,11 @@
 import { ipcMain } from 'electron';
-import * as path from 'path';
-import * as fs from 'fs';
 import type { Agent } from '../global.d.ts';
 import { loadAgents, saveAgent } from './agent-management';
 import { getProviderById } from './provider-management';
 import { getModelConfigById } from './model-config-management';
 import { streamLLM } from './llm';
 
-// ============ OPENAI API TYPES ============
-
-interface OpenAIMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
 // ============ SYSTEM PROMPT GENERATION ============
-
-/**
- * Build file content messages
- * Reads file contents and formats them as system messages
- */
-async function buildFileContentMessages(filePaths: string[]): Promise<OpenAIMessage[]> {
-  const messages: OpenAIMessage[] = [];
-
-  for (const filePath of filePaths) {
-    try {
-      const fileContent = fs.readFileSync(filePath, 'utf-8');
-      const fileName = path.basename(filePath);
-      messages.push({
-        role: 'system',
-        content: `[File: ${fileName}]\n${fileContent}`
-      });
-    } catch (error) {
-      console.error(`Failed to read file ${filePath}:`, error);
-    }
-  }
-
-  return messages;
-}
 
 /**
  * Generate system prompt for app agents (NO tools, just system prompt)
@@ -56,7 +24,7 @@ export function registerAppAgentIPCHandlers(): void {
 
   // Handler: app-agent:streamMessage
   ipcMain.handle('app-agent:streamMessage', async (event, projectPath: string, agentName: string, message: string, filePaths?: string[]) => {
-    // 1. Load agent and validate API key
+    // 1. Load agent and validate
     const agents = loadAgents(projectPath);
     const agent = agents.find(a => a.name === agentName);
 
@@ -74,7 +42,6 @@ export function registerAppAgentIPCHandlers(): void {
       throw new Error(`Provider "${providerId}" not found`);
     }
 
-    // 1.5. Get ModelConfig
     if (!agent.config.modelId) {
       throw new Error('Agent must have a modelId configured');
     }
@@ -84,43 +51,23 @@ export function registerAppAgentIPCHandlers(): void {
       throw new Error(`ModelConfig "${agent.config.modelId}" not found`);
     }
 
-    // 2. Build messages (NO tools)
+    // 2. Build system prompt
     const systemPrompt = generateAppAgentSystemPrompt(agent);
-    const fileMessages = await buildFileContentMessages(filePaths || []);
-
-    const conversationMessages = agent.history.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
-
-    const allMessages = [
-      ...fileMessages,
-      ...conversationMessages,
-      { role: 'user', content: message }
-    ];
 
     // 3. Stream response using streamLLM (tools disabled)
     const { content: fullResponse } = await streamLLM({
       systemPrompt,
-      messages: allMessages,
+      filePaths: filePaths || [],
+      userMessage: message,
       provider,
       modelConfig,
       tools: [],  // No tools for app agents
       webContents: event.sender,
-      enableTools: false
+      enableTools: false,
+      agent  // Pass agent for conversation history
     });
 
-    // 4. Update agent history
-    const timestamp = Date.now();
-    agent.history = agent.history || [];
-    agent.history.push(
-      { role: 'user', content: message, timestamp },
-      { role: 'assistant', content: fullResponse, timestamp }
-    );
-
-    saveAgent(projectPath, agent);
-
-    // Send completion event
+    // 4. Send completion event
     event.sender.send('chat-complete');
 
     return fullResponse;

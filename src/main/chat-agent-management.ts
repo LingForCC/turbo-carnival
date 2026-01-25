@@ -1,6 +1,4 @@
 import { ipcMain } from 'electron';
-import * as path from 'path';
-import * as fs from 'fs';
 import type { Agent } from '../global.d.ts';
 import { loadAgents, saveAgent } from './agent-management';
 import { getProviderById } from './provider-management';
@@ -8,37 +6,7 @@ import { getModelConfigById } from './model-config-management';
 import { loadTools } from './tool-management';
 import { streamLLM } from './llm';
 
-// ============ OPENAI API TYPES ============
-
-interface OpenAIMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
 // ============ SYSTEM PROMPT GENERATION ============
-
-/**
- * Build file content messages
- * Reads file contents and formats them as system messages
- */
-async function buildFileContentMessages(filePaths: string[]): Promise<OpenAIMessage[]> {
-  const messages: OpenAIMessage[] = [];
-
-  for (const filePath of filePaths) {
-    try {
-      const fileContent = fs.readFileSync(filePath, 'utf-8');
-      const fileName = path.basename(filePath);
-      messages.push({
-        role: 'system',
-        content: `[File: ${fileName}]\n${fileContent}`
-      });
-    } catch (error) {
-      console.error(`Failed to read file ${filePath}:`, error);
-    }
-  }
-
-  return messages;
-}
 
 /**
  * Generate system prompt for chat agents
@@ -84,41 +52,24 @@ export function registerChatAgentIPCHandlers(): void {
       throw new Error(`ModelConfig "${agent.config.modelId}" not found`);
     }
 
-    // 2. Build messages
+    // 2. Build system prompt
     const systemPrompt = generateChatAgentSystemPrompt(agent);
-    const fileMessages = await buildFileContentMessages(filePaths || []);
 
-    const conversationMessages = agent.history.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
-
-    const allMessages = [
-      ...fileMessages,
-      ...conversationMessages,
-      { role: 'user', content: message }
-    ];
-
-    // 3. Save user message to history
-    agent.history = agent.history || [];
-    agent.history.push({ role: 'user', content: message, timestamp: Date.now() });
-
-    // 4. Single call to streamLLM (handles tool call iteration internally)
+    // 3. Single call to streamLLM (handles tool call iteration internally)
     const { content: fullResponse } = await streamLLM({
       systemPrompt,
-      messages: allMessages,
+      filePaths: filePaths || [],
+      userMessage: message,
       provider,
       modelConfig,
       tools: loadTools(),
       webContents: event.sender,
       enableTools: true,
-      agent,  // Pass agent for tool call history
+      agent,  // Pass agent for conversation history and tool call history
       maxIterations: 10
     });
 
-    // 5. Save assistant response to history
-    agent.history.push({ role: 'assistant', content: fullResponse, timestamp: Date.now() });
-    saveAgent(projectPath, agent);
+    // 4. Send completion event
     event.sender.send('chat-complete');
 
     return fullResponse;

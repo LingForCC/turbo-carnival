@@ -1,4 +1,6 @@
-import type { LLMProvider, ModelConfig, Tool, ConversationMessage } from '../../global.d.ts';
+import type { LLMProvider, ModelConfig, Tool, Agent } from '../../global.d.ts';
+import * as fs from 'fs';
+import * as path from 'path';
 import { streamOpenAI } from './openai';
 import { streamGLM } from './glm';
 
@@ -6,20 +8,93 @@ import { streamGLM } from './glm';
 
 export interface StreamLLMOptions {
   systemPrompt: string;
-  messages: ConversationMessage[];
+  filePaths?: string[];  // File paths to include as context
+  userMessage: string;  // Current user message
   provider: LLMProvider;
   modelConfig: ModelConfig;
   tools: Tool[];
   webContents: Electron.WebContents;
   enableTools?: boolean;
   timeout?: number;
-  agent?: any;  // Agent instance for tool call history
+  agent: Agent;  // Agent instance for conversation history and tool call history
   maxIterations?: number;  // Max tool call rounds (default: 10)
 }
 
 export interface StreamResult {
   content: string;
   hasToolCalls: boolean;
+}
+
+// ============ MESSAGE BUILDING HELPERS ============
+
+/**
+ * Build file content messages from file paths
+ * Reads file contents and formats them as system messages
+ */
+export function buildFileContentMessages(filePaths: string[]): any[] {
+  const messages: any[] = [];
+
+  if (!filePaths || filePaths.length === 0) {
+    return messages;
+  }
+
+  for (const filePath of filePaths) {
+    try {
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      const fileName = path.basename(filePath);
+      messages.push({
+        role: 'system',
+        content: `[File: ${fileName}]\n${fileContent}`
+      });
+    } catch (error) {
+      console.error(`Failed to read file ${filePath}:`, error);
+    }
+  }
+
+  return messages;
+}
+
+/**
+ * Build complete messages array from system prompt, files, agent history, and user message
+ */
+export function buildAllMessages(options: {
+  systemPrompt: string;
+  filePaths?: string[];
+  agent: Agent;
+  userMessage: string;
+}): any[] {
+  const { systemPrompt, filePaths, agent, userMessage } = options;
+  const messages: any[] = [];
+
+  // Add system prompt
+  messages.push({
+    role: 'system',
+    content: systemPrompt
+  });
+
+  // Add file content messages
+  const fileMessages = buildFileContentMessages(filePaths || []);
+  messages.push(...fileMessages);
+
+  // Add conversation history from agent
+  for (const msg of agent.history || []) {
+    const mapped: any = {
+      role: msg.role,
+      content: msg.content
+    };
+    if (msg.tool_call_id) {
+      mapped.tool_call_id = msg.tool_call_id;
+    }
+    messages.push(mapped);
+  }
+
+  // Add current user message
+  messages.push({
+    role: 'user',
+    content: userMessage
+  });
+
+  return messages;
 }
 
 // ============ MAIN STREAMING FUNCTION ============
