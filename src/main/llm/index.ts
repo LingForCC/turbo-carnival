@@ -61,13 +61,14 @@ export function buildFileContentMessages(filePaths: string[]): any[] {
 }
 
 /**
- * Build complete messages array from system prompt, files, agent history, and user message
+ * Build complete messages array from system prompt, files, agent history, and optional current user message
+ * Note: If userMessage is already in agent.history, pass undefined to avoid duplication
  */
 export function buildAllMessages(options: {
   systemPrompt: string;
   filePaths?: string[];
   agent: Agent;
-  userMessage: string;
+  userMessage?: string;
 }): any[] {
   const { systemPrompt, filePaths, agent, userMessage } = options;
   const messages: any[] = [];
@@ -91,14 +92,19 @@ export function buildAllMessages(options: {
     if (msg.tool_call_id) {
       mapped.tool_call_id = msg.tool_call_id;
     }
+    if (msg.tool_calls) {
+      mapped.tool_calls = msg.tool_calls;
+    }
     messages.push(mapped);
   }
 
-  // Add current user message
-  messages.push({
-    role: 'user',
-    content: userMessage
-  });
+  // Add current user message if provided
+  if (userMessage !== undefined && userMessage !== '') {
+    messages.push({
+      role: 'user',
+      content: userMessage
+    });
+  }
 
   return messages;
 }

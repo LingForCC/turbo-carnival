@@ -51,12 +51,12 @@ export async function streamOpenAI(options: StreamLLMOptions): Promise<StreamRes
   agent.history = agent.history || [];
   agent.history.push({ role: 'user', content: userMessage, timestamp: Date.now() });
 
-  // Build initial messages
+  // Build initial messages (user message is already in agent.history)
   let apiMessages = buildAllMessages({
     systemPrompt,
     filePaths,
     agent,
-    userMessage
+    userMessage: undefined  // User message already pushed to history
   });
 
   // If tools disabled, single pass streaming
@@ -104,6 +104,30 @@ export async function streamOpenAI(options: StreamLLMOptions): Promise<StreamRes
         console.warn(`Detected ${toolCalls.length - uniqueToolCalls.length} duplicate tool calls, removing them`);
       }
     }
+
+    // Create assistant message with tool_calls (OpenAI native format)
+    const openaiToolCalls = uniqueToolCalls.map(tc => ({
+      id: tc.toolCallId || '',
+      type: 'function' as const,
+      function: {
+        name: tc.toolName,
+        arguments: JSON.stringify(tc.parameters)
+      }
+    }));
+    const assistantMessage = {
+      role: 'assistant' as const,
+      content: null,
+      tool_calls: openaiToolCalls
+    };
+
+    // Add assistant message to apiMessages for next API request
+    apiMessages.push(assistantMessage);
+
+    // Save assistant message to agent history for persistent storage
+    agent.history.push({
+      ...assistantMessage,
+      timestamp: Date.now()
+    });
 
     // Execute tools and add results to messages
     console.log(`Tool call iteration ${iterationCount}: ${uniqueToolCalls.length} tools detected`);
@@ -309,24 +333,12 @@ async function executeToolCalls(
 ): Promise<Array<{ toolCallId: string; content: string }>> {
   const toolResults: Array<{ toolCallId: string; content: string }> = [];
 
-  // Send started events and add to history
+  // Send started events to UI
   for (const toolCall of toolCalls) {
     webContents.send('chat-agent:toolCall', {
       toolName: toolCall.toolName,
       parameters: toolCall.parameters,
       status: 'started'
-    });
-
-    agent.history.push({
-      role: 'assistant',
-      content: `Calling tool: ${toolCall.toolName}`,
-      timestamp: Date.now(),
-      toolCall: {
-        type: 'start',
-        toolName: toolCall.toolName,
-        parameters: toolCall.parameters,
-        status: 'executing'
-      }
     });
   }
 
@@ -386,18 +398,12 @@ function handleToolSuccess(
     executionTime: result.executionTime
   });
 
+  // Push tool result in OpenAI native format
   agent.history.push({
-    role: 'user',
-    content: `Tool "${toolCall.toolName}" executed successfully`,
-    timestamp: Date.now(),
-    toolCall: {
-      type: 'result',
-      toolName: toolCall.toolName,
-      parameters: toolCall.parameters,
-      result: result.result,
-      executionTime: result.executionTime,
-      status: 'completed'
-    }
+    role: 'tool',
+    tool_call_id: toolCall.toolCallId!,
+    content: `Tool "${toolCall.toolName}" executed successfully:\n${JSON.stringify(result.result, null, 2)}\n(Execution time: ${result.executionTime}ms)`,
+    timestamp: Date.now()
   });
 }
 
@@ -414,16 +420,11 @@ function handleToolError(
     error: errorMsg
   });
 
+  // Push tool result in OpenAI native format
   agent.history.push({
-    role: 'user',
-    content: `Tool "${toolCall.toolName}" failed`,
-    timestamp: Date.now(),
-    toolCall: {
-      type: 'result',
-      toolName: toolCall.toolName,
-      parameters: toolCall.parameters,
-      status: 'failed',
-      error: errorMsg
-    }
+    role: 'tool',
+    tool_call_id: toolCall.toolCallId!,
+    content: `Tool "${toolCall.toolName}" failed: ${errorMsg}`,
+    timestamp: Date.now()
   });
 }
