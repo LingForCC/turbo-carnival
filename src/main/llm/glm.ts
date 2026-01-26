@@ -2,34 +2,9 @@ import { getDefaultBaseURL } from '../provider-management';
 import type { ModelConfig, LLMProvider, Tool, Agent } from '../../global.d.ts';
 import { getToolByName, validateJSONSchema } from '../tool-management';
 import { executeToolWithRouting } from '../openai-client';
-import { buildAllMessages } from './index';
+import { buildAllMessages, type StreamLLMOptions, type StreamResult, type ToolCall } from './index';
 
 // ============ TYPE DEFINITIONS ============
-
-export interface StreamLLMOptions {
-  systemPrompt: string;
-  filePaths?: string[];
-  userMessage: string;
-  provider: LLMProvider;
-  modelConfig: ModelConfig;
-  tools: Tool[];
-  webContents: Electron.WebContents;
-  enableTools?: boolean;
-  timeout?: number;
-  agent: Agent;
-  maxIterations?: number;
-}
-
-export interface StreamResult {
-  content: string;
-  hasToolCalls: boolean;
-}
-
-export interface ToolCall {
-  toolName: string;
-  parameters: Record<string, any>;
-  toolCallId?: string;
-}
 
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';

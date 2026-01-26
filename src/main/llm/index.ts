@@ -25,6 +25,12 @@ export interface StreamResult {
   hasToolCalls: boolean;
 }
 
+export interface ToolCall {
+  toolName: string;
+  parameters: Record<string, any>;
+  toolCallId?: string;
+}
+
 // ============ MESSAGE BUILDING HELPERS ============
 
 /**
