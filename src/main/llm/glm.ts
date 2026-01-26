@@ -2,9 +2,32 @@ import { getDefaultBaseURL } from '../provider-management';
 import type { ModelConfig, LLMProvider, Tool, Agent } from '../../global.d.ts';
 import { getToolByName, validateJSONSchema } from '../tool-management';
 import { executeToolWithRouting } from '../openai-client';
-import { buildAllMessages, type StreamLLMOptions, type StreamResult, type ToolCall } from './index';
+import { buildAllMessages, type StreamLLMOptions, type StreamResult } from './index';
 
 // ============ TYPE DEFINITIONS ============
+
+/**
+ * GLM native tool call format
+ * GLM uses OpenAI-compatible tool calling format
+ */
+export interface GLMToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;  // JSON stringified arguments
+  };
+}
+
+/**
+ * Internal tool call format for processing (during streaming)
+ */
+interface InternalGLMToolCall {
+  toolName: string;
+  parameters: Record<string, any>;
+  toolCallId?: string;
+  _argumentsBuffer?: string;  // Temporary buffer for streaming arguments
+}
 
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -103,8 +126,8 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
       }
     }
 
-    // Create assistant message with tool_calls (OpenAI native format)
-    const openaiToolCalls = uniqueToolCalls.map(tc => ({
+    // Create assistant message with tool_calls (GLM native format)
+    const glmToolCalls: GLMToolCall[] = uniqueToolCalls.map(tc => ({
       id: tc.toolCallId || '',
       type: 'function' as const,
       function: {
@@ -115,7 +138,7 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
     const assistantMessage = {
       role: 'assistant' as const,
       content: null,
-      tool_calls: openaiToolCalls
+      tool_calls: glmToolCalls
     };
 
     // Add assistant message to apiMessages for next API request
@@ -180,7 +203,7 @@ async function streamGLMSingle(
   webContents: Electron.WebContents,
   timeout: number = 60000,
   tools?: Tool[]
-): Promise<{ content: string; hasToolCalls: boolean; toolCalls?: ToolCall[] }> {
+): Promise<{ content: string; hasToolCalls: boolean; toolCalls?: InternalGLMToolCall[] }> {
   const baseURL = provider.baseURL || getDefaultBaseURL(provider.type) || '';
   const url = `${baseURL}/chat/completions`;
 
@@ -230,7 +253,7 @@ async function streamGLMSingle(
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
     let fullResponse = '';
-    let toolCalls: ToolCall[] = [];
+    let toolCalls: InternalGLMToolCall[] = [];
 
     while (true) {
       const { done, value } = await reader.read();
@@ -328,7 +351,7 @@ async function streamGLMSingle(
 // ============ TOOL EXECUTION ============
 
 async function executeToolCalls(
-  toolCalls: ToolCall[],
+  toolCalls: InternalGLMToolCall[],
   agent: Agent,
   webContents: Electron.WebContents
 ): Promise<Array<{ toolCallId: string; content: string }>> {
@@ -388,7 +411,7 @@ async function executeToolCalls(
 function handleToolSuccess(
   webContents: Electron.WebContents,
   agent: Agent,
-  toolCall: ToolCall,
+  toolCall: InternalGLMToolCall,
   result: any
 ): void {
   webContents.send('chat-agent:toolCall', {
@@ -411,7 +434,7 @@ function handleToolSuccess(
 function handleToolError(
   webContents: Electron.WebContents,
   agent: Agent,
-  toolCall: ToolCall,
+  toolCall: InternalGLMToolCall,
   errorMsg: string
 ): void {
   webContents.send('chat-agent:toolCall', {

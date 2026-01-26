@@ -2,9 +2,32 @@ import { getDefaultBaseURL } from '../provider-management';
 import type { ModelConfig, LLMProvider, Tool, Agent } from '../../global.d.ts';
 import { getToolByName, validateJSONSchema } from '../tool-management';
 import { executeToolWithRouting } from '../openai-client';
-import { buildAllMessages, type StreamLLMOptions, type StreamResult, type ToolCall } from './index';
+import { buildAllMessages, type StreamLLMOptions, type StreamResult } from './index';
 
 // ============ TYPE DEFINITIONS ============
+
+/**
+ * OpenAI native tool call format
+ * Represents a tool call in OpenAI's native response format (used for conversation history)
+ */
+export interface OpenAIToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;  // JSON stringified arguments
+  };
+}
+
+/**
+ * Internal tool call format for processing (during streaming)
+ */
+interface InternalOpenAIToolCall {
+  toolName: string;
+  parameters: Record<string, any>;
+  toolCallId?: string;
+  _argumentsBuffer?: string;  // Temporary buffer for streaming arguments
+}
 
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -106,7 +129,7 @@ export async function streamOpenAI(options: StreamLLMOptions): Promise<StreamRes
     }
 
     // Create assistant message with tool_calls (OpenAI native format)
-    const openaiToolCalls = uniqueToolCalls.map(tc => ({
+    const openaiToolCalls: OpenAIToolCall[] = uniqueToolCalls.map(tc => ({
       id: tc.toolCallId || '',
       type: 'function' as const,
       function: {
@@ -183,7 +206,7 @@ async function streamOpenAISingle(
   webContents: Electron.WebContents,
   timeout: number = 60000,
   tools?: Tool[]
-): Promise<{ content: string; hasToolCalls: boolean; toolCalls?: ToolCall[] }> {
+): Promise<{ content: string; hasToolCalls: boolean; toolCalls?: InternalOpenAIToolCall[] }> {
   const baseURL = provider.baseURL || getDefaultBaseURL(provider.type) || '';
   const url = `${baseURL}/chat/completions`;
 
@@ -233,7 +256,7 @@ async function streamOpenAISingle(
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
     let fullResponse = '';
-    let toolCalls: ToolCall[] = [];
+    let toolCalls: InternalOpenAIToolCall[] = [];
 
     while (true) {
       const { done, value } = await reader.read();
@@ -327,7 +350,7 @@ async function streamOpenAISingle(
 // ============ TOOL EXECUTION ============
 
 async function executeToolCalls(
-  toolCalls: ToolCall[],
+  toolCalls: InternalOpenAIToolCall[],
   agent: Agent,
   webContents: Electron.WebContents
 ): Promise<Array<{ toolCallId: string; content: string }>> {
@@ -387,7 +410,7 @@ async function executeToolCalls(
 function handleToolSuccess(
   webContents: Electron.WebContents,
   agent: Agent,
-  toolCall: ToolCall,
+  toolCall: InternalOpenAIToolCall,
   result: any
 ): void {
   webContents.send('chat-agent:toolCall', {
@@ -410,7 +433,7 @@ function handleToolSuccess(
 function handleToolError(
   webContents: Electron.WebContents,
   agent: Agent,
-  toolCall: ToolCall,
+  toolCall: InternalOpenAIToolCall,
   errorMsg: string
 ): void {
   webContents.send('chat-agent:toolCall', {
