@@ -1,4 +1,4 @@
-import type { Agent, Project, ToolCallData } from '../global.d.ts';
+import type { Agent, Project } from '../global.d.ts';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
@@ -9,11 +9,33 @@ import DOMPurify from 'dompurify';
  * NOTE: This component dispatches 'message-sent' events that bubble up to parent components.
  * Parent components (chat-panel, app-panel) should listen for this event and handle IPC calls.
  */
+
+/**
+ * Tool call data for conversation panel display
+ */
+interface ToolCallData {
+  toolName: string;
+  parameters: Record<string, any>;
+  result?: any;
+  executionTime?: number;
+  status: 'pending' | 'executing' | 'completed' | 'failed';
+  error?: string;
+}
+
+/**
+ * Chat message for UI display in conversation-panel
+ */
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  toolCall?: ToolCallData;
+}
+
 export class ConversationPanel extends HTMLElement {
   // Core state
   private currentAgent: Agent | null = null;
   private currentProject: Project | null = null;
-  private chatHistory: Array<{ role: 'user' | 'assistant'; content: string; toolCall?: ToolCallData }> = [];
+  private chatHistory: ChatMessage[] = [];
   private isStreaming: boolean = false;
   private currentStreamedContent: string = '';
   private activeToolCalls: Map<string, ToolCallData> = new Map();

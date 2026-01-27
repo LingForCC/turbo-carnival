@@ -43,24 +43,6 @@ export interface AgentPrompts {
 }
 
 /**
- * Conversation message for history
- */
-export interface ConversationMessage {
-  role: string;
-  content: string;
-  timestamp: number;
-  toolCall?: {
-    type: 'start' | 'result';
-    toolName: string;
-    parameters?: Record<string, any>;
-    result?: any;
-    executionTime?: number;
-    status: 'executing' | 'completed' | 'failed';
-    error?: string;
-  };
-}
-
-/**
  * Additional agent settings
  */
 export interface AgentSettings {
@@ -162,19 +144,6 @@ export interface ToolExecutionResult {
   result: any;                     // Return value from tool execution
   error?: string;                  // Error message if failed
   executionTime: number;           // Execution time in milliseconds
-}
-
-/**
- * Tool call data for conversation panel display
- * Attached to messages internally in the UI layer (not stored in ConversationMessage)
- */
-export interface ToolCallData {
-  toolName: string;
-  parameters: Record<string, any>;
-  result?: any;
-  executionTime?: number;
-  status: 'pending' | 'executing' | 'completed' | 'failed';
-  error?: string;
 }
 
 /**

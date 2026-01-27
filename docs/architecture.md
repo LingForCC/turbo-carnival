@@ -256,10 +256,9 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 Global types defined in `src/global.d.ts`:
 
 - `Project` - Local folder project with `path`, `name`, and `addedAt` properties
-- `Agent` - AI agent with full metadata including conversation history
+- `Agent` - AI agent with full metadata including conversation history (stored as flexible `any[]` to support different message formats)
 - `AgentConfig` - Model configuration (modelId, providerId, model @deprecated, temperature @deprecated, maxTokens @deprecated, topP @deprecated)
 - `AgentPrompts` - System and user prompts
-- `ConversationMessage` - Messages in conversation history (role as string, content, timestamp, optional tool_call_id, optional toolCall metadata)
 - `AgentSettings` - Flexible settings object
 - `LLMProviderType` - Union type for provider types ('openai' | 'glm' | 'azure' | 'custom')
 - `LLMProvider` - LLM provider storage (id, type, name, apiKey, baseURL?, createdAt, updatedAt?)
@@ -267,7 +266,6 @@ Global types defined in `src/global.d.ts`:
 - `Tool` - Custom tool definition (name, description, code, parameters, returns, timeout, environment, enabled, createdAt, updatedAt)
 - `ToolExecutionRequest` - Request for tool execution (toolName, parameters, optional tool)
 - `ToolExecutionResult` - Result from tool execution (success, result, error, executionTime)
-- `ToolCallData` - Tool call data for conversation panel display (toolName, parameters, result, executionTime, status, error)
 - `ToolCallEvent` - Tool call event for IPC communication (toolName, parameters, status, result, executionTime, error)
 - `FileType` - Discriminator union for file system nodes ('file' | 'directory')
 - `FileTreeNode` - Node in the file tree (name, path, type, children, expanded)
@@ -276,6 +274,11 @@ Global types defined in `src/global.d.ts`:
 - `FileContent` - File content with metadata (path, name, content, size, error)
 - `FileListOptions` - Configuration for file listing (extensions, maxDepth, excludeHidden)
 - `ElectronAPI` - Exposed API methods from preload script
+
+**Component-Specific Types:**
+
+Some UI components define their own types locally for better encapsulation:
+- `conversation-panel.ts` defines `ChatMessage` and `ToolCallData` interfaces for UI display (exported for testing)
 
 ## TypeScript Configuration
 

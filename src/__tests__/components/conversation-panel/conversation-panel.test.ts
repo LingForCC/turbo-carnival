@@ -4,6 +4,7 @@
 
 import { mountComponent, createMockProject, mockElectronAPI, waitForAsync, spyOnEvent } from '../../helpers/component-testing';
 import { createMockAgent } from '../../helpers/mocks';
+import type { ChatMessage } from '../../../components/conversation-panel';
 
 // Type for the ConversationPanel element
 interface ConversationPanel extends HTMLElement {
@@ -14,7 +15,7 @@ interface ConversationPanel extends HTMLElement {
   handleStreamComplete(content: string): void;
   handleStreamError(error: string): void;
   taggedFiles?: Array<{ name: string; path: string }>;
-  chatHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  chatHistory?: ChatMessage[];
   currentStreamedContent?: string;
 }
 
