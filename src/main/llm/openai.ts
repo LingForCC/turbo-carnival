@@ -1,8 +1,10 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { getDefaultBaseURL } from '../provider-management';
 import type { ModelConfig, LLMProvider, Tool, Agent } from '../../global.d.ts';
 import { getToolByName, validateJSONSchema } from '../tool-management';
 import { executeToolWithRouting } from '../openai-client';
-import { buildAllMessages, type StreamLLMOptions, type StreamResult } from './index';
+import type { StreamLLMOptions, StreamResult } from './index';
 
 // ============ TYPE DEFINITIONS ============
 
@@ -31,10 +33,10 @@ interface InternalOpenAIToolCall {
 
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content?: string;
+  content: string | null;
   name?: string;
   tool_call_id?: string;
-  tool_calls?: any[];
+  tool_calls?: OpenAIToolCall[];
 }
 
 interface OpenAIRequest {
@@ -47,6 +49,84 @@ interface OpenAIRequest {
   tools?: any[];
   tool_choice?: 'auto' | 'none' | 'required';
   [key: string]: any;
+}
+
+// ============ MESSAGE BUILDING HELPERS ============
+
+/**
+ * Build file content messages from file paths
+ * Reads file contents and formats them as system messages
+ */
+function buildFileContentMessages(filePaths: string[]): OpenAIMessage[] {
+  const messages: OpenAIMessage[] = [];
+
+  if (!filePaths || filePaths.length === 0) {
+    return messages;
+  }
+
+  for (const filePath of filePaths) {
+    try {
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      const fileName = path.basename(filePath);
+      messages.push({
+        role: 'system',
+        content: `[File: ${fileName}]\n${fileContent}`
+      });
+    } catch (error) {
+      console.error(`Failed to read file ${filePath}:`, error);
+    }
+  }
+
+  return messages;
+}
+
+/**
+ * Build complete messages array from system prompt, files, agent history, and optional current user message
+ * Note: If userMessage is already in agent.history, pass undefined to avoid duplication
+ */
+function buildAllMessages(options: {
+  systemPrompt: string;
+  filePaths?: string[];
+  agent: Agent;
+  userMessage?: string;
+}): OpenAIMessage[] {
+  const { systemPrompt, filePaths, agent, userMessage } = options;
+  const messages: OpenAIMessage[] = [];
+
+  // Add system prompt
+  messages.push({
+    role: 'system',
+    content: systemPrompt
+  });
+
+  // Add file content messages
+  const fileMessages = buildFileContentMessages(filePaths || []);
+  messages.push(...fileMessages);
+
+  // Add conversation history from agent
+  for (const msg of agent.history || []) {
+    const mapped: OpenAIMessage = {
+      role: msg.role,
+      content: msg.content
+    };
+    if (msg.tool_call_id) {
+      mapped.tool_call_id = msg.tool_call_id;
+    }
+    if (msg.tool_calls) {
+      mapped.tool_calls = msg.tool_calls;
+    }
+    messages.push(mapped);
+  }
+
+  // Add current user message if provided
+  if (userMessage !== undefined && userMessage !== '') {
+    messages.push({
+      role: 'user',
+      content: userMessage
+    });
+  }
+
+  return messages;
 }
 
 // ============ MAIN STREAMING FUNCTION ============

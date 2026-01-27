@@ -18,7 +18,7 @@ export interface Agent {
   description: string;             // Human-readable description
   config: AgentConfig;             // Model configuration
   prompts: AgentPrompts;           // System and user prompts
-  history: ConversationMessage[];  // Conversation history
+  history: any[];                  // Conversation history (flexible type to support different message formats)
   settings: AgentSettings;         // Additional settings
 }
 
