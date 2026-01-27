@@ -1,6 +1,7 @@
-import type { Agent, Project } from '../global.d.ts';
+import type { Agent, Project, LLMProviderType } from '../global.d.ts';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
+import { createTransformer } from './transformers';
 
 /**
  * ConversationPanel Web Component
@@ -13,7 +14,7 @@ import DOMPurify from 'dompurify';
 /**
  * Tool call data for conversation panel display
  */
-interface ToolCallData {
+export interface ToolCallData {
   toolName: string;
   parameters: Record<string, any>;
   result?: any;
@@ -93,51 +94,17 @@ export class ConversationPanel extends HTMLElement {
 
   // ========== PUBLIC API ===========
 
-  public setAgent(agent: Agent, project: Project): void {
+  public async setAgent(agent: Agent, project: Project): Promise<void> {
     this.currentAgent = agent;
     this.currentProject = project;
 
     // Clear tagged files when switching agents
     this.taggedFiles = [];
 
-    // Load conversation history from agent
-    const mappedHistory = (agent.history || [])
-      .map(msg => {
-        // Check if message has toolCall metadata
-        if (msg.toolCall) {
-          const toolCall = msg.toolCall;
-          // Map persisted tool call data to ToolCallData format
-          const toolCallData: ToolCallData = {
-            toolName: toolCall.toolName,
-            parameters: toolCall.parameters || {},
-            result: toolCall.result,
-            executionTime: toolCall.executionTime,
-            status: toolCall.status as 'executing' | 'completed' | 'failed',
-            error: toolCall.error
-          };
-
-          // Return message with toolCall data
-          return {
-            role: msg.role as 'user' | 'assistant',
-            content: msg.content,
-            toolCall: toolCallData
-          };
-        }
-
-        // Return user/assistant messages as-is
-        if (msg.role === 'user' || msg.role === 'assistant') {
-          return {
-            role: msg.role as 'user' | 'assistant',
-            content: msg.content
-          };
-        }
-
-        // Filter out system messages
-        return null;
-      })
-      .filter((msg): msg is NonNullable<typeof msg> => msg !== null);
-
-    this.chatHistory = mappedHistory as Array<{ role: 'user' | 'assistant'; content: string; toolCall?: ToolCallData }>;
+    // Use transformer to convert agent history based on provider type
+    const providerType = await this.getProviderType(agent);
+    const transformer = createTransformer(providerType);
+    this.chatHistory = transformer.transform(agent.history || []);
 
     // Load available .txt and .md files if file tagging is enabled
     if (this.enableFileTagging) {
@@ -146,6 +113,23 @@ export class ConversationPanel extends HTMLElement {
 
     this.render();
     this.scrollToBottom();
+  }
+
+  /**
+   * Get the provider type for an agent from its model config
+   */
+  private async getProviderType(agent: Agent): Promise<LLMProviderType> {
+    if (!agent.config.modelId || !window.electronAPI) {
+      return 'openai'; // Default fallback
+    }
+
+    try {
+      const modelConfig = await window.electronAPI.getModelConfigById(agent.config.modelId);
+      return modelConfig?.type || 'openai';
+    } catch (error) {
+      console.error('Failed to get provider type:', error);
+      return 'openai';
+    }
   }
 
   public clearChat(): void {

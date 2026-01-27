@@ -31,12 +31,13 @@ interface InternalOpenAIToolCall {
   _argumentsBuffer?: string;  // Temporary buffer for streaming arguments
 }
 
-interface OpenAIMessage {
+export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
   name?: string;
   tool_call_id?: string;
   tool_calls?: OpenAIToolCall[];
+  timestamp?: number;
 }
 
 interface OpenAIRequest {

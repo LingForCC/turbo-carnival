@@ -412,21 +412,43 @@ Streaming responses use Server-Sent Events (SSE) parsing:
 
 ## Message Storage
 
-- Messages stored in agent `history` array
+- Messages stored in agent `history` array in **native LLM format** (OpenAI-compatible)
 - Each message includes:
-  - `role` (string) - Message role: 'user', 'assistant', 'system', 'tool'
-  - `content` (string) - Message text
-  - `timestamp` (number) - When message was created
-  - `tool_call_id` (string, optional) - For OpenAI tool result messages
-  - `toolCall` (object, optional) - Tool call metadata for UI display
-- `toolCall` metadata includes:
-  - `type` - 'start' (assistant message) or 'result' (user message)
-  - `toolName` - Name of the tool being called
-  - `parameters` - Tool input parameters
-  - `result` - Tool output (for 'result' type with 'completed' status)
-  - `executionTime` - Execution time in milliseconds (for 'result' type with 'completed' status)
-  - `status` - 'executing', 'completed', or 'failed'
-  - `error` - Error message (for 'result' type with 'failed' status)
+  - `role` - Message role: 'user', 'assistant', 'system', 'tool'
+  - `content` - Message text (can be null for assistant messages with tool calls)
+  - `timestamp` - When message was created
+  - `tool_call_id` - For tool result messages, links to the tool call
+  - `tool_calls` - For assistant messages with tool calls, array of tool call objects
+- `tool_calls` array items include:
+  - `id` - Unique tool call identifier
+  - `type` - Always 'function'
+  - `function.name` - Name of the tool being called
+  - `function.arguments` - JSON stringified tool parameters
 - History automatically saved after each message exchange
 - Full conversation history sent with each new message for context
-- System messages and tool result messages rendered with special indicators in `conversation-panel`
+
+## Message Transformation for Display
+
+When loading conversation history in `conversation-panel`, the native LLM format is transformed to UI format:
+
+**Transformers** (`src/components/transformers/`):
+- **OpenAI Transformer** (`openai-transformer.ts`) - Converts OpenAI format messages
+- **GLM Transformer** (`glm-transformer.ts`) - Converts GLM format messages (uses same logic as OpenAI)
+- **Transformer Factory** (`index.ts`) - Creates appropriate transformer based on provider type
+
+**Transformation Process:**
+1. `conversation-panel.setAgent()` detects provider type from `agent.config.modelId`
+2. Factory creates transformer based on provider type (openai, glm, azure, custom)
+3. Transformer converts native format to UI format:
+   - Filters out system messages
+   - Converts user/assistant messages directly
+   - Merges assistant messages with `tool_calls` and tool result messages
+   - Extracts tool call name, parameters, result, execution time, and status
+   - Creates `ChatMessage` with optional `toolCall` metadata
+4. Result used to populate `chatHistory` for display
+
+**Tool Call Display:**
+- Tool calls shown in conversation as collapsible indicators
+- Displays tool name, parameters, result, execution time, and status
+- Color-coded by status: executing (blue), completed (green), failed (red)
+- Click to expand/collapse details

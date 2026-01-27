@@ -130,6 +130,11 @@ The documentation has been split into focused modules for better performance:
 - `tools-dialog` - Tool management with testing
 - `tool-test-dialog` - Tool execution testing
 
+### Transformers
+- `src/components/transformers/openai-transformer.ts` - Transforms OpenAI native message format to ChatMessage format for UI display
+- `src/components/transformers/glm-transformer.ts` - Transforms GLM native message format to ChatMessage format (reuses OpenAI logic)
+- `src/components/transformers/index.ts` - Factory function to create appropriate transformer based on provider type
+
 ### Key IPC Channels
 - `projects:*` - Project CRUD operations
 - `agents:*` - Agent CRUD operations

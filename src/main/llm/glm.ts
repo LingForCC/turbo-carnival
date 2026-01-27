@@ -31,11 +31,12 @@ interface InternalGLMToolCall {
   _argumentsBuffer?: string;  // Temporary buffer for streaming arguments
 }
 
-interface OpenAIMessage {
+export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
   tool_call_id?: string;
   tool_calls?: GLMToolCall[];
+  timestamp?: number;
 }
 
 interface OpenAIRequest {
