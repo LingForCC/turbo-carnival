@@ -177,12 +177,6 @@ export class ChatPanel extends HTMLElement {
   ): Promise<void> {
     if (!window.electronAPI) return;
 
-    // Add empty assistant message to history before streaming starts
-    const currentHistory = conversation.chatHistory || [];
-    conversation.chatHistory = [...currentHistory, { role: 'assistant', content: '' }];
-    conversation.render();
-    conversation.scrollToBottom();
-
     // Call new chat-agent stream IPC channel
     await (window.electronAPI as any).streamChatAgentMessage(
       projectPath,

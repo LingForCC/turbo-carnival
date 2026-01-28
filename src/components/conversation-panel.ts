@@ -166,26 +166,23 @@ export class ConversationPanel extends HTMLElement {
     if (!this.isStreaming) {
       this.isStreaming = true;
       this.currentStreamedContent = '';
-      // Add empty assistant message for streaming
-      // Check if last message is already an assistant message (from first stream with tool calls)
+
+      // Check if we should reuse the last message or add a new one
       const lastMessage = this.chatHistory[this.chatHistory.length - 1];
-      if (!lastMessage || lastMessage.role !== 'assistant') {
-        // Last message is not an assistant message, add a new one
+
+      // Reuse the last message if it's an assistant message without a tool call
+      // This preserves tool call messages while allowing continuation of streaming responses
+      if (lastMessage && lastMessage.role === 'assistant' && !lastMessage.toolCall) {
+        // Reuse existing assistant message for streaming
+      } else {
+        // Add a new assistant message for streaming
         this.chatHistory.push({
           role: 'assistant',
           content: ''
         });
-      } else if (lastMessage.toolCall) {
-        // Last message IS an assistant message with a tool call
-        // Replace it with a new assistant message for the final response
-        this.chatHistory[this.chatHistory.length - 1] = {
-          role: 'assistant',
-          content: ''
-        };
       }
-      // If last message IS an assistant message without tool call, reuse it
     }
-    
+
     this.currentStreamedContent += chunk;
     this.chatHistory[this.chatHistory.length - 1].content = this.currentStreamedContent;
     this.render();
@@ -232,10 +229,10 @@ export class ConversationPanel extends HTMLElement {
       status: 'executing'
     };
 
-    // Add as assistant message (tool call details)
+    // Add as assistant message (tool call details) with empty content
     this.chatHistory.push({
       role: 'assistant',
-      content: `Executing tool: ${toolName}`,
+      content: '',
       toolCall: toolCallData
     });
 
@@ -257,23 +254,18 @@ export class ConversationPanel extends HTMLElement {
     result: any,
     executionTime: number
   ): void {
-    const toolCallData: ToolCallData = {
-      toolName,
-      parameters,
-      result,
-      executionTime,
-      status: 'completed'
-    };
+    // Find the last assistant message with this tool call and update it
+    const key = `${toolName}|${JSON.stringify(parameters)}`;
+    const toolCallData = this.activeToolCalls.get(key);
 
-    // Add as user message (tool call result)
-    this.chatHistory.push({
-      role: 'user',
-      content: `Tool "${toolName}" executed successfully`,
-      toolCall: toolCallData
-    });
+    if (toolCallData) {
+      // Update the tool call data with result
+      toolCallData.result = result;
+      toolCallData.executionTime = executionTime;
+      toolCallData.status = 'completed';
+    }
 
     // Remove from active tracking
-    const key = `${toolName}|${JSON.stringify(parameters)}`;
     this.activeToolCalls.delete(key);
 
     this.render();
@@ -289,22 +281,17 @@ export class ConversationPanel extends HTMLElement {
     parameters: Record<string, any>,
     error: string
   ): void {
-    const toolCallData: ToolCallData = {
-      toolName,
-      parameters,
-      error,
-      status: 'failed'
-    };
+    // Find the active tool call and update it with error
+    const key = `${toolName}|${JSON.stringify(parameters)}`;
+    const toolCallData = this.activeToolCalls.get(key);
 
-    // Add as user message (error message)
-    this.chatHistory.push({
-      role: 'user',
-      content: `Tool "${toolName}" failed`,
-      toolCall: toolCallData
-    });
+    if (toolCallData) {
+      // Update the tool call data with error
+      toolCallData.error = error;
+      toolCallData.status = 'failed';
+    }
 
     // Remove from active tracking
-    const key = `${toolName}|${JSON.stringify(parameters)}`;
     this.activeToolCalls.delete(key);
 
     this.render();
@@ -468,11 +455,9 @@ export class ConversationPanel extends HTMLElement {
     const isExecuting = toolCall.status === 'executing';
     const isFailed = toolCall.status === 'failed';
     const isCompleted = toolCall.status === 'completed';
-    const isAssistant = role === 'assistant';  // Tool call start (assistant side)
 
-    // Background color based on role and status
-    // Amber/yellow for tool call start (assistant), green/red for results (user)
-    const bgColor = isAssistant
+    // Background color based on status only (all tool calls are now assistant messages)
+    const bgColor = isExecuting
       ? 'bg-amber-50 border-amber-200'
       : (isFailed ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200');
 
@@ -495,7 +480,7 @@ export class ConversationPanel extends HTMLElement {
         : 'Failed';
 
     return `
-      <div class="flex ${isAssistant ? 'justify-start' : 'justify-end'} my-2">
+      <div class="flex justify-start my-2">
         <div class="max-w-[85%] w-[85%] rounded-lg border ${bgColor} px-4 py-3">
           <div class="flex items-center gap-2">
             ${statusIcon}

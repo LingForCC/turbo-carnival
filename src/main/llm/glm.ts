@@ -167,6 +167,7 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
     const { content: response } = await streamGLMSingle(apiMessages, modelConfig, provider, webContents, timeout, undefined);
     // Save assistant response to agent history
     agent.history.push({ role: 'assistant', content: response, timestamp: Date.now() });
+    webContents.send('chat-complete');
     return { content: response, hasToolCalls: false };
   }
 
@@ -189,6 +190,7 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
     if (!hasToolCalls || !toolCalls || toolCalls.length === 0) {
       // Save assistant response to agent history
       agent.history.push({ role: 'assistant', content: response, timestamp: Date.now() });
+      webContents.send('chat-complete');
       return { content: response, hasToolCalls: false };
     }
 
@@ -251,6 +253,7 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
   const finalResponse = lastResponse + '\n\n[Note: Maximum tool call rounds reached. Some tool calls may not have been executed.]';
   // Save assistant response to agent history
   agent.history.push({ role: 'assistant', content: finalResponse, timestamp: Date.now() });
+  webContents.send('chat-complete');
 
   return {
     content: finalResponse,
@@ -358,6 +361,8 @@ async function streamGLMSingle(
 
           // Handle GLM native tool calling (same format as OpenAI)
           if (delta?.tool_calls) {
+            // When tool calls are present, don't emit content chunks
+            // Tool call responses have separate structure (content: null, tool_calls: [])
             for (const toolCall of delta.tool_calls) {
               if (toolCall.index !== undefined) {
                 while (toolCalls.length <= toolCall.index) {
@@ -388,13 +393,13 @@ async function streamGLMSingle(
                 }
               }
             }
-          }
-
-          // Extract content (AFTER tool calls to match OpenAI structure)
-          const content = delta?.content;
-          if (content) {
-            fullResponse += content;
-            webContents.send('chat-chunk', content);
+          } else {
+            // Only emit content chunks when no tool calls are present
+            const content = delta?.content;
+            if (content) {
+              fullResponse += content;
+              webContents.send('chat-chunk', content);
+            }
           }
 
           const finishReason = chunk.choices?.[0]?.finish_reason;
@@ -425,6 +430,9 @@ async function streamGLMSingle(
     }
 
     return { content: fullResponse, hasToolCalls: false, toolCalls: toolCalls.length > 0 ? toolCalls : undefined };
+  } catch (error: any) {
+    webContents.send('chat-error', { error: error.message || String(error) });
+    throw error;
   } finally {
     clearTimeout(timeoutId);
   }

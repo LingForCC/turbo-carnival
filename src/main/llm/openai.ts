@@ -168,6 +168,7 @@ export async function streamOpenAI(options: StreamLLMOptions): Promise<StreamRes
     const { content: response } = await streamOpenAISingle(apiMessages, modelConfig, provider, webContents, timeout, undefined);
     // Save assistant response to agent history
     agent.history.push({ role: 'assistant', content: response, timestamp: Date.now() });
+    webContents.send('chat-complete');
     return { content: response, hasToolCalls: false };
   }
 
@@ -190,6 +191,7 @@ export async function streamOpenAI(options: StreamLLMOptions): Promise<StreamRes
     if (!hasToolCalls || !toolCalls || toolCalls.length === 0) {
       // Save assistant response to agent history
       agent.history.push({ role: 'assistant', content: response, timestamp: Date.now() });
+      webContents.send('chat-complete');
       return { content: response, hasToolCalls: false };
     }
 
@@ -253,6 +255,7 @@ export async function streamOpenAI(options: StreamLLMOptions): Promise<StreamRes
   const finalResponse = lastResponse + '\n\n[Note: Maximum tool call rounds reached. Some tool calls may not have been executed.]';
   // Save assistant response to agent history
   agent.history.push({ role: 'assistant', content: finalResponse, timestamp: Date.now() });
+  webContents.send('chat-complete');
 
   return {
     content: finalResponse,
@@ -356,17 +359,12 @@ async function streamOpenAISingle(
           const jsonStr = trimmedLine.slice(6);
           const chunk = JSON.parse(jsonStr);
 
-          // Extract content
-          const content = chunk.choices?.[0]?.delta?.content;
-          if (content) {
-            fullResponse += content;
-            webContents.send('chat-chunk', content);
-          }
-
-          // Handle OpenAI native tool calling
+          // Handle OpenAI native tool calling first
           const delta = chunk.choices?.[0]?.delta;
 
           if (delta?.tool_calls) {
+            // When tool calls are present, don't emit content chunks
+            // Tool call responses have separate structure (content: null, tool_calls: [])
             for (const toolCall of delta.tool_calls) {
               if (toolCall.index !== undefined) {
                 while (toolCalls.length <= toolCall.index) {
@@ -397,6 +395,13 @@ async function streamOpenAISingle(
                 }
               }
             }
+          } else {
+            // Only emit content chunks when no tool calls are present
+            const content = chunk.choices?.[0]?.delta?.content;
+            if (content) {
+              fullResponse += content;
+              webContents.send('chat-chunk', content);
+            }
           }
 
           const finishReason = chunk.choices?.[0]?.finish_reason;
@@ -423,6 +428,9 @@ async function streamOpenAISingle(
     }
 
     return { content: fullResponse, hasToolCalls: false, toolCalls: toolCalls.length > 0 ? toolCalls : undefined };
+  } catch (error: any) {
+    webContents.send('chat-error', { error: error.message || String(error) });
+    throw error;
   } finally {
     clearTimeout(timeoutId);
   }
