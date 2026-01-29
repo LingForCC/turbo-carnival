@@ -30,6 +30,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   toolCall?: ToolCallData;
+  reasoning?: string;  // GLM reasoning/thinking content
 }
 
 export class ConversationPanel extends HTMLElement {
@@ -414,18 +415,21 @@ export class ConversationPanel extends HTMLElement {
     }
 
     // Render chat messages
-    return this.chatHistory.map(msg => this.renderMessage(msg.role, msg.content, msg.toolCall)).join('');
+    return this.chatHistory.map(msg => this.renderMessage(msg.role, msg.content, msg.toolCall, msg.reasoning)).join('');
   }
 
-  private renderMessage(role: 'user' | 'assistant', content: string, toolCall?: ToolCallData): string {
+  private renderMessage(role: 'user' | 'assistant', content: string, toolCall?: ToolCallData, reasoning?: string): string {
     // If this message has tool call data, render with special styling
     if (toolCall) {
-      return this.renderToolCallMessage(role, content, toolCall);
+      return this.renderToolCallMessage(role, content, toolCall, reasoning);
     }
 
     // Regular user/assistant message rendering
     const isUser = role === 'user';
     const isAssistant = role === 'assistant';
+
+    // Build reasoning section (before content, for assistant only)
+    const reasoningSection = isAssistant && reasoning ? this.renderReasoningSection(reasoning) : '';
 
     // Apply markdown parsing only to assistant messages
     const renderedContent = isAssistant
@@ -454,6 +458,7 @@ export class ConversationPanel extends HTMLElement {
             ? 'bg-blue-500 text-white'
             : 'bg-gray-100 text-gray-800'
         }">
+          ${reasoningSection}
           <div class="text-sm ${isAssistant ? 'prose prose-sm max-w-none' : 'whitespace-pre-wrap'} break-words">${renderedContent}</div>
           ${copyButton}
         </div>
@@ -461,7 +466,7 @@ export class ConversationPanel extends HTMLElement {
     `;
   }
 
-  private renderToolCallMessage(role: 'user' | 'assistant', content: string, toolCall: ToolCallData): string {
+  private renderToolCallMessage(role: 'user' | 'assistant', content: string, toolCall: ToolCallData, reasoning?: string): string {
     const isExecuting = toolCall.status === 'executing';
     const isFailed = toolCall.status === 'failed';
     const isCompleted = toolCall.status === 'completed';
@@ -470,6 +475,9 @@ export class ConversationPanel extends HTMLElement {
     const bgColor = isExecuting
       ? 'bg-amber-50 border-amber-200'
       : (isFailed ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200');
+
+    // Build reasoning section if present (appears before tool call)
+    const reasoningSection = reasoning ? this.renderReasoningSection(reasoning) : '';
 
     // Status icon (hidden during execution)
     const statusIcon = isExecuting
@@ -492,6 +500,7 @@ export class ConversationPanel extends HTMLElement {
     return `
       <div class="flex justify-start my-2">
         <div class="max-w-[85%] w-[85%] rounded-lg border ${bgColor} px-4 py-3">
+          ${reasoningSection}
           <div class="flex items-center gap-2">
             ${statusIcon}
             <span class="text-xs font-semibold text-gray-700 truncate ${isExecuting ? 'flex-1' : ''}">
@@ -540,6 +549,26 @@ export class ConversationPanel extends HTMLElement {
                 </div>
               </div>
             ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderReasoningSection(reasoning: string): string {
+    return `
+      <div class="mb-3">
+        <button
+          class="reasoning-toggle-btn flex items-center gap-2 text-xs font-semibold text-purple-700 hover:text-purple-800 cursor-pointer border-0 bg-transparent p-0"
+        >
+          <svg class="w-4 h-4 text-purple-600 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+          <span>Thinking Process</span>
+        </button>
+        <div class="reasoning-content hidden mt-2 p-3 bg-purple-50 border border-purple-200 rounded-md">
+          <div class="text-sm text-gray-700 prose prose-sm max-w-none">
+            ${this.renderMarkdown(reasoning)}
           </div>
         </div>
       </div>
@@ -667,6 +696,25 @@ export class ConversationPanel extends HTMLElement {
         const button = e.currentTarget as HTMLElement;
         const icon = button.querySelector('svg');
         const details = button.parentElement?.nextElementSibling as HTMLElement;
+
+        if (details) {
+          details.classList.toggle('hidden');
+          if (icon) {
+            icon.style.transform = details.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(90deg)';
+          }
+        }
+      });
+    });
+
+    // Reasoning toggle buttons - use DOM manipulation without re-render
+    this.querySelectorAll('.reasoning-toggle-btn').forEach(btn => {
+      const newBtn = btn.cloneNode(true);
+      btn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', (e) => {
+        e.stopPropagation();
+        const button = e.currentTarget as HTMLElement;
+        const icon = button.querySelector('svg');
+        const details = button.nextElementSibling as HTMLElement;
 
         if (details) {
           details.classList.toggle('hidden');

@@ -36,7 +36,8 @@ export class GLMTransformer {
       if (message.role === 'assistant' && !message.tool_calls) {
         result.push({
           role: 'assistant',
-          content: message.content || ''
+          content: message.content || '',
+          reasoning: message.reasoning_content
         });
         continue;
       }
@@ -44,11 +45,12 @@ export class GLMTransformer {
       // Handle assistant messages with tool calls
       // GLM can have content alongside tool_calls in the same assistant message
       if (message.role === 'assistant' && message.tool_calls && message.tool_calls.length > 0) {
-        // If there's content, push it as a separate assistant message first
-        if (message.content) {
+        // If there's content or reasoning, push it as a separate assistant message first
+        if (message.content || message.reasoning_content) {
           result.push({
             role: 'assistant',
-            content: message.content
+            content: message.content || '',
+            reasoning: message.reasoning_content
           });
         }
 
