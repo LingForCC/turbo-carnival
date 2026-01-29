@@ -31,16 +31,17 @@ interface InternalGLMToolCall {
   _argumentsBuffer?: string;  // Temporary buffer for streaming arguments
 }
 
-export interface OpenAIMessage {
+export interface GLMMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
   tool_call_id?: string;
   tool_calls?: GLMToolCall[];
+  reasoning_content?: string;  // GLM thinking/reasoning content
   timestamp?: number;
 }
 
-interface OpenAIRequest {
-  messages: OpenAIMessage[];
+interface GLMRequest {
+  messages: GLMMessage[];
   model: string;
   temperature?: number;
   max_tokens?: number;
@@ -48,6 +49,10 @@ interface OpenAIRequest {
   stream?: boolean;
   tools?: any[];
   tool_choice?: 'auto' | 'none';
+  thinking?: {
+    type: 'enabled' | 'disabled';
+    clear_thinking: boolean;
+  };
   [key: string]: any;
 }
 
@@ -57,8 +62,8 @@ interface OpenAIRequest {
  * Build file content messages from file paths
  * Reads file contents and formats them as system messages
  */
-function buildFileContentMessages(filePaths: string[]): OpenAIMessage[] {
-  const messages: OpenAIMessage[] = [];
+function buildFileContentMessages(filePaths: string[]): GLMMessage[] {
+  const messages: GLMMessage[] = [];
 
   if (!filePaths || filePaths.length === 0) {
     return messages;
@@ -89,9 +94,9 @@ function buildAllMessages(options: {
   filePaths?: string[];
   agent: Agent;
   userMessage?: string;
-}): OpenAIMessage[] {
+}): GLMMessage[] {
   const { systemPrompt, filePaths, agent, userMessage } = options;
-  const messages: OpenAIMessage[] = [];
+  const messages: GLMMessage[] = [];
 
   // Add system prompt
   messages.push({
@@ -105,7 +110,7 @@ function buildAllMessages(options: {
 
   // Add conversation history from agent
   for (const msg of agent.history || []) {
-    const mapped: OpenAIMessage = {
+    const mapped: GLMMessage = {
       role: msg.role,
       content: msg.content
     };
@@ -164,9 +169,15 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
 
   // If tools disabled, single pass streaming
   if (!enableTools) {
-    const { content: response } = await streamGLMSingle(apiMessages, modelConfig, provider, webContents, timeout, undefined);
-    // Save assistant response to agent history
-    agent.history.push({ role: 'assistant', content: response, timestamp: Date.now() });
+    const { content: response, reasoningContent } = await streamGLMSingle(apiMessages, modelConfig, provider, webContents, timeout, undefined);
+    // Save assistant response to agent history (including reasoning if present)
+    agent.history.push({
+      role: 'assistant',
+      content: response,
+      reasoning_content: reasoningContent,
+      timestamp: Date.now()
+    });
+
     webContents.send('chat-complete');
     return { content: response, hasToolCalls: false };
   }
@@ -177,7 +188,7 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
   while (iterationCount < maxIterations) {
     iterationCount++;
 
-    const { content: response, hasToolCalls, toolCalls } = await streamGLMSingle(
+    const { content: response, hasToolCalls, toolCalls, reasoningContent } = await streamGLMSingle(
       apiMessages,
       modelConfig,
       provider,
@@ -188,8 +199,14 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
 
     // If no tool calls, return response
     if (!hasToolCalls || !toolCalls || toolCalls.length === 0) {
-      // Save assistant response to agent history
-      agent.history.push({ role: 'assistant', content: response, timestamp: Date.now() });
+      // Save assistant response to agent history (including reasoning if present)
+      agent.history.push({
+        role: 'assistant',
+        content: response,
+        reasoning_content: reasoningContent,
+        timestamp: Date.now()
+      });
+      
       webContents.send('chat-complete');
       return { content: response, hasToolCalls: false };
     }
@@ -221,8 +238,9 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
     }));
     const assistantMessage = {
       role: 'assistant' as const,
-      content: null,
-      tool_calls: glmToolCalls
+      content: response,  // Include the actual streamed content
+      tool_calls: glmToolCalls,
+      reasoning_content: reasoningContent  // Include reasoning for conversation continuity
     };
 
     // Add assistant message to apiMessages for next API request
@@ -248,11 +266,16 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
   }
 
   // Max iterations reached - return last response with warning
-  const { content: lastResponse } = await streamGLMSingle(apiMessages, modelConfig, provider, webContents, timeout, undefined);
+  const { content: lastResponse, reasoningContent: lastReasoning } = await streamGLMSingle(apiMessages, modelConfig, provider, webContents, timeout, undefined);
 
   const finalResponse = lastResponse + '\n\n[Note: Maximum tool call rounds reached. Some tool calls may not have been executed.]';
-  // Save assistant response to agent history
-  agent.history.push({ role: 'assistant', content: finalResponse, timestamp: Date.now() });
+  // Save assistant response to agent history (including reasoning if present)
+  agent.history.push({
+    role: 'assistant',
+    content: finalResponse,
+    reasoning_content: lastReasoning,
+    timestamp: Date.now()
+  });
   webContents.send('chat-complete');
 
   return {
@@ -282,13 +305,13 @@ function convertToolToGLMFormat(tool: Tool): any {
  * GLM uses OpenAI-compatible format for tools
  */
 async function streamGLMSingle(
-  messages: any[],
+  messages: GLMMessage[],
   modelConfig: ModelConfig,
   provider: LLMProvider,
   webContents: Electron.WebContents,
   timeout: number = 60000,
   tools?: Tool[]
-): Promise<{ content: string; hasToolCalls: boolean; toolCalls?: InternalGLMToolCall[] }> {
+): Promise<{ content: string; hasToolCalls: boolean; toolCalls?: InternalGLMToolCall[]; reasoningContent?: string }> {
   const baseURL = provider.baseURL || getDefaultBaseURL(provider.type) || '';
   const url = `${baseURL}/chat/completions`;
 
@@ -297,13 +320,18 @@ async function streamGLMSingle(
     ? tools.filter(t => t.enabled).map(convertToolToGLMFormat)
     : undefined;
 
-  const requestBody: OpenAIRequest = {
+  const requestBody: GLMRequest = {
     messages,
     model: modelConfig.model,
     temperature: modelConfig.temperature,
     max_tokens: modelConfig.maxTokens,
     top_p: modelConfig.topP,
     stream: true,
+    // Enable GLM thinking/reasoning feature
+    thinking: {
+      type: 'enabled',
+      clear_thinking: false  // Preserve thinking for conversation context
+    },
     ...(glmTools && glmTools.length > 0 ? {
       tools: glmTools,
       tool_choice: 'auto'
@@ -338,6 +366,7 @@ async function streamGLMSingle(
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
     let fullResponse = '';
+    let fullReasoning = '';  // Track reasoning content
     let toolCalls: InternalGLMToolCall[] = [];
 
     while (true) {
@@ -358,6 +387,13 @@ async function streamGLMSingle(
           const chunk = JSON.parse(jsonStr);
 
           const delta = chunk.choices?.[0]?.delta;
+
+          // Handle GLM thinking/reasoning content
+          if (delta?.reasoning_content) {
+            fullReasoning += delta.reasoning_content;
+            // Emit reasoning content to UI for display
+            webContents.send('chat-reasoning', delta.reasoning_content);
+          }
 
           // Handle GLM native tool calling (same format as OpenAI)
           if (delta?.tool_calls) {
@@ -421,7 +457,12 @@ async function streamGLMSingle(
             // Return with appropriate hasToolCalls flag
             // If finish_reason is 'tool_calls', we need to execute tools and make another call
             // Otherwise this is the final response
-            return { content: fullResponse, hasToolCalls, toolCalls: hasToolCalls ? toolCalls : undefined };
+            return {
+              content: fullResponse,
+              hasToolCalls,
+              toolCalls: hasToolCalls ? toolCalls : undefined,
+              reasoningContent: fullReasoning || undefined
+            };
           }
         } catch (parseError) {
           console.warn('Failed to parse GLM SSE chunk:', parseError);
@@ -429,7 +470,12 @@ async function streamGLMSingle(
       }
     }
 
-    return { content: fullResponse, hasToolCalls: false, toolCalls: toolCalls.length > 0 ? toolCalls : undefined };
+    return {
+      content: fullResponse,
+      hasToolCalls: false,
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      reasoningContent: fullReasoning || undefined
+    };
   } catch (error: any) {
     webContents.send('chat-error', { error: error.message || String(error) });
     throw error;

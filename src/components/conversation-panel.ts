@@ -181,6 +181,16 @@ export class ConversationPanel extends HTMLElement {
           content: ''
         });
       }
+    } else {
+      const lastMessage = this.chatHistory[this.chatHistory.length - 1];
+
+      if (lastMessage && lastMessage.role === 'assistant' && lastMessage.toolCall) {
+        this.currentStreamedContent = '';
+        this.chatHistory.push({
+          role: 'assistant',
+          content: ''
+        });
+      }
     }
 
     this.currentStreamedContent += chunk;

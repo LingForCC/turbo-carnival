@@ -1,6 +1,6 @@
 import { OpenAITransformer } from './openai-transformer';
 import type { ChatMessage } from '../conversation-panel';
-import type { OpenAIMessage } from '../../main/llm/glm';
+import type { GLMMessage } from '../../main/llm/glm';
 
 /**
  * Transformer for GLM message format
@@ -11,7 +11,7 @@ export class GLMTransformer extends OpenAITransformer {
    * Transform GLM messages to ChatMessage format
    * GLM uses the same format as OpenAI, so we reuse the parent logic
    */
-  transform(messages: OpenAIMessage[]): ChatMessage[] {
+  transform(messages: GLMMessage[]): ChatMessage[] {
     return super.transform(messages);
   }
 }
