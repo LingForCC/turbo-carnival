@@ -397,8 +397,6 @@ async function streamGLMSingle(
 
           // Handle GLM native tool calling (same format as OpenAI)
           if (delta?.tool_calls) {
-            // When tool calls are present, don't emit content chunks
-            // Tool call responses have separate structure (content: null, tool_calls: [])
             for (const toolCall of delta.tool_calls) {
               if (toolCall.index !== undefined) {
                 while (toolCalls.length <= toolCall.index) {
@@ -429,13 +427,13 @@ async function streamGLMSingle(
                 }
               }
             }
-          } else {
-            // Only emit content chunks when no tool calls are present
-            const content = delta?.content;
-            if (content) {
-              fullResponse += content;
-              webContents.send('chat-chunk', content);
-            }
+          }
+
+          // Handle content chunks - content can exist independently alongside tool_calls
+          const content = delta?.content;
+          if (content) {
+            fullResponse += content;
+            webContents.send('chat-chunk', content);
           }
 
           const finishReason = chunk.choices?.[0]?.finish_reason;

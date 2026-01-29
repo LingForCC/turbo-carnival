@@ -196,9 +196,10 @@ The LLM module provides a unified streaming interface for multiple LLM providers
 - **Tool helper functions** - `convertToolToOpenAIFormat()`, `handleToolSuccess()`, `handleToolError()`
 
 ### `llm/glm.ts` - GLM (Zhipu AI) Streaming
-- Same structure as `openai.ts` but adapted for GLM
+- Standalone implementation with same structure as `openai.ts`
 - Uses OpenAI-compatible tool calling format
 - Handles GLM-specific SSE parsing differences
+- **Key difference**: Content chunks are handled independently from tool_calls (GLM can return content alongside tool_calls in the same assistant message)
 - All functions have same signatures for consistency
 
 ### Tool Execution Architecture
@@ -406,6 +407,7 @@ Streaming responses use Server-Sent Events (SSE) parsing:
 - JSON chunks extracted and accumulated
 - **Tool calls parsed from `delta.tool_calls`** in SSE stream
 - **Arguments accumulated across multiple chunks**
+- **GLM-specific**: Content chunks are emitted independently from tool_calls (GLM can return both in the same delta)
 - Final accumulated content saved to agent history
 - Real-time UI updates via `chat-chunk` IPC events
 - Error handling for malformed chunks and network failures
@@ -415,10 +417,11 @@ Streaming responses use Server-Sent Events (SSE) parsing:
 - Messages stored in agent `history` array in **native LLM format** (OpenAI-compatible)
 - Each message includes:
   - `role` - Message role: 'user', 'assistant', 'system', 'tool'
-  - `content` - Message text (can be null for assistant messages with tool calls)
+  - `content` - Message text (can be null for assistant messages with tool calls, though GLM may include content alongside tool_calls)
   - `timestamp` - When message was created
   - `tool_call_id` - For tool result messages, links to the tool call
   - `tool_calls` - For assistant messages with tool calls, array of tool call objects
+  - `reasoning_content` - (GLM only) Thinking/reasoning content for models that support it
 - `tool_calls` array items include:
   - `id` - Unique tool call identifier
   - `type` - Always 'function'
@@ -433,7 +436,9 @@ When loading conversation history in `conversation-panel`, the native LLM format
 
 **Transformers** (`src/components/transformers/`):
 - **OpenAI Transformer** (`openai-transformer.ts`) - Converts OpenAI format messages
-- **GLM Transformer** (`glm-transformer.ts`) - Converts GLM format messages (uses same logic as OpenAI)
+- **GLM Transformer** (`glm-transformer.ts`) - Converts GLM format messages (standalone implementation)
+  - **Key difference**: Handles content alongside tool_calls in assistant messages
+  - When an assistant message has both content and tool_calls, GLM transformer pushes the content as a separate message first, then processes tool calls
 - **Transformer Factory** (`index.ts`) - Creates appropriate transformer based on provider type
 
 **Transformation Process:**
