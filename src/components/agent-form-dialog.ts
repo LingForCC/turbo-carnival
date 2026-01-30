@@ -43,19 +43,19 @@ export class AgentFormDialog extends HTMLElement {
       <!-- Backdrop -->
       <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <!-- Dialog -->
-        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
           <!-- Header -->
-          <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
             <div>
-              <h2 class="text-xl font-semibold text-gray-800 m-0">
+              <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 m-0">
                 ${isEdit ? 'Edit Agent' : 'Create New Agent'}
               </h2>
-              <p class="text-sm text-gray-500 mt-1 mb-0">
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-0">
                 ${isEdit ? 'Update agent configuration and settings' : 'Configure your AI agent'}
               </p>
             </div>
-            <button id="close-x-btn" class="p-1 hover:bg-gray-100 rounded cursor-pointer border-0 bg-transparent">
-              <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-x-btn" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent">
+              <svg class="w-6 h-6 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </button>
@@ -65,31 +65,31 @@ export class AgentFormDialog extends HTMLElement {
           <form id="agent-form" class="p-6 space-y-6">
             <!-- Basic Info -->
             <div class="space-y-4">
-              <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
                 Basic Information
               </h3>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="agent-name">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="agent-name">
                   Agent Name <span class="text-red-500">*</span>
                 </label>
                 <input type="text" id="agent-name" name="name" required
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                        placeholder="e.g., Code Review Assistant"
                        value="${this.escapeHtml(agent?.name || '')}"
                        ${isEdit ? 'readonly' : ''}>
                 ${isEdit ?
-                  '<p class="text-xs text-gray-400 mt-1">Agent name cannot be changed</p>' :
+                  '<p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Agent name cannot be changed</p>' :
                   ''
                 }
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="agent-type">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="agent-type">
                   Agent Type <span class="text-red-500">*</span>
                 </label>
                 <select id="agent-type" name="type" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Select type...</option>
                   <option value="chat" ${agent?.type === 'chat' ? 'selected' : ''}>Chat</option>
                   <option value="code" ${agent?.type === 'code' ? 'selected' : ''}>Code</option>
@@ -101,47 +101,47 @@ export class AgentFormDialog extends HTMLElement {
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="agent-description">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="agent-description">
                   Description <span class="text-red-500">*</span>
                 </label>
                 <textarea id="agent-description" name="description" required rows="3"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Brief description of what this agent does...">${this.escapeHtml(agent?.description || '')}</textarea>
               </div>
             </div>
 
             <!-- Configuration -->
             <div class="space-y-4">
-              <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
                 Model Configuration
               </h3>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="model-config-ref">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="model-config-ref">
                   Model Configuration
                 </label>
                 <select id="model-config-ref" name="modelId"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Select a model configuration...</option>
                 </select>
-                <p class="text-xs text-gray-500 mt-1 mb-0">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-0">
                   Choose a pre-configured model or
-                  <a href="#" id="manage-models-link" class="text-blue-500 hover:underline">manage models</a>
+                  <a href="#" id="manage-models-link" class="text-blue-500 dark:text-blue-400 hover:underline">manage models</a>
                 </p>
               </div>
 
               <!-- Model details (shown when a model is selected) -->
-              <div id="model-details" class="hidden p-3 bg-gray-50 rounded border border-gray-200">
+              <div id="model-details" class="hidden p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
                 <div class="text-sm">
                   <div class="grid grid-cols-2 gap-2">
-                    <div><strong>Model:</strong> <span id="detail-model"></span></div>
-                    <div><strong>Temperature:</strong> <span id="detail-temperature"></span></div>
-                    <div><strong>Max Tokens:</strong> <span id="detail-max-tokens"></span></div>
-                    <div><strong>Top P:</strong> <span id="detail-top-p"></span></div>
+                    <div><strong>Model:</strong> <span id="detail-model" class="text-gray-900 dark:text-gray-100"></span></div>
+                    <div><strong>Temperature:</strong> <span id="detail-temperature" class="text-gray-900 dark:text-gray-100"></span></div>
+                    <div><strong>Max Tokens:</strong> <span id="detail-max-tokens" class="text-gray-900 dark:text-gray-100"></span></div>
+                    <div><strong>Top P:</strong> <span id="detail-top-p" class="text-gray-900 dark:text-gray-100"></span></div>
                   </div>
                   <div id="detail-extra-container" class="hidden mt-2">
                     <strong>Extra Properties:</strong>
-                    <pre id="detail-extra" class="text-xs bg-white p-2 rounded mt-1 overflow-x-auto"></pre>
+                    <pre id="detail-extra" class="text-xs bg-white dark:bg-gray-900 p-2 rounded mt-1 overflow-x-auto text-gray-900 dark:text-gray-100"></pre>
                   </div>
                 </div>
               </div>
@@ -149,19 +149,19 @@ export class AgentFormDialog extends HTMLElement {
 
             <!-- LLM Provider -->
             <div class="space-y-4">
-              <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
                 LLM Provider
               </h3>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="provider-ref">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="provider-ref">
                   Provider
                 </label>
                 <select id="provider-ref" name="providerId"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">No provider selected</option>
                 </select>
-                <p class="text-xs text-gray-500 mt-1 mb-0">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-0">
                   Select an LLM provider for this agent
                 </p>
               </div>
@@ -169,37 +169,37 @@ export class AgentFormDialog extends HTMLElement {
 
             <!-- Prompts -->
             <div class="space-y-4">
-              <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
                 Prompts
               </h3>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="agent-system-prompt">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="agent-system-prompt">
                   System Prompt
                 </label>
                 <textarea id="agent-system-prompt" name="systemPrompt" rows="4"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Instructions for the AI...">${this.escapeHtml(agent?.prompts?.system || '')}</textarea>
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1" for="agent-user-prompt">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="agent-user-prompt">
                   Default User Prompt
                 </label>
                 <textarea id="agent-user-prompt" name="userPrompt" rows="3"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Default prompt template...">${this.escapeHtml(agent?.prompts?.user || '')}</textarea>
               </div>
             </div>
 
             <!-- Actions -->
-            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
               <button type="button" id="cancel-btn"
-                      class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer border-0">
+                      class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0">
                 Cancel
               </button>
               <button type="submit"
-                      class="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg cursor-pointer border-0">
+                      class="px-6 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg cursor-pointer border-0">
                 ${isEdit ? 'Update Agent' : 'Create Agent'}
               </button>
             </div>
@@ -323,7 +323,7 @@ export class AgentFormDialog extends HTMLElement {
       select.innerHTML = `
         <option value="">No provider selected</option>
         ${providers.map(provider => `
-          <option value="${this.escapeHtml(provider.id)}" ${provider.id === currentValue ? 'selected' : ''}>
+          <option value="${this.escapeHtml(provider.id)}" ${provider.id === currentValue ? 'selected' : ''} class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
             ${this.escapeHtml(provider.name)} (${provider.type.toUpperCase()})
           </option>
         `).join('')}
@@ -348,7 +348,7 @@ export class AgentFormDialog extends HTMLElement {
       select.innerHTML = `
         <option value="">Select a model configuration...</option>
         ${this.modelConfigs.map(config => `
-          <option value="${this.escapeHtml(config.id)}" ${config.id === currentValue ? 'selected' : ''}>
+          <option value="${this.escapeHtml(config.id)}" ${config.id === currentValue ? 'selected' : ''} class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
             ${this.escapeHtml(config.name)}
           </option>
         `).join('')}

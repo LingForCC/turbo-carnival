@@ -23,17 +23,17 @@ export class ToolsDialog extends HTMLElement {
       <!-- Backdrop -->
       <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <!-- Dialog -->
-        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
           <!-- Header -->
-          <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
             <div>
-              <h2 class="text-xl font-semibold text-gray-800 m-0">Custom Tools</h2>
-              <p class="text-sm text-gray-500 mt-1 mb-0">
+              <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 m-0">Custom Tools</h2>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-0">
                 Create JavaScript tools that AI agents can execute
               </p>
             </div>
-            <button id="close-btn" class="p-1 hover:bg-gray-100 rounded cursor-pointer border-0 bg-transparent">
-              <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-btn" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent">
+              <svg class="w-6 h-6 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </button>
@@ -42,10 +42,10 @@ export class ToolsDialog extends HTMLElement {
           <!-- Tools List -->
           <div class="p-6">
             <div class="flex justify-between items-center mb-4">
-              <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide m-0">
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide m-0">
                 Saved Tools (${this.tools.length})
               </h3>
-              <button id="add-tool-btn" class="flex items-center gap-2 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium cursor-pointer border-0">
+              <button id="add-tool-btn" class="flex items-center gap-2 px-3 py-1.5 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded text-sm font-medium cursor-pointer border-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
@@ -58,24 +58,24 @@ export class ToolsDialog extends HTMLElement {
             </div>
 
             <!-- Add/Edit Tool Form (hidden by default) -->
-            <div id="tool-form" class="hidden mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
-              <h4 class="text-sm font-medium text-gray-700 mb-3 m-0" id="form-title">Add New Tool</h4>
+            <div id="tool-form" class="hidden mt-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
+              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 m-0" id="form-title">Add New Tool</h4>
               <form id="tool-form-element" class="space-y-3">
                 <div class="grid grid-cols-2 gap-3">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for="tool-name">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-name">
                       Name <span class="text-red-500">*</span>
                     </label>
                     <input type="text" id="tool-name" name="name" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                            placeholder="e.g., calculate_distance">
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for="tool-environment">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-environment">
                       Execution Environment
                     </label>
                     <select id="tool-environment" name="environment"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                       <option value="node">Node.js (File system, child processes, etc.)</option>
                       <option value="browser">Browser (Fetch, localStorage, DOM, etc.)</option>
                     </select>
@@ -84,63 +84,63 @@ export class ToolsDialog extends HTMLElement {
 
                 <div class="grid grid-cols-2 gap-3">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for="tool-timeout">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-timeout">
                       Timeout (ms)
                     </label>
                     <input type="number" id="tool-timeout" name="timeout" value="30000" min="1000" max="300000"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                            placeholder="30000">
                   </div>
                   <div class="flex items-end">
-                    <p class="text-xs text-gray-500 pb-2.5 m-0">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 pb-2.5 m-0">
                       Node.js tools run in isolated process. Browser tools run in renderer.
                     </p>
                   </div>
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1" for="tool-description">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-description">
                     Description <span class="text-red-500">*</span>
                   </label>
                   <input type="text" id="tool-description" name="description" required
-                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                          placeholder="What this tool does (shown to AI agent)">
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1" for="tool-code">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-code">
                     JavaScript Code <span class="text-red-500">*</span>
                   </label>
                   <textarea id="tool-code" name="code" required rows="8"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                             placeholder="function tool(params) { ... }"></textarea>
-                  <p class="text-xs text-gray-500 mt-1 mb-0">
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-0">
                     Code must export a function named "tool" or "run" that takes a params object
                   </p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for="tool-parameters">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-parameters">
                       Parameters (JSON Schema) <span class="text-red-500">*</span>
                     </label>
                     <textarea id="tool-parameters" name="parameters" required rows="4"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                               placeholder='{"type": "object", "properties": {...}, "required": [...]}'></textarea>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for="tool-returns">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-returns">
                       Returns (JSON Schema - Optional)
                     </label>
                     <textarea id="tool-returns" name="returns" rows="4"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                               placeholder='{"type": "object", "properties": {...}, "required": [...]}'></textarea>
                   </div>
                 </div>
 
                 <div class="flex items-center gap-2">
                   <input type="checkbox" id="tool-enabled" name="enabled" checked class="w-4 h-4">
-                  <label for="tool-enabled" class="text-sm font-medium text-gray-700">
+                  <label for="tool-enabled" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Enabled (available for agents to use)
                   </label>
                 </div>
@@ -148,17 +148,17 @@ export class ToolsDialog extends HTMLElement {
                 <div class="flex justify-between items-center pt-2">
                   <div class="flex gap-2">
                     <button type="button" id="test-tool-btn"
-                            class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer border-0">
+                            class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0">
                       Test Code
                     </button>
                   </div>
                   <div class="flex gap-2">
                     <button type="button" id="cancel-form-btn"
-                            class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer border-0">
+                            class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0">
                       Cancel
                     </button>
                     <button type="submit"
-                            class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg cursor-pointer border-0">
+                            class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg cursor-pointer border-0">
                       Save Tool
                     </button>
                   </div>
@@ -176,7 +176,7 @@ export class ToolsDialog extends HTMLElement {
   private renderToolsList(): string {
     if (this.tools.length === 0) {
       return `
-        <p class="text-sm text-gray-400 text-center py-8 m-0">
+        <p class="text-sm text-gray-400 dark:text-gray-500 text-center py-8 m-0">
           No tools yet. Click "Add Tool" to create one.
         </p>
       `;
@@ -185,36 +185,36 @@ export class ToolsDialog extends HTMLElement {
     return this.tools.map(tool => {
       const environment = tool.environment || 'node';
       const envBadgeClass = environment === 'browser'
-        ? 'bg-blue-100 text-blue-700'
-        : 'bg-purple-100 text-purple-700';
+        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+        : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300';
 
       return `
-      <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 ${!tool.enabled ? 'opacity-60' : ''}">
+      <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 ${!tool.enabled ? 'opacity-60' : ''}">
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-gray-800">${this.escapeHtml(tool.name)}</span>
-            <span class="text-xs px-2 py-0.5 rounded ${tool.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
+            <span class="text-sm font-medium text-gray-800 dark:text-gray-200">${this.escapeHtml(tool.name)}</span>
+            <span class="text-xs px-2 py-0.5 rounded ${tool.enabled ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}">
               ${tool.enabled ? 'Enabled' : 'Disabled'}
             </span>
             <span class="text-xs px-2 py-0.5 rounded ${envBadgeClass}">
               ${environment === 'browser' ? 'Browser' : 'Node'}
             </span>
           </div>
-          <p class="text-sm text-gray-600 mt-1 truncate">${this.escapeHtml(tool.description)}</p>
-          <p class="text-xs text-gray-400 mt-0.5 m-0">
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">${this.escapeHtml(tool.description)}</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 m-0">
             Environment: ${environment} • Timeout: ${tool.timeout || 30000}ms • Created: ${new Date(tool.createdAt).toLocaleDateString()}
           </p>
         </div>
         <div class="flex gap-1">
-          <button class="edit-tool-btn p-1.5 hover:bg-blue-100 rounded cursor-pointer border-0 bg-transparent"
+          <button class="edit-tool-btn p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded cursor-pointer border-0 bg-transparent"
                   data-tool-name="${this.escapeHtml(tool.name)}" title="Edit tool">
-            <svg class="w-4 h-4 text-gray-400 hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
             </svg>
           </button>
-          <button class="delete-tool-btn p-1.5 hover:bg-red-100 rounded cursor-pointer border-0 bg-transparent"
+          <button class="delete-tool-btn p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded cursor-pointer border-0 bg-transparent"
                   data-tool-name="${this.escapeHtml(tool.name)}" title="Delete tool">
-            <svg class="w-4 h-4 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>
           </button>

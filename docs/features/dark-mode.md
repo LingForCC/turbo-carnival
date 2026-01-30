@@ -101,10 +101,16 @@ When adding dark mode to a component:
 
 - ✅ `project-panel` - Left sidebar with project list (src/components/project-panel.ts)
 - ✅ `app-container` - Header with theme toggle (src/components/app-container.ts)
-- ⏳ `conversation-panel` - Chat interface (TODO)
-- ⏳ `project-detail-panel` - File tree (TODO)
-- ⏳ `project-agent-dashboard` - Agent grid (TODO)
-- ⏳ Dialog components (TODO)
+- ✅ `project-agent-dashboard` - Center area with agent list (src/components/project-agent-dashboard.ts)
+- ✅ `chat-panel` - Right sidebar chat interface (src/components/chat-panel.ts)
+- ✅ `conversation-panel` - Reusable chat interface (src/components/conversation-panel.ts)
+- ✅ `app-panel` - Split-panel interface for App-type agents (src/components/app-panel.ts)
+- ✅ `project-detail-panel` - File tree (src/components/project-detail-panel.ts)
+- ✅ `agent-form-dialog` - Agent creation/editing dialog (src/components/agent-form-dialog.ts)
+- ✅ `provider-dialog` - LLM provider management dialog (src/components/provider-dialog.ts)
+- ✅ `model-config-dialog` - Model configuration management dialog (src/components/model-config-dialog.ts)
+- ✅ `tools-dialog` - Custom tools management dialog (src/components/tools-dialog.ts)
+- ✅ `tool-test-dialog` - Tool execution testing dialog (src/components/tool-test-dialog.ts)
 
 ## Implementation Details
 
@@ -217,7 +223,8 @@ Project panel dark mode tests (`src/__tests__/components/project-panel/project-p
 
 - `src/main/settings-management.ts` - Settings storage and IPC handlers
 - `src/components/app-container.ts` - Theme toggle button and state management
-- `src/components/project-panel.ts` - Example component with dark mode classes
+- `src/components/project-panel.ts` - Left sidebar with dark mode
+- `src/components/project-agent-dashboard.ts` - Agent list with dark mode
 - `src/styles.css` - Tailwind dark mode configuration
 - `src/global.d.ts` - AppSettings type definition
 - `src/preload.ts` - Settings API exposure

@@ -343,7 +343,7 @@ export class ConversationPanel extends HTMLElement {
     this.innerHTML = `
       <div class="flex flex-col h-full">
         <!-- Chat Messages Area -->
-        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-gray-900">
           ${this.renderChatContent()}
         </div>
 
@@ -354,19 +354,19 @@ export class ConversationPanel extends HTMLElement {
             ${this.enableFileTagging && this.taggedFiles.length > 0 ? `
               <div id="tagged-files" class="flex flex-wrap gap-2 mb-3">
                 ${this.taggedFiles.map(file => `
-                  <div class="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded-md">
-                    <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div class="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-md">
+                    <svg class="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
-                    <span class="text-xs text-blue-700">${this.escapeHtml(file.name)}</span>
-                    <button class="remove-file-btn hover:bg-blue-100 rounded p-0.5 cursor-pointer border-0 bg-transparent" data-file-path="${this.escapeHtml(file.path)}">
-                      <svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span class="text-xs text-blue-700 dark:text-blue-300">${this.escapeHtml(file.name)}</span>
+                    <button class="remove-file-btn hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded p-0.5 cursor-pointer border-0 bg-transparent" data-file-path="${this.escapeHtml(file.path)}">
+                      <svg class="w-3 h-3 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                       </svg>
                     </button>
                   </div>
                 `).join('')}
-                <button id="clear-all-files-btn" class="text-xs text-blue-600 hover:text-blue-700 cursor-pointer border-0 bg-transparent p-0">Clear all</button>
+                <button id="clear-all-files-btn" class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer border-0 bg-transparent p-0">Clear all</button>
               </div>
             ` : ''}
 
@@ -377,14 +377,14 @@ export class ConversationPanel extends HTMLElement {
               <div class="flex gap-2">
                 <textarea
                   id="chat-input"
-                  class="flex-1 px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-200"
                   placeholder="${this.escapeHtml(this.placeholder)}"
                   rows="2"
                   ${this.isStreaming ? 'disabled' : ''}
                 ></textarea>
                 <button
                   id="send-btn"
-                  class="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg cursor-pointer border-0 self-end"
+                  class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg cursor-pointer border-0 self-end"
                   ${this.isStreaming ? 'disabled' : ''}
                 >
                   ${this.isStreaming ?
@@ -396,15 +396,15 @@ export class ConversationPanel extends HTMLElement {
 
               <!-- Model info display -->
               ${this.modelInfo ? `
-                <div class="mt-2 text-xs text-gray-500">
+                <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   ${this.escapeHtml(this.modelInfo)}
                 </div>
               ` : ''}
             </div>
           </div>
         ` : `
-          <div class="p-4 border-t border-gray-200 shrink-0">
-            <p class="text-sm text-gray-400 text-center m-0">
+          <div class="p-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
+            <p class="text-sm text-gray-400 dark:text-gray-500 text-center m-0">
               Select an agent to start chatting
             </p>
           </div>
@@ -419,10 +419,10 @@ export class ConversationPanel extends HTMLElement {
     if (!this.currentAgent) {
       return `
         <div class="flex flex-col items-center justify-center h-full text-center">
-          <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
           </svg>
-          <p class="text-sm text-gray-400 m-0">
+          <p class="text-sm text-gray-400 dark:text-gray-500 m-0">
             Start a conversation!
           </p>
         </div>
@@ -432,10 +432,10 @@ export class ConversationPanel extends HTMLElement {
     if (this.chatHistory.length === 0 && !this.isStreaming) {
       return `
         <div class="flex flex-col items-center justify-center h-full text-center">
-          <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
           </svg>
-          <p class="text-sm text-gray-400 m-0">
+          <p class="text-sm text-gray-400 dark:text-gray-500 m-0">
             Start a conversation!
           </p>
         </div>
@@ -468,11 +468,11 @@ export class ConversationPanel extends HTMLElement {
     const copyButton = isAssistant ? `
       <div class="flex justify-end mt-2">
         <button
-          class="copy-msg-btn p-1.5 bg-white/80 hover:bg-white rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-0"
+          class="copy-msg-btn p-1.5 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-0"
           data-original-content="${this.escapeHtml(content)}"
           title="Copy message"
         >
-          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
           </svg>
         </button>
@@ -483,11 +483,11 @@ export class ConversationPanel extends HTMLElement {
       <div class="flex ${isUser ? 'justify-end' : 'justify-start'} group ${isAssistant ? 'relative' : ''}">
         <div class="max-w-[85%] rounded-lg px-4 py-2 ${
           isUser
-            ? 'bg-blue-500 text-white'
-            : 'bg-gray-100 text-gray-800'
+            ? 'bg-blue-500 dark:bg-blue-600 text-white'
+            : 'text-gray-800 dark:text-white'
         }">
           ${reasoningSection}
-          <div class="text-sm ${isAssistant ? 'prose prose-sm max-w-none' : 'whitespace-pre-wrap'} break-words">${renderedContent}</div>
+          <div class="text-sm ${isAssistant ? 'prose prose-sm max-w-none prose-headings:text-gray-800 prose-p:text-gray-800 prose-li:text-gray-800 prose-code:text-gray-800 prose-pre:text-gray-800 dark:prose-headings:text-white dark:prose-p:text-white dark:prose-li:text-white dark:prose-code:text-white dark:prose-pre:text-white' : 'whitespace-pre-wrap'} break-words">${renderedContent}</div>
           ${copyButton}
         </div>
       </div>
@@ -501,8 +501,8 @@ export class ConversationPanel extends HTMLElement {
 
     // Background color based on status only (all tool calls are now assistant messages)
     const bgColor = isExecuting
-      ? 'bg-amber-50 border-amber-200'
-      : (isFailed ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200');
+      ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700'
+      : (isFailed ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700' : 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700');
 
     // Build reasoning section if present (appears before tool call)
     const reasoningSection = reasoning ? this.renderReasoningSection(reasoning) : '';
@@ -511,10 +511,10 @@ export class ConversationPanel extends HTMLElement {
     const statusIcon = isExecuting
       ? ''
       : isCompleted
-        ? `<svg class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        ? `<svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
            </svg>`
-        : `<svg class="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        : `<svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
            </svg>`;
 
@@ -531,17 +531,17 @@ export class ConversationPanel extends HTMLElement {
           ${reasoningSection}
           <div class="flex items-center gap-2">
             ${statusIcon}
-            <span class="text-xs font-semibold text-gray-700 truncate ${isExecuting ? 'flex-1' : ''}">
+            <span class="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate ${isExecuting ? 'flex-1' : ''}">
               ${this.escapeHtml(toolCall.toolName)}
             </span>
             ${!isExecuting ? `
-              <span class="text-xs text-gray-500 flex-shrink-0">•</span>
-              <span class="text-xs text-gray-600 flex-shrink-0">${statusText}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">•</span>
+              <span class="text-xs text-gray-600 dark:text-gray-400 flex-shrink-0">${statusText}</span>
             ` : ''}
             <button
-              class="tool-call-toggle-btn hover:bg-gray-200 rounded p-1 cursor-pointer border-0 bg-transparent flex-shrink-0"
+              class="tool-call-toggle-btn hover:bg-gray-200 dark:hover:bg-gray-700 rounded p-1 cursor-pointer border-0 bg-transparent flex-shrink-0"
             >
-              <svg class="w-4 h-4 text-gray-500 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
               </svg>
             </button>
@@ -549,9 +549,9 @@ export class ConversationPanel extends HTMLElement {
 
           <div class="tool-call-details hidden mt-3">
             ${toolCall.parameters && Object.keys(toolCall.parameters).length > 0 ? `
-              <div class="text-xs text-gray-600 mb-2">
+              <div class="text-xs text-gray-600 dark:text-gray-400 mb-2">
                 <div class="font-semibold mb-1">Parameters:</div>
-                <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
+                <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
                   <pre class="text-xs m-0 whitespace-pre-wrap break-all">${this.escapeHtml(JSON.stringify(toolCall.parameters, null, 2))}</pre>
                 </div>
               </div>
@@ -559,21 +559,21 @@ export class ConversationPanel extends HTMLElement {
 
             ${isCompleted && toolCall.result ? `
               <div>
-                <div class="text-xs font-semibold text-gray-700 mb-1">Result:</div>
-                <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
+                <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Result:</div>
+                <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
                   <pre class="text-xs m-0 whitespace-pre-wrap break-all">${this.escapeHtml(JSON.stringify(toolCall.result, null, 2))}</pre>
                 </div>
                 ${toolCall.executionTime ? `
-                  <div class="text-xs text-gray-500 mt-1">Execution time: ${toolCall.executionTime}ms</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Execution time: ${toolCall.executionTime}ms</div>
                 ` : ''}
               </div>
             ` : ''}
 
             ${isFailed && toolCall.error ? `
               <div>
-                <div class="text-xs font-semibold text-gray-700 mb-1">Error:</div>
-                <div class="bg-white p-2 rounded border border-gray-200 overflow-x-auto">
-                  <pre class="text-xs m-0 whitespace-pre-wrap break-all text-red-700">${this.escapeHtml(toolCall.error)}</pre>
+                <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Error:</div>
+                <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                  <pre class="text-xs m-0 whitespace-pre-wrap break-all text-red-700 dark:text-red-400">${this.escapeHtml(toolCall.error)}</pre>
                 </div>
               </div>
             ` : ''}
@@ -587,15 +587,15 @@ export class ConversationPanel extends HTMLElement {
     return `
       <div class="mb-3">
         <button
-          class="reasoning-toggle-btn flex items-center gap-2 text-xs font-semibold text-purple-700 hover:text-purple-800 cursor-pointer border-0 bg-transparent p-0"
+          class="reasoning-toggle-btn flex items-center gap-2 text-xs font-semibold text-purple-700 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 cursor-pointer border-0 bg-transparent p-0"
         >
-          <svg class="w-4 h-4 text-purple-600 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
           </svg>
           <span>Thinking Process</span>
         </button>
-        <div class="reasoning-content hidden mt-2 p-3 bg-purple-50 border border-purple-200 rounded-md">
-          <div class="text-sm text-gray-700 prose prose-sm max-w-none">
+        <div class="reasoning-content hidden mt-2 p-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-md">
+          <div class="text-sm text-gray-700 dark:text-white prose prose-sm max-w-none prose-headings:text-gray-700 prose-p:text-gray-700 prose-li:text-gray-700 prose-code:text-gray-700 prose-pre:text-gray-700 dark:prose-headings:text-white dark:prose-p:text-white dark:prose-li:text-white dark:prose-code:text-white dark:prose-pre:text-white">
             ${this.renderMarkdown(reasoning)}
           </div>
         </div>
@@ -616,21 +616,21 @@ export class ConversationPanel extends HTMLElement {
 
     if (filteredFiles.length === 0) {
       return `
-        <div id="file-autocomplete" class="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
-          <div class="p-3 text-sm text-gray-500 text-center">No matching files</div>
+        <div id="file-autocomplete" class="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
+          <div class="p-3 text-sm text-gray-500 dark:text-gray-400 text-center">No matching files</div>
         </div>
       `;
     }
 
     return `
-      <div id="file-autocomplete" class="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
+      <div id="file-autocomplete" class="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
         ${filteredFiles.map((file, index) => `
-          <div class="file-option px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center gap-2 ${index === this.autocompleteIndex ? 'bg-blue-50' : ''}" data-file-path="${this.escapeHtml(file.path)}" data-file-name="${this.escapeHtml(file.name)}">
-            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="file-option px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer flex items-center gap-2 ${index === this.autocompleteIndex ? 'bg-blue-50 dark:bg-blue-900/30' : ''}" data-file-path="${this.escapeHtml(file.path)}" data-file-name="${this.escapeHtml(file.name)}">
+            <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
-            <span class="text-sm text-gray-700">${this.escapeHtml(file.name)}</span>
-            <span class="text-xs text-gray-400 ml-auto">${this.escapeHtml(file.extension)}</span>
+            <span class="text-sm text-gray-700 dark:text-gray-300">${this.escapeHtml(file.name)}</span>
+            <span class="text-xs text-gray-400 dark:text-gray-500 ml-auto">${this.escapeHtml(file.extension)}</span>
           </div>
         `).join('')}
       </div>

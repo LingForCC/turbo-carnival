@@ -35,17 +35,17 @@ export class ToolTestDialog extends HTMLElement {
       <!-- Backdrop -->
       <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <!-- Dialog -->
-        <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
           <!-- Header -->
-          <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
             <div>
-              <h2 class="text-xl font-semibold text-gray-800 m-0">Test Tool</h2>
-              <p class="text-sm text-gray-500 mt-1 mb-0">
+              <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 m-0">Test Tool</h2>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-0">
                 ${this.escapeHtml(this.tool?.name || 'Unknown Tool')}
               </p>
             </div>
-            <button id="close-btn" class="p-1 hover:bg-gray-100 rounded cursor-pointer border-0 bg-transparent">
-              <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="close-btn" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent">
+              <svg class="w-6 h-6 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </button>
@@ -54,8 +54,8 @@ export class ToolTestDialog extends HTMLElement {
           <!-- Content -->
           <div class="p-6">
             <!-- Tool Description -->
-            <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p class="text-sm text-gray-700 m-0">${this.escapeHtml(this.tool?.description || 'No description')}</p>
+            <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p class="text-sm text-gray-700 dark:text-gray-300 m-0">${this.escapeHtml(this.tool?.description || 'No description')}</p>
             </div>
 
             <!-- Parameters Form -->
@@ -63,12 +63,12 @@ export class ToolTestDialog extends HTMLElement {
               ${this.generateFormFields()}
 
               <!-- Actions -->
-              <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-                <button type="button" id="reset-btn" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer border-0">
+              <div class="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" id="reset-btn" class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0">
                   Reset Form
                 </button>
                 <button type="submit" id="run-test-btn" ${this.isExecuting ? 'disabled' : ''}
-                        class="px-6 py-2 ${this.isExecuting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-lg cursor-pointer border-0 flex items-center gap-2">
+                        class="px-6 py-2 ${this.isExecuting ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed' : 'bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700'} text-white rounded-lg cursor-pointer border-0 flex items-center gap-2">
                   ${this.isExecuting ? `
                     <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -92,7 +92,7 @@ export class ToolTestDialog extends HTMLElement {
 
   private generateFormFields(): string {
     if (!this.tool?.parameters?.properties) {
-      return '<p class="text-sm text-gray-500 text-center py-4">This tool requires no parameters.</p>';
+      return '<p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">This tool requires no parameters.</p>';
     }
 
     return Object.entries(this.tool.parameters.properties)
@@ -104,19 +104,19 @@ export class ToolTestDialog extends HTMLElement {
     const isRequired = this.tool?.parameters.required?.includes(propertyName);
     const description = schema.description;
     const fieldId = `field-${propertyName.replace(/[^a-zA-Z0-9]/g, '-')}`;
-    const indent = depth > 0 ? 'ml-4 pl-4 border-l-2 border-gray-300' : '';
+    const indent = depth > 0 ? 'ml-4 pl-4 border-l-2 border-gray-300 dark:border-gray-600' : '';
 
     // Handle enum (select dropdown)
     if (schema.enum) {
       return `
         <div class="${indent}">
-          <label class="block text-sm font-medium text-gray-700 mb-1" for="${fieldId}">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="${fieldId}">
             ${this.escapeHtml(propertyName)} ${isRequired ? '<span class="text-red-500">*</span>' : ''}
-            ${description ? `<span class="text-xs text-gray-500 block">${this.escapeHtml(description)}</span>` : ''}
+            ${description ? `<span class="text-xs text-gray-500 dark:text-gray-400 block">${this.escapeHtml(description)}</span>` : ''}
           </label>
           <select id="${fieldId}" name="${propertyName}"
                   ${isRequired ? 'required' : ''}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
             ${!isRequired ? '<option value="">Select an option...</option>' : ''}
             ${schema.enum.map((val: any) => `
               <option value="${this.escapeHtml(String(val))}">${this.escapeHtml(String(val))}</option>
@@ -133,20 +133,20 @@ export class ToolTestDialog extends HTMLElement {
         const useTextarea = schema.minLength > 100 || description?.toLowerCase().includes('text') || description?.toLowerCase().includes('content');
         return `
           <div class="${indent}">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="${fieldId}">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="${fieldId}">
               ${this.escapeHtml(propertyName)} ${isRequired ? '<span class="text-red-500">*</span>' : ''}
-              ${description ? `<span class="text-xs text-gray-500 block">${this.escapeHtml(description)}</span>` : ''}
+              ${description ? `<span class="text-xs text-gray-500 dark:text-gray-400 block">${this.escapeHtml(description)}</span>` : ''}
             </label>
             ${useTextarea ? `
               <textarea id="${fieldId}" name="${propertyName}"
                         ${isRequired ? 'required' : ''}
                         rows="4"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                         placeholder="${this.escapeHtml(description || 'Enter text...')}"></textarea>
             ` : `
               <input type="text" id="${fieldId}" name="${propertyName}"
                      ${isRequired ? 'required' : ''}
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                      placeholder="${this.escapeHtml(description || 'Enter value...')}">
             `}
           </div>
@@ -155,16 +155,16 @@ export class ToolTestDialog extends HTMLElement {
       case 'number':
         return `
           <div class="${indent}">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="${fieldId}">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="${fieldId}">
               ${this.escapeHtml(propertyName)} ${isRequired ? '<span class="text-red-500">*</span>' : ''}
-              ${description ? `<span class="text-xs text-gray-500 block">${this.escapeHtml(description)}</span>` : ''}
+              ${description ? `<span class="text-xs text-gray-500 dark:text-gray-400 block">${this.escapeHtml(description)}</span>` : ''}
             </label>
             <input type="number" id="${fieldId}" name="${propertyName}"
                    ${isRequired ? 'required' : ''}
                    min="${schema.minimum !== undefined ? schema.minimum : ''}"
                    max="${schema.maximum !== undefined ? schema.maximum : ''}"
                    step="${schema.multipleOf || 'any'}"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                    placeholder="Enter number">
           </div>
         `;
@@ -173,11 +173,11 @@ export class ToolTestDialog extends HTMLElement {
         return `
           <div class="flex items-center gap-2 ${indent}">
             <input type="checkbox" id="${fieldId}" name="${propertyName}"
-                   class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500">
-            <label for="${fieldId}" class="text-sm font-medium text-gray-700">
+                   class="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500">
+            <label for="${fieldId}" class="text-sm font-medium text-gray-700 dark:text-gray-300">
               ${this.escapeHtml(propertyName)} ${isRequired ? '<span class="text-red-500">*</span>' : ''}
             </label>
-            ${description ? `<span class="text-xs text-gray-500">${this.escapeHtml(description)}</span>` : ''}
+            ${description ? `<span class="text-xs text-gray-500 dark:text-gray-400">${this.escapeHtml(description)}</span>` : ''}
           </div>
         `;
 
@@ -191,11 +191,11 @@ export class ToolTestDialog extends HTMLElement {
         // Fallback to text input
         return `
           <div class="${indent}">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="${fieldId}">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="${fieldId}">
               ${this.escapeHtml(propertyName)} ${isRequired ? '<span class="text-red-500">*</span>' : ''}
             </label>
             <input type="text" id="${fieldId}" name="${propertyName}"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
           </div>
         `;
     }
@@ -207,26 +207,26 @@ export class ToolTestDialog extends HTMLElement {
     const itemSchema = schema.items;
 
     return `
-      <div class="${indent} border border-gray-200 rounded-lg p-3">
-        <label class="block text-sm font-medium text-gray-700 mb-2">
+      <div class="${indent} border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           ${this.escapeHtml(propertyName)} ${isRequired ? '<span class="text-red-500">*</span>' : ''}
-          <span class="text-xs text-gray-500 block">Array of ${itemSchema?.type || 'items'}</span>
-          ${description ? `<span class="text-xs text-gray-500">${this.escapeHtml(description)}</span>` : ''}
+          <span class="text-xs text-gray-500 dark:text-gray-400 block">Array of ${itemSchema?.type || 'items'}</span>
+          ${description ? `<span class="text-xs text-gray-500 dark:text-gray-400">${this.escapeHtml(description)}</span>` : ''}
         </label>
         <div id="${fieldId}-items" class="space-y-2">
           ${items.map((item, index) => `
             <div class="flex items-center gap-2">
-              <span class="text-xs text-gray-500 w-6">${index + 1}.</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400 w-6">${index + 1}.</span>
               <input type="text" name="${propertyName}[${index}]" value="${this.escapeHtml(String(item))}"
-                     class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-              <button type="button" class="remove-array-item-btn text-red-500 hover:text-red-600 text-sm px-2 py-1"
+                     class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+              <button type="button" class="remove-array-item-btn text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 text-sm px-2 py-1"
                       data-field="${propertyName}" data-index="${index}">
                 Remove
               </button>
             </div>
           `).join('')}
         </div>
-        <button type="button" class="add-array-item-btn mt-2 text-sm text-blue-500 hover:text-blue-600"
+        <button type="button" class="add-array-item-btn mt-2 text-sm text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300"
                 data-field="${propertyName}">
           + Add Item
         </button>
@@ -240,19 +240,19 @@ export class ToolTestDialog extends HTMLElement {
     if (!properties || Object.keys(properties).length === 0) {
       return `
         <div class="${indent}">
-          <label class="block text-sm font-medium text-gray-700 mb-1">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             ${this.escapeHtml(propertyName)} ${isRequired ? '<span class="text-red-500">*</span>' : ''}
           </label>
-          <p class="text-xs text-gray-500">Empty object (no properties defined)</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Empty object (no properties defined)</p>
         </div>
       `;
     }
 
     return `
       <div class="${indent}">
-        <h5 class="text-sm font-medium text-gray-700 mb-2">
+        <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           ${this.escapeHtml(propertyName)} ${isRequired ? '<span class="text-red-500">*</span>' : ''}
-          ${description ? `<span class="text-xs text-gray-500 block">${this.escapeHtml(description)}</span>` : ''}
+          ${description ? `<span class="text-xs text-gray-500 dark:text-gray-400 block">${this.escapeHtml(description)}</span>` : ''}
         </h5>
         ${Object.entries(properties)
           .map(([propName, propSchema]: [string, any]) =>
@@ -271,26 +271,26 @@ export class ToolTestDialog extends HTMLElement {
     const isSuccess = result.success;
 
     return `
-      <div class="mt-6 border border-gray-200 rounded-lg overflow-hidden">
+      <div class="mt-6 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
         <!-- Result Header -->
-        <div class="px-4 py-3 ${isSuccess ? 'bg-green-50' : 'bg-red-50'} border-b border-gray-200 flex items-center justify-between">
+        <div class="px-4 py-3 ${isSuccess ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'} border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <span class="${isSuccess ? 'text-green-600' : 'text-red-600'} font-medium">
+            <span class="${isSuccess ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} font-medium">
               ${isSuccess ? '✓ Success' : '✗ Failed'}
             </span>
-            <span class="text-xs text-gray-500">
+            <span class="text-xs text-gray-500 dark:text-gray-400">
               Executed in ${result.executionTime}ms
             </span>
           </div>
           <button type="button" id="copy-result-btn"
-                  class="text-sm text-blue-500 hover:text-blue-600 cursor-pointer border-0 bg-transparent">
+                  class="text-sm text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 cursor-pointer border-0 bg-transparent">
             Copy Result
           </button>
         </div>
 
         <!-- Result Content -->
-        <div class="p-4 bg-gray-50 max-h-96 overflow-y-auto">
-          <pre class="text-sm font-mono whitespace-pre-wrap break-words">${this.escapeHtml(
+        <div class="p-4 bg-gray-50 dark:bg-gray-800 max-h-96 overflow-y-auto">
+          <pre class="text-sm font-mono whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200">${this.escapeHtml(
             isSuccess
               ? JSON.stringify(result.result, null, 2)
               : result.error || 'Unknown error'

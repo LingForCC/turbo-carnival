@@ -29,11 +29,11 @@ export class ProjectDetailPanel extends HTMLElement {
     const overflowClass = this.isCollapsed ? 'overflow-hidden' : 'overflow-visible';
 
     this.innerHTML = `
-      <div class="${widthClass} ${overflowClass} bg-white border-l border-gray-200 flex flex-col transition-all duration-300 ease-in-out">
-        <div class="p-4 border-b border-gray-200 flex justify-between items-center shrink-0">
-          <h2 class="text-lg font-semibold text-gray-800 m-0">Project Detail</h2>
-          <button id="toggle-btn" class="p-1 hover:bg-gray-100 rounded flex items-center justify-center bg-transparent border-0 cursor-pointer" aria-label="Toggle project detail panel">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div class="${widthClass} ${overflowClass} bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300 ease-in-out">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center shrink-0">
+          <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 m-0">Project Detail</h2>
+          <button id="toggle-btn" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center justify-center bg-transparent border-0 cursor-pointer" aria-label="Toggle project detail panel">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
             </svg>
           </button>
@@ -53,11 +53,11 @@ export class ProjectDetailPanel extends HTMLElement {
     if (!this.currentProject) {
       return `
         <div class="flex flex-col items-center justify-center h-full text-center py-8">
-          <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
           </svg>
-          <p class="text-sm text-gray-400 m-0">No project selected</p>
+          <p class="text-sm text-gray-400 dark:text-gray-500 m-0">No project selected</p>
         </div>
       `;
     }
@@ -66,11 +66,11 @@ export class ProjectDetailPanel extends HTMLElement {
     if (this.fileTree.length === 0) {
       return `
         <div class="flex flex-col items-center justify-center h-full text-center py-8">
-          <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
           </svg>
-          <p class="text-sm text-gray-400 m-0">Empty project folder</p>
+          <p class="text-sm text-gray-400 dark:text-gray-500 m-0">Empty project folder</p>
         </div>
       `;
     }
@@ -78,7 +78,7 @@ export class ProjectDetailPanel extends HTMLElement {
     // Render file tree
     return `
       <div class="space-y-1">
-        <p class="text-xs text-gray-500 mb-2 m-0">
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 m-0">
           ${this.fileTree.length} items
         </p>
         ${this.fileTree.map(node => this.renderTreeNode(node, 0)).join('')}
@@ -98,25 +98,25 @@ export class ProjectDetailPanel extends HTMLElement {
 
       return `
         <div class="tree-node" data-path="${this.escapeHtml(node.path)}">
-          <div class="flex items-center gap-1 py-1 px-2 hover:bg-gray-50 rounded cursor-pointer"
+          <div class="flex items-center gap-1 py-1 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer"
                style="padding-left: ${indent}px"
                data-type="directory-toggle"
                data-path="${this.escapeHtml(node.path)}">
 
             <!-- Chevron icon -->
-            <svg class="w-3 h-3 text-gray-400 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}"
+            <svg class="w-3 h-3 text-gray-400 dark:text-gray-500 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}"
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
 
             <!-- Folder icon -->
-            <svg class="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 text-blue-400 dark:text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
             </svg>
 
             <!-- Folder name -->
-            <span class="text-sm text-gray-700 truncate">${this.escapeHtml(node.name)}</span>
+            <span class="text-sm text-gray-700 dark:text-gray-300 truncate">${this.escapeHtml(node.name)}</span>
           </div>
 
           <!-- Children (if expanded) -->
@@ -131,7 +131,7 @@ export class ProjectDetailPanel extends HTMLElement {
       // File node
       return `
         <div class="tree-node" data-path="${this.escapeHtml(node.path)}">
-          <div class="flex items-center gap-1 py-1 px-2 hover:bg-gray-50 rounded cursor-pointer"
+          <div class="flex items-center gap-1 py-1 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer"
                style="padding-left: ${indent + 16}px"
                data-type="file"
                data-path="${this.escapeHtml(node.path)}">
@@ -140,13 +140,13 @@ export class ProjectDetailPanel extends HTMLElement {
             <span class="w-3 h-3 flex-shrink-0"></span>
 
             <!-- File icon -->
-            <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
             </svg>
 
             <!-- File name -->
-            <span class="text-sm text-gray-600 truncate">${this.escapeHtml(node.name)}</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400 truncate">${this.escapeHtml(node.name)}</span>
           </div>
         </div>
       `;
