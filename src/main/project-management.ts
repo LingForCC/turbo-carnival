@@ -299,6 +299,40 @@ export function registerProjectIPCHandlers(): void {
   });
 
   /**
+   * Save assistant message content to a file in the project folder
+   */
+  ipcMain.handle('file:saveToProject', async (event, projectPath: string, content: string) => {
+    const result = await dialog.showSaveDialog({
+      defaultPath: projectPath,
+      title: 'Save Assistant Message',
+      buttonLabel: 'Save',
+      filters: [
+        { name: 'Text Files', extensions: ['txt'] },
+        { name: 'Markdown Files', extensions: ['md'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (result.canceled || !result.filePath) {
+      return null;
+    }
+
+    try {
+      fs.writeFileSync(result.filePath, content, 'utf-8');
+
+      // Emit event to notify renderer process about file update
+      if (event.sender) {
+        event.sender.send('project-file-updated', { projectPath, filePath: result.filePath });
+      }
+
+      return result.filePath;
+    } catch (error) {
+      console.error('Failed to save file:', error);
+      throw error;
+    }
+  });
+
+  /**
    * Read multiple files at once (batch operation)
    */
   ipcMain.handle('files:readContents', async (_event, filePaths: string[]) => {

@@ -330,6 +330,15 @@ interface ElectronAPI {
   readFileContent: (filePath: string) => Promise<FileContent>;
   readFileContents: (filePaths: string[]) => Promise<FileContent[]>;
 
+  // Save message to file
+  saveMessageToFile: (projectPath: string, content: string) => Promise<string | null>;
+
+  // Listen for project file updates
+  onProjectFileUpdated: (callback: (data: { projectPath: string; filePath: string }) => void) => void;
+
+  // Tool call events for chat-agent streaming
+  onToolCallEvent: (callback: (event: ToolCallEvent) => void) => void;
+
   // App management methods
   getApp: (projectPath: string, agentName: string) => Promise<App | null>;
   saveApp: (projectPath: string, app: App) => Promise<void>;

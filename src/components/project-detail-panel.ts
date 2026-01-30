@@ -21,6 +21,15 @@ export class ProjectDetailPanel extends HTMLElement {
       this.handleProjectSelected(customEvent.detail.project);
     });
 
+    // Listen for file update events from main process
+    if (window.electronAPI) {
+      (window.electronAPI as any).onProjectFileUpdated((data: { projectPath: string; filePath: string }) => {
+        if (this.currentProject && data.projectPath === this.currentProject.path) {
+          this.loadFileTree();
+        }
+      });
+    }
+
     this.render();
   }
 
@@ -205,6 +214,29 @@ export class ProjectDetailPanel extends HTMLElement {
       try {
         // Load file tree with default options
         this.fileTree = await window.electronAPI.getFileTree(project.path, {
+          excludeHidden: true
+        });
+        this.render();
+        this.attachEventListeners();
+      } catch (error) {
+        console.error('Failed to load file tree:', error);
+        this.fileTree = [];
+        this.render();
+        this.attachEventListeners();
+      }
+    }
+  }
+
+  /**
+   * Load/refresh file tree for current project
+   */
+  private async loadFileTree(): Promise<void> {
+    if (!this.currentProject) return;
+
+    if (window.electronAPI) {
+      try {
+        // Load file tree with default options
+        this.fileTree = await window.electronAPI.getFileTree(this.currentProject.path, {
           excludeHidden: true
         });
         this.render();

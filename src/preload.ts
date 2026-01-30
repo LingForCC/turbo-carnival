@@ -129,6 +129,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFileContents: (filePaths: string[]) =>
     ipcRenderer.invoke('files:readContents', filePaths),
 
+  // Save assistant message to project folder
+  saveMessageToFile: (projectPath: string, content: string) =>
+    ipcRenderer.invoke('file:saveToProject', projectPath, content),
+
+  // Listen for project file updates
+  onProjectFileUpdated: (callback: (data: { projectPath: string; filePath: string }) => void) => {
+    ipcRenderer.on('project-file-updated', (_event, data) => callback(data));
+  },
+
   // ============ CHAT-AGENT METHODS ============
 
   // Clear chat-agent history

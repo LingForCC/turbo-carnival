@@ -464,9 +464,18 @@ export class ConversationPanel extends HTMLElement {
       ? this.renderMarkdown(content)
       : this.escapeHtml(content);
 
-    // Copy button for assistant messages only
-    const copyButton = isAssistant ? `
-      <div class="flex justify-end mt-2">
+    // Action buttons (save and copy) for assistant messages only
+    const actionButtons = isAssistant ? `
+      <div class="flex justify-end gap-2 mt-2">
+        <button
+          class="save-msg-btn p-1.5 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-0"
+          data-message-content="${this.escapeHtml(content)}"
+          title="Save to file"
+        >
+          <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+        </button>
         <button
           class="copy-msg-btn p-1.5 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-0"
           data-original-content="${this.escapeHtml(content)}"
@@ -488,7 +497,7 @@ export class ConversationPanel extends HTMLElement {
         }">
           ${reasoningSection}
           <div class="text-sm ${isAssistant ? 'prose prose-sm max-w-none' : 'whitespace-pre-wrap'} break-words">${renderedContent}</div>
-          ${copyButton}
+          ${actionButtons}
         </div>
       </div>
     `;
@@ -749,6 +758,41 @@ export class ConversationPanel extends HTMLElement {
           if (icon) {
             icon.style.transform = details.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(90deg)';
           }
+        }
+      });
+    });
+
+    // Save message buttons
+    this.querySelectorAll('.save-msg-btn').forEach(btn => {
+      const newBtn = btn.cloneNode(true);
+      btn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const button = e.currentTarget as HTMLElement;
+
+        if (!this.currentProject) {
+          alert('No project selected. Please select a project first.');
+          return;
+        }
+
+        const content = button.getAttribute('data-message-content');
+        if (!content) return;
+
+        try {
+          const savedPath = await window.electronAPI?.saveMessageToFile(this.currentProject.path, content);
+
+          if (savedPath) {
+            // Show success feedback
+            const originalHTML = button.innerHTML;
+            button.classList.add('text-green-500');
+            setTimeout(() => {
+              button.classList.remove('text-green-500');
+              button.innerHTML = originalHTML;
+            }, 2000);
+          }
+        } catch (error: any) {
+          console.error('Failed to save message:', error);
+          alert(`Failed to save file: ${error.message}`);
         }
       });
     });
