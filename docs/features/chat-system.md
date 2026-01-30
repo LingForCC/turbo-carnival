@@ -9,6 +9,7 @@ The app provides a complete chat interface for interacting with AI agents throug
 - **Context awareness** - System prompt + full conversation history sent with each message
 - **Tool calling** - AI agents can call custom tools during conversations (chat agents only)
 - **Tool call indicators** - Visual display of tool execution status, parameters, results, and errors
+- **Thinking/reasoning display** - GLM models can show their reasoning process in a collapsible "Thinking Process" section
 - **File tagging** - Reference .txt and .md files from project folder as conversation context (see [file-tagging.md](./file-tagging.md))
 - **Error handling** - Graceful timeout and error message display
 - **Message management** - Clear chat with confirmation, automatic scroll to latest
@@ -46,13 +47,14 @@ Reusable Web Component that provides:
 - User and assistant message bubbles with different styling
 - Loading indicator during streaming
 - **Tool call indicators** - Visual display of tool execution with status, parameters, results, and execution time
+- **Reasoning display** - Collapsible "Thinking Process" section for GLM model reasoning (purple-tinted, toggle to expand/collapse)
 - **Optional file tagging** area with removable badges (configurable via `enable-file-tagging` attribute)
 - **Optional autocomplete dropdown** for @mention file selection
 - Send button with keyboard shortcuts (Enter to send, Shift+Enter for new line)
 - Configurable placeholder text
 - Empty state always shows "Start a conversation!" with chat icon
 - **Event-driven**: Dispatches `message-sent` events instead of calling IPC directly
-- Public methods for parent control: `handleStreamChunk()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallComplete()`, `handleToolCallFailed()`
+- Public methods for parent control: `handleStreamChunk()`, `handleStreamReasoning()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallComplete()`, `handleToolCallFailed()`
 
 ### Usage Examples
 
@@ -93,16 +95,20 @@ Reusable Web Component that provides:
    - **Saves user message** to `agent.history`
    - **Builds messages** from system prompt, file contents, agent history, and user message
    - **For streaming**: Sends chunks via `chat-chunk` IPC events to renderer
+   - **For GLM**: Sends reasoning chunks via `chat-reasoning` IPC events to renderer (if model outputs reasoning)
    - **Detects tool calls**: Parses native tool_calls from SSE stream
    - **Tool execution loop** (internal, up to 10 iterations):
      - Execute tools, validate parameters, send `chat-agent:toolCall` IPC events
      - Add tool results to messages (OpenAI format: `{role: 'tool', tool_call_id, content}`)
      - Make follow-up API call with tool results
-   - **Saves assistant response** to `agent.history` before returning
-8. `chat-panel` listens for `chat-agent:toolCall` IPC events and calls corresponding `conversation-panel` methods:
-   - `handleToolCallComplete()` - Shows collapsed tool call indicator with results and execution time
-   - `handleToolCallFailed()` - Shows collapsed tool call indicator with error message
-9. `conversation-panel` updates UI in real-time, renders tool call messages with visual indicators
+   - **Saves assistant response** to `agent.history` before returning (including `reasoning_content` if present)
+8. `chat-panel` listens for IPC events and calls corresponding `conversation-panel` methods:
+   - `chat-chunk` → `handleStreamChunk()` - Streams content chunks
+   - `chat-reasoning` → `handleStreamReasoning()` - Streams reasoning chunks (GLM only)
+   - `chat-agent:toolCall` (started) → `handleToolCallStarted()` - Shows executing indicator
+   - `chat-agent:toolCall` (completed) → `handleToolCallCompleted()` - Shows completed indicator with results
+   - `chat-agent:toolCall` (failed) → `handleToolCallFailed()` - Shows failed indicator with error
+9. `conversation-panel` updates UI in real-time, renders tool call messages and reasoning with visual indicators
 10. Parent components can listen for `stream-complete` to trigger additional processing
 
 ### App Agent Flow (Files Only, No Tools)
@@ -200,7 +206,27 @@ The LLM module provides a unified streaming interface for multiple LLM providers
 - Uses OpenAI-compatible tool calling format
 - Handles GLM-specific SSE parsing differences
 - **Key difference**: Content chunks are handled independently from tool_calls (GLM can return content alongside tool_calls in the same assistant message)
+- **Reasoning/Thinking support**: GLM models can output `reasoning_content` in SSE stream
+  - Emits `chat-reasoning` IPC events during streaming
+  - Reasoning is accumulated and displayed in a collapsible "Thinking Process" section
+  - Reasoning is saved to `agent.history` with `reasoning_content` field
+  - Reasoning can appear on any assistant message (with or without tool calls)
 - All functions have same signatures for consistency
+
+**GLM Reasoning Implementation:**
+```typescript
+// In streamGLMSingle():
+if (delta?.reasoning_content) {
+  fullReasoning += delta.reasoning_content;
+  webContents.send('chat-reasoning', delta.reasoning_content);
+}
+
+// Request includes thinking parameter:
+thinking: {
+  type: 'enabled',
+  clear_thinking: false  // Preserve thinking for conversation context
+}
+```
 
 ### Tool Execution Architecture
 - **Tool validation** - Checks if tool exists, is enabled, and parameters match schema
@@ -430,6 +456,12 @@ Streaming responses use Server-Sent Events (SSE) parsing:
 - History automatically saved after each message exchange
 - Full conversation history sent with each new message for context
 
+**Reasoning Content (GLM):**
+- `reasoning_content` field stores the model's thinking process
+- Displayed in a collapsible "Thinking Process" section in the UI
+- Preserved across conversation loads via GLM transformer
+- Can appear on any assistant message, including those with tool calls
+
 ## Message Transformation for Display
 
 When loading conversation history in `conversation-panel`, the native LLM format is transformed to UI format:
@@ -439,6 +471,7 @@ When loading conversation history in `conversation-panel`, the native LLM format
 - **GLM Transformer** (`glm-transformer.ts`) - Converts GLM format messages (standalone implementation)
   - **Key difference**: Handles content alongside tool_calls in assistant messages
   - When an assistant message has both content and tool_calls, GLM transformer pushes the content as a separate message first, then processes tool calls
+  - Handles `reasoning_content` field and includes it in the transformed message's `reasoning` property
 - **Transformer Factory** (`index.ts`) - Creates appropriate transformer based on provider type
 
 **Transformation Process:**
@@ -447,9 +480,10 @@ When loading conversation history in `conversation-panel`, the native LLM format
 3. Transformer converts native format to UI format:
    - Filters out system messages
    - Converts user/assistant messages directly
+   - Extracts `reasoning_content` (GLM) into message's `reasoning` property
    - Merges assistant messages with `tool_calls` and tool result messages
    - Extracts tool call name, parameters, result, execution time, and status
-   - Creates `ChatMessage` with optional `toolCall` metadata
+   - Creates `ChatMessage` with optional `toolCall` and `reasoning` metadata
 4. Result used to populate `chatHistory` for display
 
 **Tool Call Display:**

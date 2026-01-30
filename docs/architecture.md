@@ -217,9 +217,17 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 **Chat Agent (with tools):**
 - `chat-agent:streamMessage` - Initiates streaming message with tool calling + file context
 - `chat-agent:toolCall` - Real-time tool call status updates (one-way IPC from main to renderer, sent during tool execution)
+- `chat-agent:clearHistory` - Clears conversation history for a chat agent
 
 **App Agent (files only, no tools):**
 - `app-agent:streamMessage` - Initiates streaming message with file context only
+- `app-agent:clearHistory` - Clears conversation history for an app agent
+
+**Streaming Events (one-way IPC from main to renderer):**
+- `chat-chunk` - Content chunk during streaming (sent by both chat-agent and app-agent)
+- `chat-reasoning` - Reasoning/thinking chunk during streaming (GLM only, sent by both chat-agent and app-agent)
+- `chat-complete` - Signals streaming completion
+- `chat-error` - Signals streaming error with error message
 
 **Note:** The old `chat:sendMessage` and `chat:streamMessage` channels have been removed in favor of the more specific `chat-agent:*` and `app-agent:*` channels.
 
