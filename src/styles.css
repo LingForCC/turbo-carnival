@@ -37,6 +37,7 @@ conversation-panel > div {
   margin-top: 1em;
   margin-bottom: 0.5em;
   line-height: 1.3;
+  color: #111827;
 }
 
 .prose h1 {
@@ -57,6 +58,7 @@ conversation-panel > div {
   border-radius: 0.25rem;
   font-size: 0.875em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #1f2937;
 }
 
 .prose pre {
@@ -77,6 +79,7 @@ conversation-panel > div {
 .prose ul, .prose ol {
   padding-left: 1.5em;
   margin: 0.5em 0;
+  color: #374151;
 }
 
 .prose li {
@@ -118,4 +121,51 @@ conversation-panel > div {
 
 .prose em {
   font-style: italic;
+}
+
+/* Dark mode styles for prose */
+.dark .prose {
+  color: #e5e7eb;
+}
+
+.dark .prose h1,
+.dark .prose h2,
+.dark .prose h3,
+.dark .prose h4,
+.dark .prose h5,
+.dark .prose h6 {
+  color: #f9fafb;
+}
+
+.dark .prose code {
+  background-color: #374151;
+  color: #e5e7eb;
+}
+
+.dark .prose pre {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+.dark .prose ul,
+.dark .prose ol {
+  color: #e5e7eb;
+}
+
+.dark .prose blockquote {
+  border-left-color: #4b5563;
+  color: #9ca3af;
+}
+
+.dark .prose a {
+  color: #60a5fa;
+}
+
+.dark .prose th,
+.dark .prose td {
+  border-color: #374151;
+}
+
+.dark .prose th {
+  background-color: #1f2937;
 }

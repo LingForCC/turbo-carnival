@@ -487,7 +487,7 @@ export class ConversationPanel extends HTMLElement {
             : 'text-gray-800 dark:text-white'
         }">
           ${reasoningSection}
-          <div class="text-sm ${isAssistant ? 'prose prose-sm max-w-none prose-headings:text-gray-800 prose-p:text-gray-800 prose-li:text-gray-800 prose-code:text-gray-800 prose-pre:text-gray-800 dark:prose-headings:text-white dark:prose-p:text-white dark:prose-li:text-white dark:prose-code:text-white dark:prose-pre:text-white' : 'whitespace-pre-wrap'} break-words">${renderedContent}</div>
+          <div class="text-sm ${isAssistant ? 'prose prose-sm max-w-none' : 'whitespace-pre-wrap'} break-words">${renderedContent}</div>
           ${copyButton}
         </div>
       </div>
@@ -559,8 +559,8 @@ export class ConversationPanel extends HTMLElement {
 
             ${isCompleted && toolCall.result ? `
               <div>
-                <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Result:</div>
-                <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                <div class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Result:</div>
+                <div class="text-xs text-gray-600 dark:text-gray-400 mb-2 bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
                   <pre class="text-xs m-0 whitespace-pre-wrap break-all">${this.escapeHtml(JSON.stringify(toolCall.result, null, 2))}</pre>
                 </div>
                 ${toolCall.executionTime ? `
@@ -572,7 +572,7 @@ export class ConversationPanel extends HTMLElement {
             ${isFailed && toolCall.error ? `
               <div>
                 <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Error:</div>
-                <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
+                <div class="text-xs text-gray-600 dark:text-gray-400 mb-2 bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
                   <pre class="text-xs m-0 whitespace-pre-wrap break-all text-red-700 dark:text-red-400">${this.escapeHtml(toolCall.error)}</pre>
                 </div>
               </div>
@@ -595,7 +595,7 @@ export class ConversationPanel extends HTMLElement {
           <span>Thinking Process</span>
         </button>
         <div class="reasoning-content hidden mt-2 p-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-md">
-          <div class="text-sm text-gray-700 dark:text-white prose prose-sm max-w-none prose-headings:text-gray-700 prose-p:text-gray-700 prose-li:text-gray-700 prose-code:text-gray-700 prose-pre:text-gray-700 dark:prose-headings:text-white dark:prose-p:text-white dark:prose-li:text-white dark:prose-code:text-white dark:prose-pre:text-white">
+          <div class="text-sm text-gray-700 prose prose-sm max-w-none">
             ${this.renderMarkdown(reasoning)}
           </div>
         </div>
