@@ -1,4 +1,6 @@
 import type { Agent, Project, ToolCallEvent } from '../global.d.ts';
+import { createDefaultMessageRenderers, type MessageRenderers } from './conversation/message-render';
+import type { ToolCallData } from './conversation/conversation-panel';
 
 /**
  * ChatPanel Web Component
@@ -128,6 +130,10 @@ export class ChatPanel extends HTMLElement {
   private attachConversationListeners(): void {
     const conversation = this.querySelector('#conversation') as any;
     if (!conversation) return;
+
+    // Inject message renderers into conversation-panel
+    const messageRenderers = createDefaultMessageRenderers();
+    conversation.setRenderers(messageRenderers);
 
     // Listen for message-sent events from conversation-panel
     // This event is dispatched when user sends a message

@@ -28,7 +28,11 @@ export function mountComponent<T extends HTMLElement>(
 } {
   // Dynamically import and register the component
   // The side effect of importing is that the custom element gets registered
-  require(`../../components/${tagName}.ts`);
+  // Special case for conversation-panel which is in a subfolder
+  const componentPath = tagName === 'conversation-panel'
+    ? '../../components/conversation/conversation-panel.ts'
+    : `../../components/${tagName}.ts`;
+  require(componentPath);
 
   const element = document.createElement(tagName) as T;
   document.body.appendChild(element);

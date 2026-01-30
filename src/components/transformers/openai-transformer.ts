@@ -1,4 +1,4 @@
-import type { ChatMessage, ToolCallData } from '../conversation-panel';
+import type { ChatMessage, ToolCallData } from '../conversation/conversation-panel';
 import type { OpenAIMessage, OpenAIToolCall } from '../../main/llm/openai';
 
 /**

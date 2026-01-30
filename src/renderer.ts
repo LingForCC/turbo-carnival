@@ -10,7 +10,7 @@ import './components/app-container';
 import './components/agent-form-dialog';
 import './components/provider-dialog';
 import './components/project-detail-panel';
-import './components/conversation-panel';
+import './components/conversation/conversation-panel';
 
 // Import browser tool executor
 import { executeToolInBrowser } from './renderer/browser-tool-executor';

@@ -4,7 +4,11 @@
 
 import { mountComponent, createMockProject, mockElectronAPI, waitForAsync, spyOnEvent } from '../../helpers/component-testing';
 import { createMockAgent } from '../../helpers/mocks';
-import type { ChatMessage } from '../../../components/conversation-panel';
+import type { ChatMessage } from '../../../components/conversation/conversation-panel';
+
+// Import conversation-panel to register the custom element
+// Note: mountComponent will also do this, but we import here for type safety
+require('../../../components/conversation/conversation-panel.ts');
 
 // Type for the ConversationPanel element
 interface ConversationPanel extends HTMLElement {
@@ -402,9 +406,9 @@ describe('ConversationPanel Web Component', () => {
       expect(html).toContain('Hello');
       expect(html).toContain('Hi there!');
 
-      // Check for different styling (user has blue background, assistant has gray)
+      // Check for different styling (user has blue background, assistant has transparent background)
       expect(html).toContain('bg-blue-500');
-      expect(html).toContain('bg-gray-100');
+      expect(html).toContain('text-gray-800');
 
       cleanup();
     });
