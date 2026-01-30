@@ -929,6 +929,146 @@ describe('ProjectPanel Web Component', () => {
     });
   });
 
+  describe('Dark Mode Styling', () => {
+    it('should render with dark mode classes when dark mode is enabled', async () => {
+      mockElectronAPI('getProjects', jest.fn().mockResolvedValue([]));
+      const { element, cleanup } = mountComponent<ProjectPanel>('project-panel');
+
+      await waitForAsync();
+
+      // Add dark class to simulate dark mode
+      document.documentElement.classList.add('dark');
+
+      const container = element.querySelector('#project-panel-container');
+      expect(container?.className).toContain('dark:bg-gray-900');
+      expect(container?.className).toContain('dark:border-gray-700');
+
+      // Clean up
+      document.documentElement.classList.remove('dark');
+      cleanup();
+    });
+
+    it('should render header with dark mode classes', async () => {
+      mockElectronAPI('getProjects', jest.fn().mockResolvedValue([]));
+      const { element, cleanup } = mountComponent<ProjectPanel>('project-panel');
+
+      await waitForAsync();
+
+      document.documentElement.classList.add('dark');
+
+      const header = element.querySelector('h2');
+      expect(header?.className).toContain('dark:text-gray-300');
+
+      const toggleBtn = element.querySelector('#toggle-btn');
+      expect(toggleBtn?.className).toContain('dark:hover:bg-gray-800');
+
+      // Clean up
+      document.documentElement.classList.remove('dark');
+      cleanup();
+    });
+
+    it('should render empty state with dark mode classes', async () => {
+      mockElectronAPI('getProjects', jest.fn().mockResolvedValue([]));
+      const { element, cleanup } = mountComponent<ProjectPanel>('project-panel');
+
+      await waitForAsync();
+
+      document.documentElement.classList.add('dark');
+
+      const listContainer = element.querySelector('#projects-list');
+      const emptyMessage = listContainer?.querySelector('p');
+      expect(emptyMessage?.className).toContain('dark:text-gray-500');
+
+      // Clean up
+      document.documentElement.classList.remove('dark');
+      cleanup();
+    });
+
+    it('should render selected project with dark mode classes', async () => {
+      const mockProjects = [
+        createMockProject({ name: 'project1', path: '/path1' }),
+      ];
+      mockElectronAPI('getProjects', jest.fn().mockResolvedValue(mockProjects));
+      const { element, cleanup } = mountComponent<ProjectPanel>('project-panel');
+
+      await waitForAsync();
+
+      // Add dark class and select project
+      document.documentElement.classList.add('dark');
+      const projectItem = element.querySelector('[data-project-path="/path1"]') as HTMLElement;
+      projectItem.click();
+      await waitForAsync();
+
+      const updatedProject = element.querySelector('[data-project-path="/path1"]') as HTMLElement;
+      expect(updatedProject.className).toContain('dark:bg-blue-900/30');
+      expect(updatedProject.className).toContain('dark:text-blue-300');
+
+      // Clean up
+      document.documentElement.classList.remove('dark');
+      cleanup();
+    });
+
+    it('should render unselected project with dark mode classes', async () => {
+      const mockProjects = [
+        createMockProject({ name: 'project1', path: '/path1' }),
+      ];
+      mockElectronAPI('getProjects', jest.fn().mockResolvedValue(mockProjects));
+      const { element, cleanup } = mountComponent<ProjectPanel>('project-panel');
+
+      await waitForAsync();
+
+      document.documentElement.classList.add('dark');
+
+      const projectItem = element.querySelector('[data-project-path="/path1"]') as HTMLElement;
+      expect(projectItem.className).toContain('dark:text-gray-300');
+      expect(projectItem.className).toContain('dark:hover:bg-gray-800');
+
+      // Clean up
+      document.documentElement.classList.remove('dark');
+      cleanup();
+    });
+
+    it('should render remove button with dark mode classes', async () => {
+      const mockProjects = [
+        createMockProject({ name: 'project1', path: '/path1' }),
+      ];
+      mockElectronAPI('getProjects', jest.fn().mockResolvedValue(mockProjects));
+      const { element, cleanup } = mountComponent<ProjectPanel>('project-panel');
+
+      await waitForAsync();
+
+      document.documentElement.classList.add('dark');
+
+      const removeBtn = element.querySelector('.remove-btn');
+      expect(removeBtn?.className).toContain('dark:hover:bg-red-900/30');
+
+      const svg = removeBtn?.querySelector('svg');
+      expect(svg?.className).toContain('dark:text-gray-500');
+      expect(svg?.className).toContain('dark:hover:text-red-400');
+
+      // Clean up
+      document.documentElement.classList.remove('dark');
+      cleanup();
+    });
+
+    it('should render add button with dark mode classes', async () => {
+      mockElectronAPI('getProjects', jest.fn().mockResolvedValue([]));
+      const { element, cleanup } = mountComponent<ProjectPanel>('project-panel');
+
+      await waitForAsync();
+
+      document.documentElement.classList.add('dark');
+
+      const addBtn = element.querySelector('#add-project-btn');
+      expect(addBtn?.className).toContain('dark:bg-blue-600');
+      expect(addBtn?.className).toContain('dark:hover:bg-blue-700');
+
+      // Clean up
+      document.documentElement.classList.remove('dark');
+      cleanup();
+    });
+  });
+
   describe('Async/Await Handling', () => {
     it('should properly await loadProjects in connectedCallback', async () => {
       let loadProjectsResolved = false;

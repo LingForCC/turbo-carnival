@@ -10,6 +10,7 @@ import { registerToolIPCHandlers } from './main/tool-management';
 import { registerProjectIPCHandlers } from './main/project-management';
 import { registerChatAgentIPCHandlers } from './main/chat-agent-management';
 import { registerAppAgentIPCHandlers } from './main/app-agent-management';
+import { registerSettingsIPCHandlers } from './main/settings-management';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -87,6 +88,9 @@ function registerIPCHandlers(): void {
 
   // ============ APP-AGENT IPC HANDLERS ============
   registerAppAgentIPCHandlers();
+
+  // ============ SETTINGS IPC HANDLERS ============
+  registerSettingsIPCHandlers();
 }
 
 // Quit when all windows are closed, except on macOS

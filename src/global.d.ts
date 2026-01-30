@@ -98,6 +98,13 @@ export interface ModelConfig {
 }
 
 /**
+ * App settings for user preferences
+ */
+export interface AppSettings {
+  theme: 'light' | 'dark';  // Theme preference
+}
+
+/**
  * JSON Schema definition for tool parameters and return values
  * Follows JSON Schema draft-07 specification
  */
@@ -219,6 +226,10 @@ interface ElectronAPI {
   getProjects: () => Promise<Project[]>;
   addProject: (path: string) => Promise<Project[]>;
   removeProject: (path: string) => Promise<Project[]>;
+
+  // Settings management
+  getSettings: () => Promise<AppSettings>;
+  updateSettings: (settings: Partial<AppSettings>) => Promise<AppSettings>;
 
   // Agent-related methods
   getAgents: (projectPath: string) => Promise<Agent[]>;

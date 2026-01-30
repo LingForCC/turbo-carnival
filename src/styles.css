@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Use class-based dark mode */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Make conversation-panel custom element work with flexbox */
 conversation-panel {
   display: flex;

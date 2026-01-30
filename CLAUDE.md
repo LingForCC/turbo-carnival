@@ -85,6 +85,7 @@ The documentation has been split into focused modules for better performance:
 
 ### Features
 - **[docs/features/chat-system.md](docs/features/chat-system.md)** - Conversational AI interface, streaming, tool calling, provider integration
+- **[docs/features/dark-mode.md](docs/features/dark-mode.md)** - Dark mode theming with toggle support
 - **[docs/features/file-tagging.md](docs/features/file-tagging.md)** - File @mention system for including project context
 - **[docs/features/llm-providers.md](docs/features/llm-providers.md)** - LLM provider management (OpenAI, GLM, custom providers)
 - **[docs/features/model-configs.md](docs/features/model-configs.md)** - Model configuration management for reusing model settings
@@ -107,6 +108,7 @@ The documentation has been split into focused modules for better performance:
 - `src/main/app-management.ts` - App CRUD operations, execution in main/renderer processes
 - `src/main/provider-management.ts` - LLM provider CRUD, validation, default URLs
 - `src/main/model-config-management.ts` - Model configuration CRUD, validation, storage
+- `src/main/settings-management.ts` - App settings CRUD, theme preference storage, validation
 - `src/main/llm/` - LLM streaming module with provider-specific implementations
   - `index.ts` - Main routing interface (streamLLM, buildFileContentMessages, buildAllMessages) and tool execution routing (executeToolWithRouting)
   - `openai.ts` - OpenAI-compatible streaming with conversation history management and native tool calling
@@ -140,6 +142,7 @@ The documentation has been split into focused modules for better performance:
 - `apps:*` - App CRUD operations, execution, data persistence
 - `providers:*` - LLM provider CRUD operations (get, add, update, remove, getById)
 - `model-configs:*` - Model configuration CRUD operations (get, add, update, remove, getById)
+- `settings:*` - Settings CRUD operations (get, update)
 - `tools:*` - Tool CRUD and execution
 - `project:getFileTree` - File tree structure
 - `files:list`, `files:readContents` - File operations for @mention
@@ -153,6 +156,7 @@ The documentation has been split into focused modules for better performance:
 - `app.getPath('userData')/projects.json` - Project list
 - `app.getPath('userData')/providers.json` - LLM providers
 - `app.getPath('userData')/model-configs.json` - Model configurations
+- `app.getPath('userData')/settings.json` - App settings (theme preference)
 - `app.getPath('userData')/tools.json` - Custom tools
 - `{projectFolder}/agent-{name}.json` - Agent files (stored in project folders)
 - `{projectFolder}/app-{name}.json` - App files (stored in project folders, linked to agents)

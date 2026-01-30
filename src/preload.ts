@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { Project, Agent, LLMProvider, ModelConfig, Tool, ToolExecutionRequest, ToolCallEvent, App } from './global.d.ts';
+import type { Project, Agent, LLMProvider, ModelConfig, Tool, ToolExecutionRequest, ToolCallEvent, App, AppSettings } from './global.d.ts';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -105,6 +105,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onToolCallEvent: (callback: (event: ToolCallEvent) => void) => {
     ipcRenderer.on('chat-agent:toolCall', (_event, toolEvent) => callback(toolEvent));
   },
+
+  // ============ SETTINGS METHODS ============
+
+  // Get all settings
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+
+  // Update settings (supports partial updates)
+  updateSettings: (updates: Partial<AppSettings>) =>
+    ipcRenderer.invoke('settings:update', updates),
 
   // ============ PROJECT DETAIL METHODS ============
 
