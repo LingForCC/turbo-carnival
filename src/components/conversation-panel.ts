@@ -40,6 +40,7 @@ export class ConversationPanel extends HTMLElement {
   private chatHistory: ChatMessage[] = [];
   private isStreaming: boolean = false;
   private currentStreamedContent: string = '';
+  private currentStreamedReasoning: string = '';
   private activeToolCalls: Map<string, ToolCallData> = new Map();
 
   // Configuration from attributes
@@ -163,36 +164,8 @@ export class ConversationPanel extends HTMLElement {
    * Called by parent (chat-panel/app-panel) during streaming
    */
   public handleStreamChunk(chunk: string): void {
-    // If not currently streaming, start a new streaming session
-    if (!this.isStreaming) {
-      this.isStreaming = true;
-      this.currentStreamedContent = '';
-
-      // Check if we should reuse the last message or add a new one
-      const lastMessage = this.chatHistory[this.chatHistory.length - 1];
-
-      // Reuse the last message if it's an assistant message without a tool call
-      // This preserves tool call messages while allowing continuation of streaming responses
-      if (lastMessage && lastMessage.role === 'assistant' && !lastMessage.toolCall) {
-        // Reuse existing assistant message for streaming
-      } else {
-        // Add a new assistant message for streaming
-        this.chatHistory.push({
-          role: 'assistant',
-          content: ''
-        });
-      }
-    } else {
-      const lastMessage = this.chatHistory[this.chatHistory.length - 1];
-
-      if (lastMessage && lastMessage.role === 'assistant' && lastMessage.toolCall) {
-        this.currentStreamedContent = '';
-        this.chatHistory.push({
-          role: 'assistant',
-          content: ''
-        });
-      }
-    }
+    // Ensure we have a message for streaming
+    this.ensureStreamingMessage();
 
     this.currentStreamedContent += chunk;
     this.chatHistory[this.chatHistory.length - 1].content = this.currentStreamedContent;
@@ -207,6 +180,7 @@ export class ConversationPanel extends HTMLElement {
   public handleStreamComplete(content: string): void {
     this.isStreaming = false;
     this.currentStreamedContent = '';
+    this.currentStreamedReasoning = '';
     this.render();
 
     // Emit stream-complete event for consistency
@@ -218,15 +192,69 @@ export class ConversationPanel extends HTMLElement {
   }
 
   /**
+   * Handle reasoning chunk from parent component
+   * Called by parent (chat-panel/app-panel) during streaming
+   */
+  public handleStreamReasoning(reasoning: string): void {
+    // Ensure we have a message for streaming
+    this.ensureStreamingMessage();
+
+    this.currentStreamedReasoning += reasoning;
+    this.chatHistory[this.chatHistory.length - 1].reasoning = this.currentStreamedReasoning;
+
+    this.render();
+    this.scrollToBottom();
+  }
+
+  /**
    * Handle stream error from parent component
    * Called by parent (chat-panel/app-panel) when an error occurs
    */
   public handleStreamError(error: string): void {
     this.isStreaming = false;
     this.currentStreamedContent = '';
+    this.currentStreamedReasoning = '';
     this.chatHistory.pop(); // Remove user message
     this.showError(error);
     this.render();
+  }
+
+  /**
+   * Ensure an assistant message exists for streaming
+   * Creates a new message if needed, or reuses existing one
+   * This should be called by both handleStreamChunk and handleStreamReasoning
+   */
+  private ensureStreamingMessage(): void {
+    if (!this.isStreaming) {
+      this.isStreaming = true;
+      this.currentStreamedContent = '';
+      this.currentStreamedReasoning = '';
+
+      const lastMessage = this.chatHistory[this.chatHistory.length - 1];
+
+      // Reuse the last message if it's an assistant message without a tool call
+      // This preserves tool call messages while allowing continuation of streaming responses
+      if (lastMessage && lastMessage.role === 'assistant' && !lastMessage.toolCall) {
+        // Reuse existing assistant message for streaming
+      } else {
+        // Add a new assistant message for streaming
+        this.chatHistory.push({
+          role: 'assistant',
+          content: ''
+        });
+      }
+    } else {
+      // When already streaming, check if we need to add a new message after a tool call
+      const lastMessage = this.chatHistory[this.chatHistory.length - 1];
+
+      if (lastMessage && lastMessage.role === 'assistant' && lastMessage.toolCall) {
+        this.currentStreamedContent = '';
+        this.chatHistory.push({
+          role: 'assistant',
+          content: ''
+        });
+      }
+    }
   }
 
   /**

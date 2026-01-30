@@ -185,6 +185,8 @@ export class ChatPanel extends HTMLElement {
       filePaths,
       // onChunk - delegate to conversation-panel
       (chunk: string) => conversation.handleStreamChunk(chunk),
+      // onReasoning - delegate to conversation-panel
+      (reasoning: string) => conversation.handleStreamReasoning(reasoning),
       // onComplete - delegate to conversation-panel
       () => {
         conversation.handleStreamComplete(conversation.currentStreamedContent || '');
