@@ -43,43 +43,6 @@ export function saveModelConfigs(modelConfigs: ModelConfig[]): void {
 }
 
 /**
- * Migrate existing ModelConfigs to include type field
- * Infers type from model name
- */
-export function migrateModelConfigs(): void {
-  const modelConfigs = loadModelConfigs();
-
-  let needsMigration = false;
-  const migratedConfigs = modelConfigs.map(config => {
-    // Skip if already has type field
-    if ('type' in config && config.type) {
-      return config;
-    }
-
-    needsMigration = true;
-
-    // Infer type from model name
-    let inferredType: LLMProviderType = 'openai'; // Default
-
-    if (config.model.startsWith('glm') || config.model.startsWith('chatglm')) {
-      inferredType = 'glm';
-    }
-    // Add more heuristics as needed
-
-    return {
-      ...config,
-      type: inferredType,
-      updatedAt: Date.now()
-    };
-  });
-
-  if (needsMigration) {
-    saveModelConfigs(migratedConfigs);
-    console.log('ModelConfigs migrated to include type field');
-  }
-}
-
-/**
  * Get a model config by ID
  */
 export function getModelConfigById(id: string): ModelConfig | undefined {
