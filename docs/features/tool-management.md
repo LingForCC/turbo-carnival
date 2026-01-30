@@ -37,7 +37,7 @@ Tools stored in `app.getPath('userData')/tools.json`:
 Node.js tools execute in isolated worker processes for security:
 
 - **Worker File**: `src/tool-worker.ts` (built to `dist/tool-worker.js`)
-- **Worker Path**: Resolved as `../tool-worker.js` from `openai-client.ts`
+- **Worker Path**: Resolved as `../tool-worker.js` from `llm/index.ts`
 - **Execution Model**: Each tool execution spawns a fresh worker process via `child_process.fork()`
 - **Timeout Handling**: Configurable timeout per tool (default 30 seconds), enforced by worker
 - **Isolation**: Tool code runs in separate process, preventing crashes in main process
@@ -133,7 +133,7 @@ Tools are called by AI agents during conversations:
 ## Related Files
 
 - `src/main/tool-management.ts` - Tool storage and IPC handlers
-- `src/main/openai-client.ts` - Tool calling integration and worker execution
+- `src/main/llm/index.ts` - Tool execution routing (executeToolWithRouting)
 - `src/tool-worker.ts` - Node.js tool worker process
 - `src/renderer/browser-tool-executor.ts` - Browser tool executor
 - `src/components/tools-dialog.ts` - Tool management UI

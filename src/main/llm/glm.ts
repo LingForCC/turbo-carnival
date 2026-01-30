@@ -3,7 +3,7 @@ import * as path from 'path';
 import { getDefaultBaseURL } from '../provider-management';
 import type { ModelConfig, LLMProvider, Tool, Agent } from '../../global.d.ts';
 import { getToolByName, validateJSONSchema } from '../tool-management';
-import { executeToolWithRouting } from '../openai-client';
+import { executeToolWithRouting } from './index';
 import type { StreamLLMOptions, StreamResult } from './index';
 
 // ============ TYPE DEFINITIONS ============
@@ -211,24 +211,8 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
       return { content: response, hasToolCalls: false };
     }
 
-    // Deduplicate tool calls
-    let uniqueToolCalls = toolCalls;
-    if (toolCalls.length > 0) {
-      const seen = new Set<string>();
-      uniqueToolCalls = toolCalls.filter(call => {
-        const key = `${call.toolName}|${JSON.stringify(call.parameters)}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-
-      if (uniqueToolCalls.length !== toolCalls.length) {
-        console.warn(`Detected ${toolCalls.length - uniqueToolCalls.length} duplicate tool calls, removing them`);
-      }
-    }
-
     // Create assistant message with tool_calls (GLM native format)
-    const glmToolCalls: GLMToolCall[] = uniqueToolCalls.map(tc => ({
+    const glmToolCalls: GLMToolCall[] = toolCalls.map(tc => ({
       id: tc.toolCallId || '',
       type: 'function' as const,
       function: {
@@ -253,7 +237,7 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
     });
 
     // Execute tools and add results to messages
-    const toolResults = await executeToolCalls(uniqueToolCalls, agent, webContents);
+    const toolResults = await executeToolCalls(toolCalls, agent, webContents);
 
     // Add tool results to messages for next iteration (GLM native format)
     for (const result of toolResults) {

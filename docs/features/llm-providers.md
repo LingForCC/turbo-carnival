@@ -299,12 +299,11 @@ In `src/components/provider-dialog.ts`, add option to the type dropdown:
 
 ### 5. Handle Provider-Specific Logic
 
-In `src/main/openai-client.ts`, extend `getProviderConfig()` if needed:
+In `src/main/llm/index.ts`, add provider-specific logic if needed:
 
 ```typescript
-if (provider.type === 'your-provider') {
-  // Add custom headers, auth, etc.
-}
+case 'your-provider':
+  return await streamYourProvider(options);
 ```
 
 ## Troubleshooting
@@ -341,7 +340,10 @@ if (provider.type === 'your-provider') {
 ### Main Process Modules
 
 - **`src/main/provider-management.ts`**: Provider CRUD operations, validation, storage helpers
-- **`src/main/openai-client.ts`**: Provider-aware API client with config extraction
+- **`src/main/llm/`**: LLM streaming with provider-specific implementations
+  - `index.ts` - LLM streaming router and tool execution routing
+  - `openai.ts` - OpenAI-compatible streaming
+  - `glm.ts` - GLM streaming
 - **`src/main/chat-agent-management.ts`**: Uses providers for chat agents
 - **`src/main/app-agent-management.ts`**: Uses providers for app agents
 

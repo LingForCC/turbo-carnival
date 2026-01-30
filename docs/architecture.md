@@ -50,8 +50,9 @@ The main process is organized into dedicated modules:
   - Same structure as openai.ts: `streamGLM()`, `streamGLMSingle()`, `executeToolCalls()`
   - Uses OpenAI-compatible tool calling format (tools array, tool_calls in delta, tool_call_id for results)
 
-**`src/main/openai-client.ts`**
-- Tool execution routing only (no API client)
+**`src/main/llm/index.ts`**
+- LLM streaming router and tool execution routing
+- `streamLLM()` - Routes to provider-specific streaming implementations
 - `executeToolWithRouting()` - Routes tools to Node.js worker or browser based on environment
 
 **`src/main/chat-agent-management.ts`**
@@ -78,11 +79,10 @@ The main process is organized into dedicated modules:
 
 ### Module Dependencies
 - `llm/index.ts` imports from: `llm/openai.ts`, `llm/glm.ts`
-- `llm/openai.ts` imports from: `provider-management.ts`, `tool-management.ts`, `openai-client.ts`
-- `llm/glm.ts` imports from: `provider-management.ts`, `tool-management.ts`, `openai-client.ts`
+- `llm/openai.ts` imports from: `provider-management.ts`, `tool-management.ts`, `llm/index.ts` (executeToolWithRouting)
+- `llm/glm.ts` imports from: `provider-management.ts`, `tool-management.ts`, `llm/index.ts` (executeToolWithRouting)
 - `chat-agent-management.ts` imports from: `llm/index.ts` (streamLLM), `agent-management.ts`, `provider-management.ts`, `model-config-management.ts`, `tool-management.ts`
 - `app-agent-management.ts` imports from: `llm/index.ts` (streamLLM), `agent-management.ts`, `provider-management.ts`, `model-config-management.ts`
-- `tool-management.ts` imports from: `openai-client.ts` (executeToolWithRouting)
 - `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `model-config-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`
 
 ### Pattern for Creating New Modules
