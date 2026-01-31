@@ -54,7 +54,36 @@ Reusable Web Component that provides:
 - Configurable placeholder text
 - Empty state always shows "Start a conversation!" with chat icon
 - **Event-driven**: Dispatches `message-sent` events instead of calling IPC directly
-- Public methods for parent control: `handleStreamChunk()`, `handleStreamReasoning()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallComplete()`, `handleToolCallFailed()`
+- **Injectable message renderers** - Custom rendering logic can be injected via constructor or `setRenderers()` method
+- Public methods for parent control: `handleStreamChunk()`, `handleStreamReasoning()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallComplete()`, `handleToolCallFailed()`, `setRenderers()`
+
+### Message Rendering System
+
+The message rendering logic has been extracted into a separate module for better maintainability and customization:
+
+**Location**: `src/components/conversation/message-render.ts`
+
+**MessageRenderers Interface**:
+```typescript
+interface MessageRenderers {
+  renderUserMessage: (content: string) => string;
+  renderAssistantMessage: (content: string, reasoning?: string) => string;
+  renderToolCallMessage: (content: string, toolCall: ToolCallData, reasoning?: string) => string;
+}
+```
+
+**Features**:
+- **XSS Prevention**: All user-generated content is escaped via `escapeHtml()`
+- **Markdown Rendering**: Assistant messages rendered with `marked` and sanitized via `DOMPurify`
+- **Tool Call Display**: Status-based styling (executing/completed/failed) with expandable details
+- **Reasoning Display**: Collapsible "Thinking Process" section for GLM reasoning content
+- **Action Buttons**: Save and copy buttons on assistant messages
+
+**Default Renderers**: `createDefaultMessageRenderers()` returns the standard rendering implementations.
+
+**Customization**:
+- Pass custom renderers via constructor: `new ConversationPanel(customRenderers)`
+- Update renderers at runtime: `conversationPanel.setRenderers(customRenderers)`
 
 ### Usage Examples
 
