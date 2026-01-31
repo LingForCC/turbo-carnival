@@ -61,7 +61,23 @@ The left panel provides a chat interface similar to the standard chat panel:
 - **Message History**: Conversation is saved in the agent's `history` array
 - **Streaming Responses**: Real-time streaming of AI responses
 - **Code Parsing**: Automatically detects and extracts code blocks from AI responses
+- **HTML Code Callouts**: HTML code blocks are displayed in collapsible gray-styled callouts labeled "App Code"
 - **Clear Chat**: Clear the chat history (does not delete from agent file)
+
+### Message Rendering
+
+App agents use a custom message renderer (`renderAppContent`) that:
+- **Extracts HTML code blocks**: Detects ````html ... ```` blocks in AI responses
+- **Renders HTML callouts**: Displays HTML code in gray-styled, collapsible callouts
+- **Removes HTML from main content**: HTML blocks appear only in callouts, not in the main markdown content
+- **Supports multiple blocks**: Multiple HTML blocks are numbered (App Code, App Code 2, etc.)
+- **Renders remaining content as markdown**: All non-HTML content is rendered normally
+
+**Callout Styling:**
+- Gray background (`bg-gray-100 dark:bg-gray-800`)
+- Gray border (`border-gray-300 dark:border-gray-600`)
+- Gray text (`text-gray-700 dark:text-gray-300`)
+- Collapsible with rotating chevron icon
 
 ### Code Block Format
 

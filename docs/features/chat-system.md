@@ -81,9 +81,18 @@ interface MessageRenderers {
 
 **Default Renderers**: `createDefaultMessageRenderers()` returns the standard rendering implementations.
 
+**Custom Renderers**:
+- **`renderAppContent()`** - App-specific renderer that:
+  - Extracts HTML code blocks (````html ... ````) and displays them in gray-styled, collapsible callouts labeled "App Code"
+  - Removes HTML blocks from main content (they appear only in callouts)
+  - Renders all other content as normal markdown
+  - Supports multiple HTML code blocks (numbered as App Code, App Code 2, etc.)
+  - Used by `app-panel` for app agents
+
 **Customization**:
 - Pass custom renderers via constructor: `new ConversationPanel(customRenderers)`
 - Update renderers at runtime: `conversationPanel.setRenderers(customRenderers)`
+- Use individual renderer functions (e.g., `renderAppContent`) when creating custom MessageRenderers objects
 
 ### Usage Examples
 

@@ -1,5 +1,10 @@
 import type { Agent, Project, App } from '../global.d.ts';
-import { createDefaultMessageRenderers, type MessageRenderers } from './conversation/message-render';
+import {
+  renderUserMessage,
+  renderAppContent,
+  renderToolCallMessage,
+  type MessageRenderers
+} from './conversation/message-render';
 import type { ToolCallData } from './conversation/conversation-panel';
 
 /**
@@ -180,7 +185,12 @@ export class AppPanel extends HTMLElement {
     if (!conversation) return;
 
     // Inject message renderers into conversation-panel
-    const messageRenderers = createDefaultMessageRenderers();
+    // Use renderAppContent for assistant messages to show HTML code blocks as callouts
+    const messageRenderers: MessageRenderers = {
+      renderUserMessage: (content) => renderUserMessage(content),
+      renderAssistantMessage: (content, reasoning?) => renderAppContent(content, reasoning),
+      renderToolCallMessage: (content, toolCall, reasoning?) => renderToolCallMessage(content, toolCall, reasoning)
+    };
     conversation.setRenderers(messageRenderers);
 
     // Listen for message-sent events from conversation-panel
