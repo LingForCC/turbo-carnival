@@ -121,9 +121,10 @@ The documentation has been split into focused modules for better performance:
 - `app-container` - Root layout, event forwarding
 - `project-panel` - Left sidebar, project management
 - `project-agent-dashboard` - Center area, agent grid/chat switching
-- `conversation-panel` - Reusable chat interface (event-driven, tool call indicators, dispatches `message-sent` events)
-- `chat-panel` - Right sidebar chat interface (uses conversation-panel, handles chat-agent IPC)
-- `app-panel` - Split-panel interface for App-type agents (uses conversation-panel, handles app-agent IPC)
+- `conversation-panel` - Reusable chat interface (event-driven, tool call indicators, injectable renderers, assistant message factory)
+- `assistant-message` - Web Component for assistant messages (markdown rendering, reasoning display, save/copy buttons, factory pattern for handlers)
+- `chat-panel` - Right sidebar chat interface (uses conversation-panel, provides assistant message factory with save handler, handles chat-agent IPC)
+- `app-panel` - Split-panel interface for App-type agents (uses conversation-panel, provides custom renderers for app-specific rendering, handles app-agent IPC)
 - `project-detail-panel` - Right sidebar, file tree
 - `agent-form-dialog` - Agent creation/editing with model config and provider selection
 - `provider-dialog` - LLM provider management (OpenAI, GLM, custom providers)
@@ -146,6 +147,7 @@ The documentation has been split into focused modules for better performance:
 - `tools:*` - Tool CRUD and execution
 - `project:getFileTree` - File tree structure
 - `files:list`, `files:readContents` - File operations for @mention
+- `files:saveMessageToFile` - Save message content to a file in the project folder
 - `chat-agent:streamMessage` - Chat agent streaming (with tools + files)
 - `chat-agent:clearHistory` - Clear chat agent conversation history
 - `chat-agent:toolCall` - Real-time tool call status updates (one-way IPC from main to renderer)

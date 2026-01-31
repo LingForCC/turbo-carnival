@@ -58,6 +58,9 @@ export class ConversationPanel extends HTMLElement {
   // Injected renderers
   private messageRenderers: MessageRenderers;
 
+  // Factory function for creating assistant messages with handlers
+  private assistantMessageFactory: ((content: string, reasoning: string) => import('./assistant-message').AssistantMessage) | null = null;
+
   constructor(renderers?: MessageRenderers) {
     super();
 
@@ -106,6 +109,17 @@ export class ConversationPanel extends HTMLElement {
   public setRenderers(renderers: MessageRenderers): void {
     this.messageRenderers = renderers;
     this.render();
+  }
+
+  /**
+   * Set the factory function for creating assistant messages with handlers.
+   * The factory function should accept (content, reasoning) and return an AssistantMessage element.
+   * This allows parent components to inject their own save/copy handlers via closure.
+   */
+  public setAssistantMessageFactory(
+    factory: (content: string, reasoning: string) => import('./assistant-message').AssistantMessage
+  ): void {
+    this.assistantMessageFactory = factory;
   }
 
   // ========== PUBLIC API ==========
@@ -358,7 +372,7 @@ export class ConversationPanel extends HTMLElement {
       <div class="flex flex-col h-full">
         <!-- Chat Messages Area -->
         <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-gray-900">
-          ${this.renderChatContent()}
+          <!-- Messages will be rendered here by renderChatMessages() -->
         </div>
 
         <!-- Input Area -->
@@ -426,12 +440,27 @@ export class ConversationPanel extends HTMLElement {
       </div>
     `;
 
+    // Render chat messages first (before attaching event listeners)
+    // so tool call toggle buttons are in the DOM when attachEventListeners runs
+    this.renderChatMessages();
+
     this.attachEventListeners();
   }
 
-  private renderChatContent(): string {
+  /**
+   * Render chat messages directly to the messages container
+   * Uses the factory for assistant messages, string-based rendering for others
+   */
+  private renderChatMessages(): void {
+    const messagesContainer = this.querySelector('#chat-messages');
+    if (!messagesContainer) return;
+
+    // Clear existing content
+    messagesContainer.innerHTML = '';
+
+    // Check for empty states
     if (!this.currentAgent) {
-      return `
+      messagesContainer.innerHTML = `
         <div class="flex flex-col items-center justify-center h-full text-center">
           <svg class="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
@@ -441,10 +470,11 @@ export class ConversationPanel extends HTMLElement {
           </p>
         </div>
       `;
+      return;
     }
 
     if (this.chatHistory.length === 0 && !this.isStreaming) {
-      return `
+      messagesContainer.innerHTML = `
         <div class="flex flex-col items-center justify-center h-full text-center">
           <svg class="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
@@ -454,13 +484,24 @@ export class ConversationPanel extends HTMLElement {
           </p>
         </div>
       `;
+      return;
     }
 
-    // Render chat messages
-    return this.chatHistory.map(msg => this.renderMessage(msg.role, msg.content, msg.toolCall, msg.reasoning)).join('');
+    // Render each message
+    this.chatHistory.forEach(msg => {
+      const rendered = this.renderMessageElement(msg.role, msg.content, msg.toolCall, msg.reasoning);
+      if (typeof rendered === 'string') {
+        messagesContainer.insertAdjacentHTML('beforeend', rendered);
+      } else {
+        messagesContainer.appendChild(rendered);
+      }
+    });
   }
 
-  private renderMessage(role: 'user' | 'assistant', content: string, toolCall?: ToolCallData, reasoning?: string): string {
+  /**
+   * Render a single message, returning either HTML string or DOM element
+   */
+  private renderMessageElement(role: 'user' | 'assistant', content: string, toolCall?: ToolCallData, reasoning?: string): string | HTMLElement {
     // If this message has tool call data, render with special styling
     if (toolCall) {
       return this.messageRenderers.renderToolCallMessage(content, toolCall, reasoning);
@@ -470,7 +511,18 @@ export class ConversationPanel extends HTMLElement {
     if (role === 'user') {
       return this.messageRenderers.renderUserMessage(content);
     } else {
-      return this.messageRenderers.renderAssistantMessage(content, reasoning);
+      // Check if there's a custom renderAssistantMessage function (for app-panel)
+      if (this.messageRenderers.renderAssistantMessage) {
+        return this.messageRenderers.renderAssistantMessage(content, reasoning);
+      }
+      // Use factory to create AssistantMessage Web Component
+      if (this.assistantMessageFactory) {
+        return this.assistantMessageFactory(content, reasoning || '');
+      } else {
+        console.warn('[ConversationPanel] No assistant message factory or custom renderer set, cannot render assistant message');
+        // Return empty string to avoid breaking the UI
+        return '';
+      }
     }
   }
 
@@ -605,25 +657,6 @@ export class ConversationPanel extends HTMLElement {
       });
     });
 
-    // Reasoning toggle buttons - use DOM manipulation without re-render
-    this.querySelectorAll('.reasoning-toggle-btn').forEach(btn => {
-      const newBtn = btn.cloneNode(true);
-      btn.replaceWith(newBtn);
-      (newBtn as HTMLElement).addEventListener('click', (e) => {
-        e.stopPropagation();
-        const button = e.currentTarget as HTMLElement;
-        const icon = button.querySelector('svg');
-        const details = button.nextElementSibling as HTMLElement;
-
-        if (details) {
-          details.classList.toggle('hidden');
-          if (icon) {
-            icon.style.transform = details.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(90deg)';
-          }
-        }
-      });
-    });
-
     // App Code toggle buttons - use DOM manipulation without re-render
     this.querySelectorAll('.app-code-toggle-btn').forEach(btn => {
       const newBtn = btn.cloneNode(true);
@@ -638,73 +671,6 @@ export class ConversationPanel extends HTMLElement {
           details.classList.toggle('hidden');
           if (icon) {
             icon.style.transform = details.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(90deg)';
-          }
-        }
-      });
-    });
-
-    // Save message buttons
-    this.querySelectorAll('.save-msg-btn').forEach(btn => {
-      const newBtn = btn.cloneNode(true);
-      btn.replaceWith(newBtn);
-      (newBtn as HTMLElement).addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const button = e.currentTarget as HTMLElement;
-
-        if (!this.currentProject) {
-          alert('No project selected. Please select a project first.');
-          return;
-        }
-
-        const content = button.getAttribute('data-message-content');
-        if (!content) return;
-
-        try {
-          const savedPath = await window.electronAPI?.saveMessageToFile(this.currentProject.path, content);
-
-          if (savedPath) {
-            // Show success feedback
-            const originalHTML = button.innerHTML;
-            button.classList.add('text-green-500');
-            setTimeout(() => {
-              button.classList.remove('text-green-500');
-              button.innerHTML = originalHTML;
-            }, 2000);
-          }
-        } catch (error: any) {
-          console.error('Failed to save message:', error);
-          alert(`Failed to save file: ${error.message}`);
-        }
-      });
-    });
-
-    // Copy message buttons
-    this.querySelectorAll('.copy-msg-btn').forEach(btn => {
-      const newBtn = btn.cloneNode(true);
-      btn.replaceWith(newBtn);
-      (newBtn as HTMLElement).addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const button = e.currentTarget as HTMLElement;
-        const originalContent = button.getAttribute('data-original-content');
-
-        if (originalContent) {
-          try {
-            await navigator.clipboard.writeText(originalContent);
-
-            // Show success feedback
-            const originalHTML = button.innerHTML;
-            button.innerHTML = `
-              <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-            `;
-
-            // Reset after 2 seconds
-            setTimeout(() => {
-              button.innerHTML = originalHTML;
-            }, 2000);
-          } catch (error) {
-            console.error('Failed to copy text:', error);
           }
         }
       });

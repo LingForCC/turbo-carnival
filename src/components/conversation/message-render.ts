@@ -9,7 +9,7 @@ import type { ToolCallData } from './conversation-panel';
 
 export interface MessageRenderers {
   renderUserMessage: (content: string) => string;
-  renderAssistantMessage: (content: string, reasoning?: string) => string;
+  renderAssistantMessage?: (content: string, reasoning?: string) => string;
   renderToolCallMessage: (content: string, toolCall: ToolCallData, reasoning?: string) => string;
 }
 

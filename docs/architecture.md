@@ -110,6 +110,7 @@ The main process is organized into dedicated modules:
   - `getFileTree(projectPath, options)` - Gets file tree structure
   - `listProjectFiles(projectPath, options)` - Lists .txt and .md files
   - `readFileContents(filePaths)` - Reads multiple file contents
+  - `saveMessageToFile(projectPath, content)` - Saves message content to a file in the project folder
   - `streamChatAgentMessage(projectPath, agentName, message, filePaths, onChunk, onComplete, onError)` - Streams chat agent message
   - `streamAppAgentMessage(projectPath, agentName, message, filePaths, onChunk, onComplete, onError)` - Streams app agent message
 
@@ -135,8 +136,9 @@ The renderer uses vanilla JavaScript Web Components (not Vue/React). Each compon
 - `project-panel` (`src/components/project-panel.ts`) - Collapsible left sidebar (264px wide) that manages local folder projects
 - `project-agent-dashboard` (`src/components/project-agent-dashboard.ts`) - Center content area that displays agents in a grid, handles dashboard/chat view switching
 - `conversation-panel` (`src/components/conversation-panel.ts`) - Reusable chat interface with streaming, tool call indicators, and optional file tagging
-- `chat-panel` (`src/components/chat-panel.ts`) - Interactive chat interface with streaming support, wraps conversation-panel for chat agents
-- `app-panel` (`src/components/app-panel.ts`) - Split-panel interface for App-type agents with chat (left 25%) and live app preview (right 75%)
+- `assistant-message` (`src/components/conversation/assistant-message.ts`) - Web Component for rendering assistant messages with markdown, reasoning display, save/copy buttons; uses factory pattern for handler injection
+- `chat-panel` (`src/components/chat-panel.ts`) - Interactive chat interface with streaming support, wraps conversation-panel for chat agents, provides assistant message factory with save handler
+- `app-panel` (`src/components/app-panel.ts`) - Split-panel interface for App-type agents with chat (left 25%) and live app preview (right 75%), provides custom renderers for app-specific message rendering
 - `project-detail-panel` (`src/components/project-detail-panel.ts`) - Collapsible right sidebar (264px wide) that displays recursive file tree
 - `agent-form-dialog` (`src/components/agent-form-dialog.ts`) - Modal dialog for creating and editing agents
 - `provider-dialog` (`src/components/provider-dialog.ts`) - Modal dialog for managing LLM providers

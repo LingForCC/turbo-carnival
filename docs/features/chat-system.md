@@ -54,12 +54,15 @@ Reusable Web Component that provides:
 - Configurable placeholder text
 - Empty state always shows "Start a conversation!" with chat icon
 - **Event-driven**: Dispatches `message-sent` events instead of calling IPC directly
-- **Injectable message renderers** - Custom rendering logic can be injected via constructor or `setRenderers()` method
-- Public methods for parent control: `handleStreamChunk()`, `handleStreamReasoning()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallComplete()`, `handleToolCallFailed()`, `setRenderers()`
+- **Injectable message renderers** - Custom rendering logic can be injected via `setRenderers()` method
+- **Assistant message factory** - Parent components inject a factory function for creating assistant message Web Components with handlers
+- Public methods for parent control: `handleStreamChunk()`, `handleStreamReasoning()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallComplete()`, `handleToolCallFailed()`, `setRenderers()`, `setAssistantMessageFactory()`
 
 ### Message Rendering System
 
-The message rendering logic has been extracted into a separate module for better maintainability and customization:
+The message rendering logic uses a hybrid approach:
+- **User messages** and **tool call messages** use string-based rendering via injectable renderers
+- **Assistant messages** use Web Components created via a factory pattern (for chat-panel) or custom string-based rendering (for app-panel)
 
 **Location**: `src/components/conversation/message-render.ts`
 
@@ -67,17 +70,47 @@ The message rendering logic has been extracted into a separate module for better
 ```typescript
 interface MessageRenderers {
   renderUserMessage: (content: string) => string;
-  renderAssistantMessage: (content: string, reasoning?: string) => string;
+  renderAssistantMessage?: (content: string, reasoning?: string) => string;  // Optional
   renderToolCallMessage: (content: string, toolCall: ToolCallData, reasoning?: string) => string;
 }
 ```
 
+**assistant-message Web Component**:
+**Location**: `src/components/conversation/assistant-message.ts`
+
+A reusable Web Component for rendering assistant messages with:
+- Markdown content rendering (using `marked` and `DOMPurify` for XSS prevention)
+- Optional collapsible "Thinking Process" section for reasoning content
+- Save button with parent-provided handler
+- Copy button with default clipboard behavior
+- Dark mode support
+
+**Factory Pattern**:
+The component uses a factory pattern to allow parent components to inject custom save handlers:
+
+```typescript
+// In parent component (chat-panel):
+const createAssistantMessage = (content: string, reasoning: string): AssistantMessage => {
+  return AssistantMessage.createWithHandlers(
+    content,
+    reasoning,
+    async (content) => {
+      // Save handler implementation
+      await window.electronAPI.saveMessageToFile(projectPath, content);
+    }
+  );
+};
+conversation.setAssistantMessageFactory(createAssistantMessage);
+```
+
 **Features**:
-- **XSS Prevention**: All user-generated content is escaped via `escapeHtml()`
+- **XSS Prevention**: All user-generated content is escaped via `escapeHtml()` and DOMPurify sanitization
 - **Markdown Rendering**: Assistant messages rendered with `marked` and sanitized via `DOMPurify`
 - **Tool Call Display**: Status-based styling (executing/completed/failed) with expandable details
 - **Reasoning Display**: Collapsible "Thinking Process" section for GLM reasoning content
-- **Action Buttons**: Save and copy buttons on assistant messages
+- **Action Buttons**: Save button with custom handler, copy button with default clipboard behavior
+
+**String-Based Renderers** (for user/tool messages and app-panel custom rendering):
 
 **Default Renderers**: `createDefaultMessageRenderers()` returns the standard rendering implementations.
 
@@ -87,11 +120,11 @@ interface MessageRenderers {
   - Removes HTML blocks from main content (they appear only in callouts)
   - Renders all other content as normal markdown
   - Supports multiple HTML code blocks (numbered as App Code, App Code 2, etc.)
-  - Used by `app-panel` for app agents
+  - Used by `app-panel` for app agents (uses custom string-based rendering instead of factory)
 
 **Customization**:
-- Pass custom renderers via constructor: `new ConversationPanel(customRenderers)`
-- Update renderers at runtime: `conversationPanel.setRenderers(customRenderers)`
+- Pass custom renderers via: `conversationPanel.setRenderers(customRenderers)`
+- Pass factory via: `conversationPanel.setAssistantMessageFactory(factoryFunction)`
 - Use individual renderer functions (e.g., `renderAppContent`) when creating custom MessageRenderers objects
 
 ### Usage Examples

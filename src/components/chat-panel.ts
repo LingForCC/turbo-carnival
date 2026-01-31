@@ -1,6 +1,7 @@
 import type { Agent, Project, ToolCallEvent } from '../global.d.ts';
-import { createDefaultMessageRenderers, type MessageRenderers } from './conversation/message-render';
+import { renderUserMessage, renderToolCallMessage, type MessageRenderers } from './conversation/message-render';
 import type { ToolCallData } from './conversation/conversation-panel';
+import { AssistantMessage } from './conversation/assistant-message';
 
 /**
  * ChatPanel Web Component
@@ -132,8 +133,35 @@ export class ChatPanel extends HTMLElement {
     if (!conversation) return;
 
     // Inject message renderers into conversation-panel
-    const messageRenderers = createDefaultMessageRenderers();
+    // Note: renderAssistantMessage is not included since chat-panel uses the factory pattern
+    const messageRenderers: MessageRenderers = {
+      renderUserMessage,
+      renderToolCallMessage
+    };
     conversation.setRenderers(messageRenderers);
+
+    // Create and inject the assistant message factory
+    // The factory closes over the chat-panel's context, allowing access to currentProject
+    const createAssistantMessage = (content: string, reasoning: string): AssistantMessage => {
+      return AssistantMessage.createWithHandlers(
+        content,
+        reasoning,
+        // Save handler - uses currentProject from chat-panel's context
+        async (content: string) => {
+          if (!this.currentProject) {
+            console.warn('[ChatPanel] No project selected, cannot save message');
+            return;
+          }
+          try {
+            await window.electronAPI?.saveMessageToFile(this.currentProject.path, content);
+          } catch (error: any) {
+            console.error('[ChatPanel] Failed to save message:', error);
+            throw error;
+          }
+        }
+      );
+    };
+    conversation.setAssistantMessageFactory(createAssistantMessage);
 
     // Listen for message-sent events from conversation-panel
     // This event is dispatched when user sends a message
