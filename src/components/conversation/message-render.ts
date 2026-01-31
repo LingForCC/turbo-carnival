@@ -1,5 +1,4 @@
-import { marked } from 'marked';
-import * as DOMPurify from 'dompurify';
+import { escapeHtml, renderMarkdown } from './utils';
 import type { ToolCallData } from './conversation-panel';
 
 /**
@@ -8,44 +7,8 @@ import type { ToolCallData } from './conversation-panel';
  */
 
 export interface MessageRenderers {
-  renderUserMessage: (content: string) => string;
   renderAssistantMessage?: (content: string, reasoning?: string) => string;
   renderToolCallMessage: (content: string, toolCall: ToolCallData, reasoning?: string) => string;
-}
-
-/**
- * Escape HTML to prevent XSS attacks
- */
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-/**
- * Safely render markdown content with XSS protection
- * Only used for assistant messages (not for tool calls or user messages)
- */
-function renderMarkdown(content: string): string {
-  try {
-    // Parse markdown to HTML
-    const html = marked.parse(content) as string;
-
-    // Sanitize HTML to prevent XSS attacks
-    // Handle both ESM and CommonJS imports of DOMPurify
-    const sanitize = (DOMPurify as any).default?.sanitize || (DOMPurify as any).sanitize || DOMPurify;
-    const sanitized = sanitize(html, {
-      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre', 'blockquote', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
-      ALLOWED_ATTR: ['href', 'title', 'class'],
-      ALLOW_DATA_ATTR: false
-    });
-
-    return sanitized;
-  } catch (error) {
-    // Fallback to escaped HTML if markdown parsing fails
-    console.error('Markdown parsing error:', error);
-    return escapeHtml(content);
-  }
 }
 
 /**
@@ -316,7 +279,6 @@ export function renderAppContent(content: string, reasoning?: string): string {
  */
 export function createDefaultMessageRenderers(): MessageRenderers {
   return {
-    renderUserMessage,
     renderAssistantMessage,
     renderToolCallMessage
   };

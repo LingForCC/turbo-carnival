@@ -121,9 +121,10 @@ The documentation has been split into focused modules for better performance:
 - `app-container` - Root layout, event forwarding
 - `project-panel` - Left sidebar, project management
 - `project-agent-dashboard` - Center area, agent grid/chat switching
-- `conversation-panel` - Reusable chat interface (event-driven, tool call indicators, injectable renderers, assistant message factory)
+- `conversation-panel` - Reusable chat interface (event-driven, tool call indicators, injectable renderers, message factories for both user and assistant messages)
+- `user-message` - Web Component for user messages (plain text rendering, HTML escaping, blue background, right-aligned)
 - `assistant-message` - Web Component for assistant messages (markdown rendering, reasoning display, save/copy buttons, factory pattern for handlers)
-- `chat-panel` - Right sidebar chat interface (uses conversation-panel, provides assistant message factory with save handler, handles chat-agent IPC)
+- `chat-panel` - Right sidebar chat interface (uses conversation-panel, provides message factories for both user and assistant messages, handles chat-agent IPC)
 - `app-panel` - Split-panel interface for App-type agents (uses conversation-panel, provides custom renderers for app-specific rendering, handles app-agent IPC)
 - `project-detail-panel` - Right sidebar, file tree
 - `agent-form-dialog` - Agent creation/editing with model config and provider selection

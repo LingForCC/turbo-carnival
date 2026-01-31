@@ -1,7 +1,8 @@
 import type { Agent, Project, ToolCallEvent } from '../global.d.ts';
-import { renderUserMessage, renderToolCallMessage, type MessageRenderers } from './conversation/message-render';
+import { renderToolCallMessage, type MessageRenderers } from './conversation/message-render';
 import type { ToolCallData } from './conversation/conversation-panel';
 import { AssistantMessage } from './conversation/assistant-message';
+import { UserMessage } from './conversation/user-message';
 
 /**
  * ChatPanel Web Component
@@ -135,10 +136,15 @@ export class ChatPanel extends HTMLElement {
     // Inject message renderers into conversation-panel
     // Note: renderAssistantMessage is not included since chat-panel uses the factory pattern
     const messageRenderers: MessageRenderers = {
-      renderUserMessage,
       renderToolCallMessage
     };
     conversation.setRenderers(messageRenderers);
+
+    // Create and inject the user message factory
+    const createUserMessage = (content: string): UserMessage => {
+      return UserMessage.create(content);
+    };
+    conversation.setUserMessageFactory(createUserMessage);
 
     // Create and inject the assistant message factory
     // The factory closes over the chat-panel's context, allowing access to currentProject

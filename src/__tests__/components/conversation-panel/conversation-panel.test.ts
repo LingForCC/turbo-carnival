@@ -5,6 +5,8 @@
 import { mountComponent, createMockProject, mockElectronAPI, waitForAsync, spyOnEvent } from '../../helpers/component-testing';
 import { createMockAgent } from '../../helpers/mocks';
 import type { ChatMessage } from '../../../components/conversation/conversation-panel';
+import { UserMessage } from '../../../components/conversation/user-message';
+import { AssistantMessage } from '../../../components/conversation/assistant-message';
 
 // Import conversation-panel to register the custom element
 // Note: mountComponent will also do this, but we import here for type safety
@@ -18,9 +20,21 @@ interface ConversationPanel extends HTMLElement {
   handleStreamChunk(chunk: string): void;
   handleStreamComplete(content: string): void;
   handleStreamError(error: string): void;
+  setUserMessageFactory(factory: (content: string) => UserMessage): void;
+  setAssistantMessageFactory(factory: (content: string, reasoning: string) => AssistantMessage): void;
   taggedFiles?: Array<{ name: string; path: string }>;
   chatHistory?: ChatMessage[];
   currentStreamedContent?: string;
+}
+
+/**
+ * Helper function to set up the message factories for tests
+ */
+function setupMessageFactories(element: ConversationPanel): void {
+  element.setUserMessageFactory((content: string) => UserMessage.create(content));
+  element.setAssistantMessageFactory((content: string, reasoning: string) =>
+    AssistantMessage.createWithHandlers(content, reasoning, async () => {})
+  );
 }
 
 describe('ConversationPanel Web Component', () => {
@@ -152,6 +166,7 @@ describe('ConversationPanel Web Component', () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
       await waitForAsync();
+      setupMessageFactories(element);
 
       const history = [
         { role: 'user' as const, content: 'Hello', timestamp: Date.now() },
@@ -210,6 +225,7 @@ describe('ConversationPanel Web Component', () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
       await waitForAsync();
+      setupMessageFactories(element);
 
       const mockAgent = createMockAgent({
         config: {
@@ -291,6 +307,7 @@ describe('ConversationPanel Web Component', () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
       await waitForAsync();
+      setupMessageFactories(element);
 
       const mockAgent = createMockAgent();
       const mockProject = createMockProject();
@@ -319,6 +336,7 @@ describe('ConversationPanel Web Component', () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
       await waitForAsync();
+      setupMessageFactories(element);
 
       const mockAgent = createMockAgent();
       const mockProject = createMockProject();
@@ -355,6 +373,7 @@ describe('ConversationPanel Web Component', () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
       await waitForAsync();
+      setupMessageFactories(element);
 
       const mockAgent = createMockAgent();
       const mockProject = createMockProject();
@@ -387,6 +406,7 @@ describe('ConversationPanel Web Component', () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
       await waitForAsync();
+      setupMessageFactories(element);
 
       const mockAgent = createMockAgent();
       const mockProject = createMockProject();
@@ -417,6 +437,7 @@ describe('ConversationPanel Web Component', () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
       await waitForAsync();
+      setupMessageFactories(element);
 
       const mockAgent = createMockAgent();
       const mockProject = createMockProject();
@@ -432,9 +453,18 @@ describe('ConversationPanel Web Component', () => {
       element.handleStreamChunk(''); // This renders the user message
       await waitForAsync();
 
-      const html = element.innerHTML;
-      expect(html).not.toContain('<script>alert');
-      expect(html).toContain('&lt;script&gt;');
+      // Check the rendered content inside user-message element is properly escaped
+      const userMessageElement = element.querySelector('user-message');
+      expect(userMessageElement).toBeTruthy();
+      if (userMessageElement) {
+        const renderedContent = userMessageElement.textContent || '';
+        // Text content should contain the escaped HTML as text
+        expect(renderedContent).toContain('<script>alert("xss")</script>');
+        // The rendered HTML should not contain the actual script tag
+        const innerHTML = userMessageElement.innerHTML;
+        expect(innerHTML).toContain('&lt;script&gt;');
+        expect(innerHTML).not.toContain('<script>alert');
+      }
 
       cleanup();
     });
@@ -443,6 +473,7 @@ describe('ConversationPanel Web Component', () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
       await waitForAsync();
+      setupMessageFactories(element);
 
       const mockAgent = createMockAgent();
       const mockProject = createMockProject();
@@ -473,6 +504,7 @@ describe('ConversationPanel Web Component', () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
       await waitForAsync();
+      setupMessageFactories(element);
 
       const mockAgent = createMockAgent({
         history: [

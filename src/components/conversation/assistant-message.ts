@@ -1,5 +1,4 @@
-import { marked } from 'marked';
-import * as DOMPurify from 'dompurify';
+import { escapeHtml, renderMarkdown } from './utils';
 
 /**
  * AssistantMessage Web Component
@@ -65,40 +64,6 @@ export class AssistantMessage extends HTMLElement {
   }
 
   /**
-   * Escape HTML to prevent XSS attacks
-   */
-  private escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  /**
-   * Safely render markdown content with XSS protection
-   */
-  private renderMarkdown(content: string): string {
-    try {
-      // Parse markdown to HTML
-      const html = marked.parse(content) as string;
-
-      // Sanitize HTML to prevent XSS attacks
-      // Handle both ESM and CommonJS imports of DOMPurify
-      const sanitize = (DOMPurify as any).default?.sanitize || (DOMPurify as any).sanitize || DOMPurify;
-      const sanitized = sanitize(html, {
-        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'code', 'pre', 'blockquote', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
-        ALLOWED_ATTR: ['href', 'title', 'class'],
-        ALLOW_DATA_ATTR: false
-      });
-
-      return sanitized;
-    } catch (error) {
-      // Fallback to escaped HTML if markdown parsing fails
-      console.error('Markdown parsing error:', error);
-      return this.escapeHtml(content);
-    }
-  }
-
-  /**
    * Render reasoning/thinking section
    */
   private renderReasoningSection(): string {
@@ -116,7 +81,7 @@ export class AssistantMessage extends HTMLElement {
         </button>
         <div class="reasoning-content hidden mt-2 p-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-md">
           <div class="text-sm text-gray-700 prose prose-sm max-w-none">
-            ${this.renderMarkdown(this.reasoning)}
+            ${renderMarkdown(this.reasoning)}
           </div>
         </div>
       </div>
@@ -128,7 +93,7 @@ export class AssistantMessage extends HTMLElement {
     const reasoningSection = this.renderReasoningSection();
 
     // Apply markdown parsing
-    const renderedContent = this.renderMarkdown(this.content);
+    const renderedContent = renderMarkdown(this.content);
 
     // Action buttons (save and copy)
     const actionButtons = `

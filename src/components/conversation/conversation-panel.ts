@@ -61,6 +61,9 @@ export class ConversationPanel extends HTMLElement {
   // Factory function for creating assistant messages with handlers
   private assistantMessageFactory: ((content: string, reasoning: string) => import('./assistant-message').AssistantMessage) | null = null;
 
+  // Factory function for creating user messages
+  private userMessageFactory: ((content: string) => import('./user-message').UserMessage) | null = null;
+
   constructor(renderers?: MessageRenderers) {
     super();
 
@@ -120,6 +123,17 @@ export class ConversationPanel extends HTMLElement {
     factory: (content: string, reasoning: string) => import('./assistant-message').AssistantMessage
   ): void {
     this.assistantMessageFactory = factory;
+  }
+
+  /**
+   * Set the factory function for creating user messages.
+   * The factory function should accept (content) and return a UserMessage element.
+   * This allows parent components to inject custom user message rendering.
+   */
+  public setUserMessageFactory(
+    factory: (content: string) => import('./user-message').UserMessage
+  ): void {
+    this.userMessageFactory = factory;
   }
 
   // ========== PUBLIC API ==========
@@ -509,7 +523,14 @@ export class ConversationPanel extends HTMLElement {
 
     // Route to dedicated render functions based on role
     if (role === 'user') {
-      return this.messageRenderers.renderUserMessage(content);
+      // Use factory to create UserMessage Web Component
+      if (this.userMessageFactory) {
+        return this.userMessageFactory(content);
+      } else {
+        console.warn('[ConversationPanel] No user message factory set, cannot render user message');
+        // Return empty string to avoid breaking the UI
+        return '';
+      }
     } else {
       // Check if there's a custom renderAssistantMessage function (for app-panel)
       if (this.messageRenderers.renderAssistantMessage) {
