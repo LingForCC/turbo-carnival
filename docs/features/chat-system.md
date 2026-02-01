@@ -54,24 +54,14 @@ Reusable Web Component that provides:
 - Configurable placeholder text
 - Empty state always shows "Start a conversation!" with chat icon
 - **Event-driven**: Dispatches `message-sent` events instead of calling IPC directly
-- **Injectable message renderers** - Custom rendering logic can be injected via `setRenderers()` method
 - **Message factories** - Parent components inject factory functions for creating user, assistant, and tool call message Web Components
-- Public methods for parent control: `handleStreamChunk()`, `handleStreamReasoning()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallComplete()`, `handleToolCallFailed()`, `setRenderers()`, `setUserMessageFactory()`, `setAssistantMessageFactory()`, `setToolCallMessageFactory()`
+- Public methods for parent control: `handleStreamChunk()`, `handleStreamReasoning()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallComplete()`, `handleToolCallFailed()`, `setUserMessageFactory()`, `setAssistantMessageFactory()`, `setToolCallMessageFactory()`
 
 ### Message Rendering System
 
 The message rendering logic uses a consistent factory pattern for all message types:
 - **User messages**, **assistant messages**, and **tool call messages** all use Web Components created via factory pattern
 - Parent components (chat-panel, app-panel) inject factory functions for each message type
-
-**Location**: `src/components/conversation/message-render.ts`
-
-**MessageRenderers Interface**:
-```typescript
-interface MessageRenderers {
-  renderAssistantMessage?: (content: string, reasoning?: string) => string;  // Optional, for app-panel custom rendering
-}
-```
 
 **Utility Functions** (`src/components/conversation/utils.ts`):
 - **`escapeHtml(text: string)`** - Escapes HTML to prevent XSS attacks
@@ -160,24 +150,41 @@ conversation.setUserMessageFactory(createUserMessage);
 - **Reasoning Display**: Collapsible "Thinking Process" section for GLM reasoning content
 - **Action Buttons**: Save button with custom handler, copy button with default clipboard behavior
 
-**String-Based Renderers** (for app-panel custom rendering only):
+**app-code-message Web Component**:
+**Location**: `src/components/conversation/app-code-message.ts`
 
-**Default Renderers**: `createDefaultMessageRenderers()` returns the standard rendering implementations (includes optional `renderAssistantMessage` only - user, assistant, and tool call messages use Web Components via factory pattern).
+A specialized Web Component for rendering app agent assistant messages with:
+- **HTML code block extraction** - Automatically extracts ````html ... ```` blocks from content
+- **App code callouts** - Displays extracted HTML blocks in gray-styled, collapsible callouts labeled "App Code"
+- **Multiple blocks support** - Supports multiple HTML code blocks (numbered as App Code, App Code 2, etc.)
+- **Markdown rendering** - Renders remaining content (non-HTML blocks) as markdown
+- **Optional collapsible "Thinking Process" section** for reasoning content
+- **Save button** with parent-provided handler
+- **Copy button** with default clipboard behavior
+- **Dark mode support**
 
-**Custom Renderers**:
-- **`renderAppContent()`** - App-specific renderer that:
-  - Extracts HTML code blocks (````html ... ````) and displays them in gray-styled, collapsible callouts labeled "App Code"
-  - Removes HTML blocks from main content (they appear only in callouts)
-  - Renders all other content as normal markdown
-  - Supports multiple HTML code blocks (numbered as App Code, App Code 2, etc.)
-  - Used by `app-panel` for app agents (uses custom string-based rendering instead of factory)
+**Factory Pattern**:
+The component uses a factory pattern to allow parent components to inject custom save handlers:
+
+```typescript
+// In parent component (app-panel):
+const createAssistantMessage = (content: string, reasoning: string): AppCodeMessage => {
+  return AppCodeMessage.createWithHandlers(
+    content,
+    reasoning,
+    async (content) => {
+      // Save handler implementation
+      await window.electronAPI.saveMessageToFile(projectPath, content);
+    }
+  );
+};
+conversation.setAssistantMessageFactory(createAssistantMessage);
+```
 
 **Customization**:
-- Pass custom renderers via: `conversationPanel.setRenderers(customRenderers)`
 - Pass user message factory via: `conversationPanel.setUserMessageFactory(factoryFunction)`
 - Pass assistant message factory via: `conversationPanel.setAssistantMessageFactory(factoryFunction)`
 - Pass tool call message factory via: `conversationPanel.setToolCallMessageFactory(factoryFunction)`
-- Use individual renderer functions (e.g., `renderAppContent`) when creating custom MessageRenderers objects
 
 ### Usage Examples
 

@@ -1,7 +1,5 @@
 import type { Agent, Project, LLMProviderType } from '../../global.d.ts';
 import { createTransformer } from '../transformers';
-import type { MessageRenderers } from './message-render';
-import { createDefaultMessageRenderers } from './message-render';
 
 /**
  * ConversationPanel Web Component
@@ -55,9 +53,6 @@ export class ConversationPanel extends HTMLElement {
   private autocompleteQuery: string = '';
   private autocompleteIndex: number = -1;
 
-  // Injected renderers
-  private messageRenderers: MessageRenderers;
-
   // Factory function for creating assistant messages with handlers
   private assistantMessageFactory: ((content: string, reasoning: string) => import('./assistant-message').AssistantMessage) | null = null;
 
@@ -67,11 +62,8 @@ export class ConversationPanel extends HTMLElement {
   // Factory function for creating tool call messages
   private toolCallMessageFactory: ((content: string, toolCall: ToolCallData, reasoning?: string) => import('./tool-call-message').ToolCallMessage) | null = null;
 
-  constructor(renderers?: MessageRenderers) {
+  constructor() {
     super();
-
-    // Initialize renderers - use provided or create default ones
-    this.messageRenderers = renderers || createDefaultMessageRenderers();
   }
 
   static get observedAttributes(): string[] {
@@ -107,14 +99,6 @@ export class ConversationPanel extends HTMLElement {
     this.enableFileTagging = this.getAttribute('enable-file-tagging') === 'true';
     this.placeholder = this.getAttribute('placeholder') || 'Type a message...';
     this.modelInfo = this.getAttribute('model-info') || '';
-  }
-
-  /**
-   * Set custom renderers (can be called by parent components)
-   */
-  public setRenderers(renderers: MessageRenderers): void {
-    this.messageRenderers = renderers;
-    this.render();
   }
 
   /**
@@ -551,15 +535,11 @@ export class ConversationPanel extends HTMLElement {
         return '';
       }
     } else {
-      // Check if there's a custom renderAssistantMessage function (for app-panel)
-      if (this.messageRenderers.renderAssistantMessage) {
-        return this.messageRenderers.renderAssistantMessage(content, reasoning);
-      }
       // Use factory to create AssistantMessage Web Component
       if (this.assistantMessageFactory) {
         return this.assistantMessageFactory(content, reasoning || '');
       } else {
-        console.warn('[ConversationPanel] No assistant message factory or custom renderer set, cannot render assistant message');
+        console.warn('[ConversationPanel] No assistant message factory set, cannot render assistant message');
         // Return empty string to avoid breaking the UI
         return '';
       }

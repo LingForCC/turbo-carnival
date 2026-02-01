@@ -66,12 +66,15 @@ The left panel provides a chat interface similar to the standard chat panel:
 
 ### Message Rendering
 
-App agents use a custom message renderer (`renderAppContent`) that:
+App agents use the `app-code-message` Web Component that:
 - **Extracts HTML code blocks**: Detects ````html ... ```` blocks in AI responses
 - **Renders HTML callouts**: Displays HTML code in gray-styled, collapsible callouts
 - **Removes HTML from main content**: HTML blocks appear only in callouts, not in the main markdown content
 - **Supports multiple blocks**: Multiple HTML blocks are numbered (App Code, App Code 2, etc.)
 - **Renders remaining content as markdown**: All non-HTML content is rendered normally
+- **Factory pattern**: Parent component (app-panel) injects save handler via closure
+
+**Component Location**: `src/components/conversation/app-code-message.ts`
 
 **Callout Styling:**
 - Gray background (`bg-gray-100 dark:bg-gray-800`)

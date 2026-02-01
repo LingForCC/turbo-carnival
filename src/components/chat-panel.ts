@@ -134,11 +134,6 @@ export class ChatPanel extends HTMLElement {
     const conversation = this.querySelector('#conversation') as any;
     if (!conversation) return;
 
-    // Inject message renderers into conversation-panel
-    // Note: renderAssistantMessage is not included since chat-panel uses the factory pattern
-    const messageRenderers: MessageRenderers = {};
-    conversation.setRenderers(messageRenderers);
-
     // Create and inject the user message factory
     const createUserMessage = (content: string): UserMessage => {
       return UserMessage.create(content);

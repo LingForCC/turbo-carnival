@@ -1,10 +1,6 @@
 import type { Agent, Project, App } from '../global.d.ts';
-import {
-  renderAppContent,
-  type MessageRenderers
-} from './conversation/message-render';
 import type { ToolCallData } from './conversation/conversation-panel';
-import { AssistantMessage } from './conversation/assistant-message';
+import { AppCodeMessage } from './conversation/app-code-message';
 import { UserMessage } from './conversation/user-message';
 import { ToolCallMessage } from './conversation/tool-call-message';
 
@@ -185,13 +181,6 @@ export class AppPanel extends HTMLElement {
     const conversation = this.querySelector('#conversation') as any;
     if (!conversation) return;
 
-    // Inject message renderers into conversation-panel
-    // Use renderAppContent for assistant messages to show HTML code blocks as callouts
-    const messageRenderers: MessageRenderers = {
-      renderAssistantMessage: (content, reasoning?) => renderAppContent(content, reasoning)
-    };
-    conversation.setRenderers(messageRenderers);
-
     // Create and inject the user message factory
     const createUserMessage = (content: string): UserMessage => {
       return UserMessage.create(content);
@@ -200,8 +189,9 @@ export class AppPanel extends HTMLElement {
 
     // Create and inject the assistant message factory
     // The factory closes over the app-panel's context, allowing access to currentProject
-    const createAssistantMessage = (content: string, reasoning: string): AssistantMessage => {
-      return AssistantMessage.createWithHandlers(
+    // Use AppCodeMessage for app agents to render HTML code blocks as callouts
+    const createAssistantMessage = (content: string, reasoning: string): AppCodeMessage => {
+      return AppCodeMessage.createWithHandlers(
         content,
         reasoning,
         // Save handler - uses currentProject from app-panel's context
