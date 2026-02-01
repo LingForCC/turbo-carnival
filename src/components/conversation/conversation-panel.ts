@@ -64,6 +64,9 @@ export class ConversationPanel extends HTMLElement {
   // Factory function for creating user messages
   private userMessageFactory: ((content: string) => import('./user-message').UserMessage) | null = null;
 
+  // Factory function for creating tool call messages
+  private toolCallMessageFactory: ((content: string, toolCall: ToolCallData, reasoning?: string) => import('./tool-call-message').ToolCallMessage) | null = null;
+
   constructor(renderers?: MessageRenderers) {
     super();
 
@@ -134,6 +137,17 @@ export class ConversationPanel extends HTMLElement {
     factory: (content: string) => import('./user-message').UserMessage
   ): void {
     this.userMessageFactory = factory;
+  }
+
+  /**
+   * Set the factory function for creating tool call messages.
+   * The factory function should accept (content, toolCall, reasoning?) and return a ToolCallMessage element.
+   * This allows parent components to inject custom tool call message rendering.
+   */
+  public setToolCallMessageFactory(
+    factory: (content: string, toolCall: ToolCallData, reasoning?: string) => import('./tool-call-message').ToolCallMessage
+  ): void {
+    this.toolCallMessageFactory = factory;
   }
 
   // ========== PUBLIC API ==========
@@ -516,9 +530,14 @@ export class ConversationPanel extends HTMLElement {
    * Render a single message, returning either HTML string or DOM element
    */
   private renderMessageElement(role: 'user' | 'assistant', content: string, toolCall?: ToolCallData, reasoning?: string): string | HTMLElement {
-    // If this message has tool call data, render with special styling
+    // If this message has tool call data, render with factory
     if (toolCall) {
-      return this.messageRenderers.renderToolCallMessage(content, toolCall, reasoning);
+      if (this.toolCallMessageFactory) {
+        return this.toolCallMessageFactory(content, toolCall, reasoning);
+      } else {
+        console.warn('[ConversationPanel] No tool call message factory set, cannot render tool call message');
+        return '';
+      }
     }
 
     // Route to dedicated render functions based on role

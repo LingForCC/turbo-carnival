@@ -1,12 +1,12 @@
 import type { Agent, Project, App } from '../global.d.ts';
 import {
   renderAppContent,
-  renderToolCallMessage,
   type MessageRenderers
 } from './conversation/message-render';
 import type { ToolCallData } from './conversation/conversation-panel';
 import { AssistantMessage } from './conversation/assistant-message';
 import { UserMessage } from './conversation/user-message';
+import { ToolCallMessage } from './conversation/tool-call-message';
 
 /**
  * AppPanel Web Component
@@ -188,8 +188,7 @@ export class AppPanel extends HTMLElement {
     // Inject message renderers into conversation-panel
     // Use renderAppContent for assistant messages to show HTML code blocks as callouts
     const messageRenderers: MessageRenderers = {
-      renderAssistantMessage: (content, reasoning?) => renderAppContent(content, reasoning),
-      renderToolCallMessage: (content, toolCall, reasoning?) => renderToolCallMessage(content, toolCall, reasoning)
+      renderAssistantMessage: (content, reasoning?) => renderAppContent(content, reasoning)
     };
     conversation.setRenderers(messageRenderers);
 
@@ -221,6 +220,12 @@ export class AppPanel extends HTMLElement {
       );
     };
     conversation.setAssistantMessageFactory(createAssistantMessage);
+
+    // Create and inject the tool call message factory
+    const createToolCallMessage = (content: string, toolCall: ToolCallData, reasoning?: string): ToolCallMessage => {
+      return ToolCallMessage.createWithHandlers(content, toolCall, reasoning);
+    };
+    conversation.setToolCallMessageFactory(createToolCallMessage);
 
     // Listen for message-sent events from conversation-panel
     // This event is dispatched when user sends a message

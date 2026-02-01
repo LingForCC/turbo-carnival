@@ -4,9 +4,10 @@
 
 import { mountComponent, createMockProject, mockElectronAPI, waitForAsync, spyOnEvent } from '../../helpers/component-testing';
 import { createMockAgent } from '../../helpers/mocks';
-import type { ChatMessage } from '../../../components/conversation/conversation-panel';
+import type { ChatMessage, ToolCallData } from '../../../components/conversation/conversation-panel';
 import { UserMessage } from '../../../components/conversation/user-message';
 import { AssistantMessage } from '../../../components/conversation/assistant-message';
+import { ToolCallMessage } from '../../../components/conversation/tool-call-message';
 
 // Import conversation-panel to register the custom element
 // Note: mountComponent will also do this, but we import here for type safety
@@ -22,6 +23,7 @@ interface ConversationPanel extends HTMLElement {
   handleStreamError(error: string): void;
   setUserMessageFactory(factory: (content: string) => UserMessage): void;
   setAssistantMessageFactory(factory: (content: string, reasoning: string) => AssistantMessage): void;
+  setToolCallMessageFactory(factory: (content: string, toolCall: ToolCallData, reasoning?: string) => ToolCallMessage): void;
   taggedFiles?: Array<{ name: string; path: string }>;
   chatHistory?: ChatMessage[];
   currentStreamedContent?: string;
@@ -34,6 +36,9 @@ function setupMessageFactories(element: ConversationPanel): void {
   element.setUserMessageFactory((content: string) => UserMessage.create(content));
   element.setAssistantMessageFactory((content: string, reasoning: string) =>
     AssistantMessage.createWithHandlers(content, reasoning, async () => {})
+  );
+  element.setToolCallMessageFactory((content: string, toolCall: ToolCallData, reasoning?: string) =>
+    ToolCallMessage.createWithHandlers(content, toolCall, reasoning)
   );
 }
 
@@ -578,6 +583,7 @@ describe('ConversationPanel Web Component', () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
       await waitForAsync();
+      setupMessageFactories(element);
 
       const mockAgent = createMockAgent();
       const mockProject = createMockProject();
@@ -609,6 +615,7 @@ describe('ConversationPanel Web Component', () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
       await waitForAsync();
+      setupMessageFactories(element);
 
       const mockAgent = createMockAgent();
       const mockProject = createMockProject();
@@ -663,6 +670,7 @@ describe('ConversationPanel Web Component', () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
       await waitForAsync();
+      setupMessageFactories(element);
 
       const mockAgent = createMockAgent();
       const mockProject = createMockProject();

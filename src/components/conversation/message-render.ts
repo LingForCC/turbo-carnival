@@ -1,5 +1,4 @@
-import { escapeHtml, renderMarkdown } from './utils';
-import type { ToolCallData } from './conversation-panel';
+import { escapeHtml, renderMarkdown, renderReasoningSection } from './utils';
 
 /**
  * Message rendering utilities for conversation panel
@@ -8,30 +7,6 @@ import type { ToolCallData } from './conversation-panel';
 
 export interface MessageRenderers {
   renderAssistantMessage?: (content: string, reasoning?: string) => string;
-  renderToolCallMessage: (content: string, toolCall: ToolCallData, reasoning?: string) => string;
-}
-
-/**
- * Render reasoning/thinking section
- */
-function renderReasoningSection(reasoning: string): string {
-  return `
-    <div class="mb-3">
-      <button
-        class="reasoning-toggle-btn flex items-center gap-2 text-xs font-semibold text-purple-700 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 cursor-pointer border-0 bg-transparent p-0"
-      >
-        <svg class="w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-        </svg>
-        <span>Thinking Process</span>
-      </button>
-      <div class="reasoning-content hidden mt-2 p-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-md">
-        <div class="text-sm text-gray-700 prose prose-sm max-w-none">
-          ${renderMarkdown(reasoning)}
-        </div>
-      </div>
-    </div>
-  `;
 }
 
 /**
@@ -87,102 +62,6 @@ export function renderAssistantMessage(content: string, reasoning?: string): str
         ${reasoningSection}
         <div class="text-sm prose prose-sm max-w-none break-words">${renderedContent}</div>
         ${actionButtons}
-      </div>
-    </div>
-  `;
-}
-
-/**
- * Default tool call message renderer
- */
-export function renderToolCallMessage(
-  content: string,
-  toolCall: ToolCallData,
-  reasoning?: string
-): string {
-  const isExecuting = toolCall.status === 'executing';
-  const isFailed = toolCall.status === 'failed';
-  const isCompleted = toolCall.status === 'completed';
-
-  // Background color based on status only (all tool calls are now assistant messages)
-  const bgColor = isExecuting
-    ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700'
-    : (isFailed ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700' : 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700');
-
-  // Build reasoning section if present (appears before tool call)
-  const reasoningSection = reasoning ? renderReasoningSection(reasoning) : '';
-
-  // Status icon (hidden during execution)
-  const statusIcon = isExecuting
-    ? ''
-    : isCompleted
-      ? `<svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-         </svg>`
-      : `<svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-         </svg>`;
-
-  // Status text (hidden during execution)
-  const statusText = isExecuting
-    ? ''
-    : isCompleted
-      ? 'Completed'
-      : 'Failed';
-
-  return `
-    <div class="flex justify-start my-2">
-      <div class="max-w-[85%] w-[85%] rounded-lg border ${bgColor} px-4 py-3">
-        ${reasoningSection}
-        <div class="flex items-center gap-2">
-          ${statusIcon}
-          <span class="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate ${isExecuting ? 'flex-1' : ''}">
-            ${escapeHtml(toolCall.toolName)}
-          </span>
-          ${!isExecuting ? `
-            <span class="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">•</span>
-            <span class="text-xs text-gray-600 dark:text-gray-400 flex-shrink-0">${statusText}</span>
-          ` : ''}
-          <button
-            class="tool-call-toggle-btn hover:bg-gray-200 dark:hover:bg-gray-700 rounded p-1 cursor-pointer border-0 bg-transparent flex-shrink-0"
-          >
-            <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-          </button>
-        </div>
-
-        <div class="tool-call-details hidden mt-3">
-          ${toolCall.parameters && Object.keys(toolCall.parameters).length > 0 ? `
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-2">
-              <div class="font-semibold mb-1">Parameters:</div>
-              <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
-                <pre class="text-xs m-0 whitespace-pre-wrap break-all">${escapeHtml(JSON.stringify(toolCall.parameters, null, 2))}</pre>
-              </div>
-            </div>
-          ` : ''}
-
-          ${isCompleted && toolCall.result ? `
-            <div>
-              <div class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Result:</div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mb-2 bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
-                <pre class="text-xs m-0 whitespace-pre-wrap break-all">${escapeHtml(JSON.stringify(toolCall.result, null, 2))}</pre>
-              </div>
-              ${toolCall.executionTime ? `
-                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Execution time: ${toolCall.executionTime}ms</div>
-              ` : ''}
-            </div>
-          ` : ''}
-
-          ${isFailed && toolCall.error ? `
-            <div>
-              <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Error:</div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mb-2 bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
-                <pre class="text-xs m-0 whitespace-pre-wrap break-all text-red-700 dark:text-red-400">${escapeHtml(toolCall.error)}</pre>
-              </div>
-            </div>
-          ` : ''}
-        </div>
       </div>
     </div>
   `;
@@ -279,7 +158,6 @@ export function renderAppContent(content: string, reasoning?: string): string {
  */
 export function createDefaultMessageRenderers(): MessageRenderers {
   return {
-    renderAssistantMessage,
-    renderToolCallMessage
+    renderAssistantMessage
   };
 }

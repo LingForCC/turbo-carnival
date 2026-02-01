@@ -55,14 +55,14 @@ Reusable Web Component that provides:
 - Empty state always shows "Start a conversation!" with chat icon
 - **Event-driven**: Dispatches `message-sent` events instead of calling IPC directly
 - **Injectable message renderers** - Custom rendering logic can be injected via `setRenderers()` method
-- **Message factories** - Parent components inject factory functions for creating both user and assistant message Web Components
-- Public methods for parent control: `handleStreamChunk()`, `handleStreamReasoning()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallComplete()`, `handleToolCallFailed()`, `setRenderers()`, `setUserMessageFactory()`, `setAssistantMessageFactory()`
+- **Message factories** - Parent components inject factory functions for creating user, assistant, and tool call message Web Components
+- Public methods for parent control: `handleStreamChunk()`, `handleStreamReasoning()`, `handleStreamComplete()`, `handleStreamError()`, `clearChat()`, `handleToolCallComplete()`, `handleToolCallFailed()`, `setRenderers()`, `setUserMessageFactory()`, `setAssistantMessageFactory()`, `setToolCallMessageFactory()`
 
 ### Message Rendering System
 
-The message rendering logic uses a hybrid approach:
-- **User messages** and **assistant messages** use Web Components created via factory pattern (for chat-panel and app-panel)
-- **Tool call messages** use string-based rendering via injectable renderers
+The message rendering logic uses a consistent factory pattern for all message types:
+- **User messages**, **assistant messages**, and **tool call messages** all use Web Components created via factory pattern
+- Parent components (chat-panel, app-panel) inject factory functions for each message type
 
 **Location**: `src/components/conversation/message-render.ts`
 
@@ -70,13 +70,34 @@ The message rendering logic uses a hybrid approach:
 ```typescript
 interface MessageRenderers {
   renderAssistantMessage?: (content: string, reasoning?: string) => string;  // Optional, for app-panel custom rendering
-  renderToolCallMessage: (content: string, toolCall: ToolCallData, reasoning?: string) => string;
 }
 ```
 
 **Utility Functions** (`src/components/conversation/utils.ts`):
 - **`escapeHtml(text: string)`** - Escapes HTML to prevent XSS attacks
 - **`renderMarkdown(content: string)`** - Safely renders markdown with XSS protection (uses `marked` and `DOMPurify`)
+- **`renderReasoningSection(reasoning: string)`** - Renders collapsible "Thinking Process" section for reasoning content
+
+**tool-call-message Web Component**:
+**Location**: `src/components/conversation/tool-call-message.ts`
+
+A reusable Web Component for rendering tool call messages with:
+- Tool name and status indicator (executing/completed/failed)
+- Color-coded by status: executing (amber), completed (green), failed (red)
+- Collapsible details section showing parameters, results, execution time, and errors
+- Optional collapsible "Thinking Process" section for reasoning content
+- Clone-and-replace pattern for event listeners to prevent duplicates
+
+**Factory Pattern**:
+The component uses a factory pattern for consistent creation:
+
+```typescript
+// In parent component (chat-panel or app-panel):
+const createToolCallMessage = (content: string, toolCall: ToolCallData, reasoning?: string): ToolCallMessage => {
+  return ToolCallMessage.createWithHandlers(content, toolCall, reasoning);
+};
+conversation.setToolCallMessageFactory(createToolCallMessage);
+```
 
 **assistant-message Web Component**:
 **Location**: `src/components/conversation/assistant-message.ts`
@@ -132,16 +153,16 @@ conversation.setUserMessageFactory(createUserMessage);
 - **Simple Rendering**: User messages are plain text with whitespace preservation (`whitespace-pre-wrap`)
 - **Styling**: Blue background to distinguish from assistant messages (which have transparent background)
 
-**Common Features (both user-message and assistant-message)**:
+**Common Features (all message components)**:
 - **XSS Prevention**: All user-generated content is escaped via `escapeHtml()` and DOMPurify sanitization
 - **Markdown Rendering**: Assistant messages rendered with `marked` and sanitized via `DOMPurify`
 - **Tool Call Display**: Status-based styling (executing/completed/failed) with expandable details
 - **Reasoning Display**: Collapsible "Thinking Process" section for GLM reasoning content
 - **Action Buttons**: Save button with custom handler, copy button with default clipboard behavior
 
-**String-Based Renderers** (for tool call messages and app-panel custom rendering):
+**String-Based Renderers** (for app-panel custom rendering only):
 
-**Default Renderers**: `createDefaultMessageRenderers()` returns the standard rendering implementations (only includes `renderToolCallMessage` - user and assistant messages use Web Components via factory pattern).
+**Default Renderers**: `createDefaultMessageRenderers()` returns the standard rendering implementations (includes optional `renderAssistantMessage` only - user, assistant, and tool call messages use Web Components via factory pattern).
 
 **Custom Renderers**:
 - **`renderAppContent()`** - App-specific renderer that:
@@ -155,6 +176,7 @@ conversation.setUserMessageFactory(createUserMessage);
 - Pass custom renderers via: `conversationPanel.setRenderers(customRenderers)`
 - Pass user message factory via: `conversationPanel.setUserMessageFactory(factoryFunction)`
 - Pass assistant message factory via: `conversationPanel.setAssistantMessageFactory(factoryFunction)`
+- Pass tool call message factory via: `conversationPanel.setToolCallMessageFactory(factoryFunction)`
 - Use individual renderer functions (e.g., `renderAppContent`) when creating custom MessageRenderers objects
 
 ### Usage Examples

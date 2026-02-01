@@ -1,8 +1,9 @@
 import type { Agent, Project, ToolCallEvent } from '../global.d.ts';
-import { renderToolCallMessage, type MessageRenderers } from './conversation/message-render';
+import { type MessageRenderers } from './conversation/message-render';
 import type { ToolCallData } from './conversation/conversation-panel';
 import { AssistantMessage } from './conversation/assistant-message';
 import { UserMessage } from './conversation/user-message';
+import { ToolCallMessage } from './conversation/tool-call-message';
 
 /**
  * ChatPanel Web Component
@@ -135,9 +136,7 @@ export class ChatPanel extends HTMLElement {
 
     // Inject message renderers into conversation-panel
     // Note: renderAssistantMessage is not included since chat-panel uses the factory pattern
-    const messageRenderers: MessageRenderers = {
-      renderToolCallMessage
-    };
+    const messageRenderers: MessageRenderers = {};
     conversation.setRenderers(messageRenderers);
 
     // Create and inject the user message factory
@@ -168,6 +167,12 @@ export class ChatPanel extends HTMLElement {
       );
     };
     conversation.setAssistantMessageFactory(createAssistantMessage);
+
+    // Create and inject the tool call message factory
+    const createToolCallMessage = (content: string, toolCall: ToolCallData, reasoning?: string): ToolCallMessage => {
+      return ToolCallMessage.createWithHandlers(content, toolCall, reasoning);
+    };
+    conversation.setToolCallMessageFactory(createToolCallMessage);
 
     // Listen for message-sent events from conversation-panel
     // This event is dispatched when user sends a message
