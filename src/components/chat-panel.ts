@@ -134,14 +134,14 @@ export class ChatPanel extends HTMLElement {
     if (!conversation) return;
 
     // Create and inject the user message factory
-    const createUserMessage = (content: string): UserMessage => {
+    const createUserMessage = (content: string): HTMLElement => {
       return UserMessage.create(content);
     };
     conversation.setUserMessageFactory(createUserMessage);
 
     // Create and inject the assistant message factory
     // The factory closes over the chat-panel's context, allowing access to currentProject
-    const createAssistantMessage = (content: string, reasoning: string): AssistantMessage => {
+    const createAssistantMessage = (content: string, reasoning: string): HTMLElement => {
       return AssistantMessage.createWithHandlers(
         content,
         reasoning,
@@ -163,7 +163,7 @@ export class ChatPanel extends HTMLElement {
     conversation.setAssistantMessageFactory(createAssistantMessage);
 
     // Create and inject the tool call message factory
-    const createToolCallMessage = (content: string, toolCall: ToolCallData, reasoning?: string): ToolCallMessage => {
+    const createToolCallMessage = (content: string, toolCall: ToolCallData, reasoning?: string): HTMLElement => {
       return ToolCallMessage.createWithHandlers(content, toolCall, reasoning);
     };
     conversation.setToolCallMessageFactory(createToolCallMessage);

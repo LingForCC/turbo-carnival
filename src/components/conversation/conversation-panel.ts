@@ -54,13 +54,13 @@ export class ConversationPanel extends HTMLElement {
   private autocompleteIndex: number = -1;
 
   // Factory function for creating assistant messages with handlers
-  private assistantMessageFactory: ((content: string, reasoning: string) => import('./assistant-message').AssistantMessage) | null = null;
+  private assistantMessageFactory: ((content: string, reasoning: string) => HTMLElement) | null = null;
 
   // Factory function for creating user messages
-  private userMessageFactory: ((content: string) => import('./user-message').UserMessage) | null = null;
+  private userMessageFactory: ((content: string) => HTMLElement) | null = null;
 
   // Factory function for creating tool call messages
-  private toolCallMessageFactory: ((content: string, toolCall: ToolCallData, reasoning?: string) => import('./tool-call-message').ToolCallMessage) | null = null;
+  private toolCallMessageFactory: ((content: string, toolCall: ToolCallData, reasoning?: string) => HTMLElement) | null = null;
 
   constructor() {
     super();
@@ -107,7 +107,7 @@ export class ConversationPanel extends HTMLElement {
    * This allows parent components to inject their own save/copy handlers via closure.
    */
   public setAssistantMessageFactory(
-    factory: (content: string, reasoning: string) => import('./assistant-message').AssistantMessage
+    factory: (content: string, reasoning: string) => HTMLElement
   ): void {
     this.assistantMessageFactory = factory;
   }
@@ -118,7 +118,7 @@ export class ConversationPanel extends HTMLElement {
    * This allows parent components to inject custom user message rendering.
    */
   public setUserMessageFactory(
-    factory: (content: string) => import('./user-message').UserMessage
+    factory: (content: string) => HTMLElement
   ): void {
     this.userMessageFactory = factory;
   }
@@ -129,7 +129,7 @@ export class ConversationPanel extends HTMLElement {
    * This allows parent components to inject custom tool call message rendering.
    */
   public setToolCallMessageFactory(
-    factory: (content: string, toolCall: ToolCallData, reasoning?: string) => import('./tool-call-message').ToolCallMessage
+    factory: (content: string, toolCall: ToolCallData, reasoning?: string) => HTMLElement
   ): void {
     this.toolCallMessageFactory = factory;
   }

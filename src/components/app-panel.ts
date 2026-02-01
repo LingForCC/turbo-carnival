@@ -182,7 +182,7 @@ export class AppPanel extends HTMLElement {
     if (!conversation) return;
 
     // Create and inject the user message factory
-    const createUserMessage = (content: string): UserMessage => {
+    const createUserMessage = (content: string): HTMLElement => {
       return UserMessage.create(content);
     };
     conversation.setUserMessageFactory(createUserMessage);
@@ -190,7 +190,7 @@ export class AppPanel extends HTMLElement {
     // Create and inject the assistant message factory
     // The factory closes over the app-panel's context, allowing access to currentProject
     // Use AppCodeMessage for app agents to render HTML code blocks as callouts
-    const createAssistantMessage = (content: string, reasoning: string): AppCodeMessage => {
+    const createAssistantMessage = (content: string, reasoning: string): HTMLElement => {
       return AppCodeMessage.createWithHandlers(
         content,
         reasoning,
@@ -212,7 +212,7 @@ export class AppPanel extends HTMLElement {
     conversation.setAssistantMessageFactory(createAssistantMessage);
 
     // Create and inject the tool call message factory
-    const createToolCallMessage = (content: string, toolCall: ToolCallData, reasoning?: string): ToolCallMessage => {
+    const createToolCallMessage = (content: string, toolCall: ToolCallData, reasoning?: string): HTMLElement => {
       return ToolCallMessage.createWithHandlers(content, toolCall, reasoning);
     };
     conversation.setToolCallMessageFactory(createToolCallMessage);
