@@ -124,10 +124,10 @@ The documentation has been split into focused modules for better performance:
 - `conversation-panel` - Reusable chat interface (event-driven, tool call indicators, message factories for user, assistant, and tool call messages)
 - `user-message` - Web Component for user messages (plain text rendering, HTML escaping, blue background, right-aligned)
 - `assistant-message` - Web Component for assistant messages (markdown rendering, reasoning display, save/copy buttons, factory pattern for handlers)
-- `app-code-message` - Web Component for app agent messages (HTML code block extraction, app code callouts with toggle, markdown rendering for remaining content, save/copy buttons, factory pattern)
+- `app-code-message` - Web Component for app agent messages (HTML code block extraction, app code callouts with View App button, markdown rendering for remaining content, save/copy buttons, factory pattern)
 - `tool-call-message` - Web Component for tool call messages (status indicators, parameter/result display, collapsible details, factory pattern)
 - `chat-panel` - Right sidebar chat interface (uses conversation-panel, provides message factories for user, assistant, and tool call messages, handles chat-agent IPC)
-- `app-panel` - Split-panel interface for App-type agents (uses conversation-panel, provides AppCodeMessage factory for app-specific rendering, handles app-agent IPC)
+- `app-panel` - Conditional layout for App-type agents: default conversation view (full-width) or preview view (full-width app preview with close button), uses conversation-panel, provides AppCodeMessage factory for app-specific rendering, handles app-agent IPC
 - `project-detail-panel` - Right sidebar, file tree
 - `agent-form-dialog` - Agent creation/editing with model config and provider selection
 - `provider-dialog` - LLM provider management (OpenAI, GLM, custom providers)

@@ -4,9 +4,9 @@ App agents are a specialized agent type in Turbo Carnival that enable users to g
 
 ## Overview
 
-When an App-type agent is selected, the interface changes from the standard chat panel to a split-panel view:
-- **Left Panel (25%)**: Chat interface for guiding the AI to build the app
-- **Right Panel (75%)**: Live preview of the generated application
+When an App-type agent is selected, the interface changes from the standard chat panel to a conditional layout:
+- **Default View**: Full-width conversation panel for guiding the AI to build the app
+- **Preview View**: Full-width live preview of the generated application (accessed via "View App" button in app code callouts)
 
 ## Creating an App Agent
 
@@ -55,32 +55,33 @@ Apps are stored as JSON files alongside their parent agent files:
 
 ## Chat Interface
 
-The left panel provides a chat interface similar to the standard chat panel:
+The default view provides a full-width conversation panel for interacting with the AI:
 
 ### Features
 - **Message History**: Conversation is saved in the agent's `history` array
 - **Streaming Responses**: Real-time streaming of AI responses
 - **Code Parsing**: Automatically detects and extracts code blocks from AI responses
-- **HTML Code Callouts**: HTML code blocks are displayed in collapsible gray-styled callouts labeled "App Code"
+- **HTML Code Callouts**: HTML code blocks are displayed in indigo-styled callouts labeled "App Code"
+- **View App Button**: Eye icon button in each callout to open the app preview in full-screen mode
 - **Clear Chat**: Clear the chat history (does not delete from agent file)
 
 ### Message Rendering
 
 App agents use the `app-code-message` Web Component that:
 - **Extracts HTML code blocks**: Detects ````html ... ```` blocks in AI responses
-- **Renders HTML callouts**: Displays HTML code in gray-styled, collapsible callouts
+- **Renders HTML callouts**: Displays HTML code in indigo-styled callouts with a "View App" button
 - **Removes HTML from main content**: HTML blocks appear only in callouts, not in the main markdown content
 - **Supports multiple blocks**: Multiple HTML blocks are numbered (App Code, App Code 2, etc.)
 - **Renders remaining content as markdown**: All non-HTML content is rendered normally
-- **Factory pattern**: Parent component (app-panel) injects save handler via closure
+- **Factory pattern**: Parent component (app-panel) injects save and view app handlers via closure
 
 **Component Location**: `src/components/conversation/app-code-message.ts`
 
 **Callout Styling:**
-- Gray background (`bg-gray-100 dark:bg-gray-800`)
-- Gray border (`border-gray-300 dark:border-gray-600`)
-- Gray text (`text-gray-700 dark:text-gray-300`)
-- Collapsible with rotating chevron icon
+- Indigo background (`bg-indigo-50 dark:bg-indigo-900/30`)
+- Indigo border (`border-indigo-200 dark:border-indigo-700`)
+- Indigo icon and text (`text-indigo-600 dark:text-indigo-400`)
+- Eye icon button to open app preview
 
 ### Code Block Format
 
@@ -116,13 +117,21 @@ function saveData(data) {
 
 ## App Preview Panel
 
-The right panel shows a live preview of the generated application.
+The preview view shows a full-screen live preview of the generated application, accessed by clicking the "View App" button in an app code callout.
+
+### Opening the Preview
+
+1. When an AI response contains HTML code blocks, they appear in indigo-styled "App Code" callouts
+2. Click the eye icon button in any callout to open the app preview
+3. The preview covers the entire panel, replacing the conversation view
+4. Click the back arrow button in the preview header to return to the conversation
 
 ### Preview Features
 
 1. **Live Preview**: Shows the app running in an isolated iframe
 2. **Code View**: Toggle to view the underlying HTML, JavaScript, and data
 3. **Refresh/Reload**: Manually reload the app preview
+4. **Close Preview**: Back arrow button returns to conversation view
 
 ### Code View Sections
 

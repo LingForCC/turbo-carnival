@@ -657,44 +657,6 @@ export class ConversationPanel extends HTMLElement {
         this.selectFileForTagging(filePath, fileName);
       });
     });
-
-    // Tool call toggle buttons - use DOM manipulation without re-render
-    this.querySelectorAll('.tool-call-toggle-btn').forEach(btn => {
-      const newBtn = btn.cloneNode(true);
-      btn.replaceWith(newBtn);
-      (newBtn as HTMLElement).addEventListener('click', (e) => {
-        e.stopPropagation();
-        const button = e.currentTarget as HTMLElement;
-        const icon = button.querySelector('svg');
-        const details = button.parentElement?.nextElementSibling as HTMLElement;
-
-        if (details) {
-          details.classList.toggle('hidden');
-          if (icon) {
-            icon.style.transform = details.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(90deg)';
-          }
-        }
-      });
-    });
-
-    // App Code toggle buttons - use DOM manipulation without re-render
-    this.querySelectorAll('.app-code-toggle-btn').forEach(btn => {
-      const newBtn = btn.cloneNode(true);
-      btn.replaceWith(newBtn);
-      (newBtn as HTMLElement).addEventListener('click', (e) => {
-        e.stopPropagation();
-        const button = e.currentTarget as HTMLElement;
-        const icon = button.querySelector('svg');
-        const details = button.nextElementSibling as HTMLElement;
-
-        if (details) {
-          details.classList.toggle('hidden');
-          if (icon) {
-            icon.style.transform = details.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(90deg)';
-          }
-        }
-      });
-    });
   }
 
   private async sendMessage(): Promise<void> {

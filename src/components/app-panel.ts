@@ -16,6 +16,7 @@ export class AppPanel extends HTMLElement {
   private currentAgent: Agent | null = null;
   private currentApp: App | null = null;
   private showCodeView: boolean = false;
+  private showingPreview: boolean = false;
 
   constructor() {
     super();
@@ -34,9 +35,9 @@ export class AppPanel extends HTMLElement {
 
   private render(): void {
     this.innerHTML = `
-      <div class="flex-1 bg-white dark:bg-gray-900 flex flex-row h-full overflow-hidden">
-        <!-- Left Panel: Chat Interface (20-30%) -->
-        <div class="w-1/4 min-w-[200px] max-w-[400px] flex flex-col border-r border-gray-200 dark:border-gray-700">
+      <div class="flex-1 bg-white dark:bg-gray-900 flex flex-col h-full overflow-hidden">
+        ${!this.showingPreview ? `
+          <!-- Conversation View -->
           <!-- Chat Header -->
           <div class="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
             <div class="flex items-center gap-3 flex-1 min-w-0">
@@ -71,59 +72,66 @@ export class AppPanel extends HTMLElement {
             id="conversation"
             placeholder="Describe the app you want to build...">
           </conversation-panel>
-        </div>
-
-        <!-- Right Panel: App Preview (70-80%) -->
-        <div class="flex-1 min-w-0 flex flex-col bg-gray-50 dark:bg-gray-800">
-          <!-- App Preview Header -->
-          <div class="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shrink-0">
-            <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 m-0">App Preview</h3>
-            <div class="flex items-center gap-2">
-              <button id="code-view-toggle" class="px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent flex items-center gap-1.5">
-                <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
-                </svg>
-                <span>${this.showCodeView ? 'Hide Code' : 'Show Code'}</span>
-              </button>
-              <button id="refresh-app-btn" class="px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent flex items-center gap-1.5" title="Reload App">
-                <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                </svg>
-                <span>Reload</span>
-              </button>
+        ` : `
+          <!-- Preview View -->
+          <div class="flex-1 min-w-0 flex flex-col bg-gray-50 dark:bg-gray-800">
+            <!-- App Preview Header with Close Button -->
+            <div class="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shrink-0">
+              <div class="flex items-center gap-3">
+                <button id="close-preview-btn" class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent" title="Close Preview">
+                  <svg class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 m-0">App Preview</h3>
+              </div>
+              <div class="flex items-center gap-2">
+                <button id="code-view-toggle" class="px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent flex items-center gap-1.5">
+                  <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                  </svg>
+                  <span>${this.showCodeView ? 'Hide Code' : 'Show Code'}</span>
+                </button>
+                <button id="refresh-app-btn" class="px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent flex items-center gap-1.5" title="Reload App">
+                  <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  </svg>
+                  <span>Reload</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <!-- App Preview Content -->
-          <div class="flex-1 overflow-hidden relative">
-            ${this.showCodeView ? `
-              <!-- Code View -->
-              <div class="h-full overflow-auto p-4 min-w-0">
-                <div class="space-y-4">
-                  <div>
-                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">HTML</h4>
-                    <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(this.currentApp?.html || '')}</code></pre>
-                  </div>
-                  <div>
-                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Renderer JavaScript</h4>
-                    <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(this.currentApp?.rendererCode || '')}</code></pre>
-                  </div>
-                  <div>
-                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Main Process JavaScript</h4>
-                    <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(this.currentApp?.mainCode || '')}</code></pre>
-                  </div>
-                  <div>
-                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Data</h4>
-                    <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(JSON.stringify(this.currentApp?.data || {}, null, 2))}</code></pre>
+            <!-- App Preview Content -->
+            <div class="flex-1 overflow-hidden relative">
+              ${this.showCodeView ? `
+                <!-- Code View -->
+                <div class="h-full overflow-auto p-4 min-w-0">
+                  <div class="space-y-4">
+                    <div>
+                      <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">HTML</h4>
+                      <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(this.currentApp?.html || '')}</code></pre>
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Renderer JavaScript</h4>
+                      <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(this.currentApp?.rendererCode || '')}</code></pre>
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Main Process JavaScript</h4>
+                      <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(this.currentApp?.mainCode || '')}</code></pre>
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Data</h4>
+                      <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(JSON.stringify(this.currentApp?.data || {}, null, 2))}</code></pre>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ` : `
-              <!-- Live Preview -->
-              <iframe id="app-preview" class="w-full h-full border-0 bg-white dark:bg-gray-900"></iframe>
-            `}
+              ` : `
+                <!-- Live Preview -->
+                <iframe id="app-preview" class="w-full h-full border-0 bg-white dark:bg-gray-900"></iframe>
+              `}
+            </div>
           </div>
-        </div>
+        `}
       </div>
     `;
 
@@ -175,6 +183,14 @@ export class AppPanel extends HTMLElement {
       refreshBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.renderAppPreview());
     }
+
+    // Close preview button
+    const closePreviewBtn = this.querySelector('#close-preview-btn');
+    if (closePreviewBtn) {
+      const newBtn = closePreviewBtn.cloneNode(true);
+      closePreviewBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.handleClosePreview());
+    }
   }
 
   private attachConversationListeners(): void {
@@ -206,6 +222,10 @@ export class AppPanel extends HTMLElement {
             console.error('[AppPanel] Failed to save message:', error);
             throw error;
           }
+        },
+        // View App handler
+        () => {
+          this.handleViewApp();
         }
       );
     };
@@ -411,6 +431,16 @@ export class AppPanel extends HTMLElement {
         conversation.clearChat();
       }
     }
+  }
+
+  private handleViewApp(): void {
+    this.showingPreview = true;
+    this.render();
+  }
+
+  private handleClosePreview(): void {
+    this.showingPreview = false;
+    this.render();
   }
 
   private goBack(): void {

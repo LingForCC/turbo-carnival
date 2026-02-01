@@ -3,7 +3,7 @@ import { escapeHtml, renderMarkdown, renderReasoningSection } from './utils';
 /**
  * AppCodeMessage Web Component
  * Renders an assistant message for app agents with:
- * - App code callouts for HTML code blocks (collapsible)
+ * - App code callouts for HTML code blocks
  * - Markdown rendering for remaining content
  * - Optional reasoning content
  * Supports parent-provided handler for save action
@@ -11,11 +11,13 @@ import { escapeHtml, renderMarkdown, renderReasoningSection } from './utils';
  */
 
 export type SaveHandler = (content: string) => Promise<void>;
+export type ViewAppHandler = () => void;
 
 export class AppCodeMessage extends HTMLElement {
   private content: string = '';
   private reasoning: string = '';
   private saveHandler: SaveHandler | null = null;
+  private viewAppHandler: ViewAppHandler | null = null;
   private htmlCodeBlocks: string[] = [];
 
   static get observedAttributes(): string[] {
@@ -46,6 +48,13 @@ export class AppCodeMessage extends HTMLElement {
   }
 
   /**
+   * Set the view app handler from parent component
+   */
+  public setViewAppHandler(handler: ViewAppHandler): void {
+    this.viewAppHandler = handler;
+  }
+
+  /**
    * Factory method to create an AppCodeMessage with handler already attached.
    * This allows parent components to provide a factory function that closes over
    * their specific handler implementation.
@@ -53,7 +62,8 @@ export class AppCodeMessage extends HTMLElement {
   static createWithHandlers(
     content: string,
     reasoning: string,
-    saveHandler: SaveHandler
+    saveHandler: SaveHandler,
+    viewAppHandler: ViewAppHandler
   ): AppCodeMessage {
     const element = document.createElement('app-code-message') as AppCodeMessage;
     element.setAttribute('content', content);
@@ -61,6 +71,7 @@ export class AppCodeMessage extends HTMLElement {
       element.setAttribute('reasoning', reasoning);
     }
     element.setSaveHandler(saveHandler);
+    element.setViewAppHandler(viewAppHandler);
     return element;
   }
 
@@ -87,19 +98,31 @@ export class AppCodeMessage extends HTMLElement {
   }
 
   private renderAppCodeCallout(htmlCode: string, index: number): string {
+    // Use similar styling to tool call message - blue/indigo theme for app code
+    const bgColor = 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700';
+
     return `
-      <div class="mb-3">
-        <button
-          class="app-code-toggle-btn flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 cursor-pointer border-0 bg-transparent p-0"
-          data-code-index="${index}"
-        >
-          <svg class="w-4 h-4 text-gray-600 dark:text-gray-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-          </svg>
-          <span>App Code${index > 0 ? ` ${index + 1}` : ''}</span>
-        </button>
-        <div class="app-code-content hidden mt-2 p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md">
-          <pre class="text-xs m-0 whitespace-pre-wrap break-all">${escapeHtml(htmlCode)}</pre>
+      <div class="my-2 max-w-[85%] w-[85%]">
+        <div class="rounded-lg border ${bgColor} px-4 py-3">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+            </svg>
+            <span class="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate flex-1">
+              App Code${index > 0 ? ` ${index + 1}` : ''}
+            </span>
+            <span class="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">•</span>
+            <span class="text-xs text-gray-600 dark:text-gray-400 flex-shrink-0">HTML Application</span>
+            <button
+              class="view-app-btn hover:bg-gray-200 dark:hover:bg-gray-700 rounded p-1 cursor-pointer border-0 bg-transparent flex-shrink-0"
+              title="View App"
+            >
+              <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -175,22 +198,15 @@ export class AppCodeMessage extends HTMLElement {
       });
     }
 
-    // App code toggle buttons
-    const appCodeToggleBtns = this.querySelectorAll('.app-code-toggle-btn');
-    appCodeToggleBtns.forEach((btn) => {
+    // View app buttons
+    const viewAppBtns = this.querySelectorAll('.view-app-btn');
+    viewAppBtns.forEach((btn) => {
       const newBtn = btn.cloneNode(true);
       btn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', (e) => {
         e.stopPropagation();
-        const button = e.currentTarget as HTMLElement;
-        const icon = button.querySelector('svg');
-        const content = button.nextElementSibling as HTMLElement;
-
-        if (content) {
-          content.classList.toggle('hidden');
-          if (icon) {
-            icon.style.transform = content.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(90deg)';
-          }
+        if (this.viewAppHandler) {
+          this.viewAppHandler();
         }
       });
     });
