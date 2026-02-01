@@ -1,5 +1,4 @@
 import type { Agent, Project, ToolCallEvent } from '../global.d.ts';
-import { type MessageRenderers } from './conversation/message-render';
 import type { ToolCallData } from './conversation/conversation-panel';
 import { AssistantMessage } from './conversation/assistant-message';
 import { UserMessage } from './conversation/user-message';
