@@ -11,7 +11,7 @@ import { escapeHtml, renderMarkdown, renderReasoningSection } from './utils';
  */
 
 export type SaveHandler = (content: string) => Promise<void>;
-export type ViewAppHandler = () => void;
+export type ViewAppHandler = (htmlCode: string) => void;
 
 export class AppCodeMessage extends HTMLElement {
   private content: string = '';
@@ -97,6 +97,15 @@ export class AppCodeMessage extends HTMLElement {
     return this.content.replace(htmlCodeRegex, '').trim();
   }
 
+  private escapeHtmlAttribute(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
   private renderAppCodeCallout(htmlCode: string, index: number): string {
     // Use similar styling to tool call message - blue/indigo theme for app code
     const bgColor = 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700';
@@ -116,6 +125,7 @@ export class AppCodeMessage extends HTMLElement {
             <button
               class="view-app-btn hover:bg-gray-200 dark:hover:bg-gray-700 rounded p-1 cursor-pointer border-0 bg-transparent flex-shrink-0"
               title="View App"
+              data-html-code="${this.escapeHtmlAttribute(htmlCode)}"
             >
               <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -205,8 +215,10 @@ export class AppCodeMessage extends HTMLElement {
       btn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', (e) => {
         e.stopPropagation();
-        if (this.viewAppHandler) {
-          this.viewAppHandler();
+        const button = e.currentTarget as HTMLElement;
+        const htmlCode = button.getAttribute('data-html-code');
+        if (this.viewAppHandler && htmlCode) {
+          this.viewAppHandler(htmlCode);
         }
       });
     });

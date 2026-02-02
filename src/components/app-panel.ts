@@ -1,4 +1,4 @@
-import type { Agent, Project, App } from '../global.d.ts';
+import type { Agent, Project } from '../global.d.ts';
 import type { ToolCallData } from './conversation/conversation-panel';
 import { AppCodeMessage } from './conversation/app-code-message';
 import { UserMessage } from './conversation/user-message';
@@ -14,9 +14,9 @@ import { ToolCallMessage } from './conversation/tool-call-message';
 export class AppPanel extends HTMLElement {
   private currentProject: Project | null = null;
   private currentAgent: Agent | null = null;
-  private currentApp: App | null = null;
   private showCodeView: boolean = false;
   private showingPreview: boolean = false;
+  private previewHtmlCode: string | null = null;
 
   constructor() {
     super();
@@ -109,19 +109,7 @@ export class AppPanel extends HTMLElement {
                   <div class="space-y-4">
                     <div>
                       <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">HTML</h4>
-                      <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(this.currentApp?.html || '')}</code></pre>
-                    </div>
-                    <div>
-                      <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Renderer JavaScript</h4>
-                      <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(this.currentApp?.rendererCode || '')}</code></pre>
-                    </div>
-                    <div>
-                      <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Main Process JavaScript</h4>
-                      <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(this.currentApp?.mainCode || '')}</code></pre>
-                    </div>
-                    <div>
-                      <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Data</h4>
-                      <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(JSON.stringify(this.currentApp?.data || {}, null, 2))}</code></pre>
+                      <pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-w-full"><code>${this.escapeHtml(this.previewHtmlCode || '')}</code></pre>
                     </div>
                   </div>
                 </div>
@@ -224,8 +212,8 @@ export class AppPanel extends HTMLElement {
           }
         },
         // View App handler
-        () => {
-          this.handleViewApp();
+        (htmlCode: string) => {
+          this.handleViewApp(htmlCode);
         }
       );
     };
@@ -260,15 +248,6 @@ export class AppPanel extends HTMLElement {
       } catch (error: any) {
         console.error('Failed to clear agent history:', error);
       }
-    });
-
-    // Note: We don't clone-and-replace here to avoid removing the back button listener
-    // that was just attached in attachEventListeners()
-
-    // Listen for stream completion to parse and update app
-    conversation.addEventListener('stream-complete', async (e: Event) => {
-      const customEvent = e as CustomEvent;
-      await this.parseAndUpdateApp(customEvent.detail.content);
     });
 
     conversation.addEventListener('back-clicked', () => {
@@ -318,31 +297,6 @@ export class AppPanel extends HTMLElement {
     this.currentAgent = agent;
     this.currentProject = project;
 
-    // Load app for this agent
-    if (window.electronAPI) {
-      try {
-        this.currentApp = await window.electronAPI.getApp(project.path, agent.name);
-
-        // Create app if it doesn't exist
-        if (!this.currentApp) {
-          this.currentApp = {
-            name: agent.name,
-            agentName: agent.name,
-            html: '<div><p>App will be generated based on your conversation...</p></div>',
-            rendererCode: 'console.log("App initialized");',
-            mainCode: '',
-            data: {},
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-          };
-          await window.electronAPI.saveApp(project.path, this.currentApp);
-        }
-      } catch (error) {
-        console.error('Failed to load app:', error);
-        this.currentApp = null;
-      }
-    }
-
     // Update conversation component
     const conversation = this.querySelector('#conversation') as any;
     if (conversation) {
@@ -353,7 +307,7 @@ export class AppPanel extends HTMLElement {
   }
 
   private renderAppPreview(): void {
-    if (!this.showCodeView && this.currentApp) {
+    if (!this.showCodeView && this.previewHtmlCode) {
       const iframe = this.querySelector('#app-preview') as HTMLIFrameElement;
       if (iframe && iframe.contentWindow) {
         const doc = iframe.contentWindow.document;
@@ -367,53 +321,11 @@ export class AppPanel extends HTMLElement {
               </style>
             </head>
             <body>
-              ${this.currentApp.html}
-              <script>
-                // App execution context
-                (function() {
-                  ${this.currentApp.rendererCode}
-                })();
-              </script>
+              ${this.previewHtmlCode}
             </body>
           </html>
         `);
         doc.close();
-      }
-    }
-  }
-
-  private async parseAndUpdateApp(content: string): Promise<void> {
-    // Parse the AI response for app code updates
-    // Look for patterns like:
-    // ```html ... ```
-    // ```renderer-js ... ```
-    // ```main-js ... ```
-
-    // Extract HTML code block
-    const htmlMatch = content.match(/```html\n([\s\S]*?)\n```/);
-    if (htmlMatch && this.currentApp) {
-      this.currentApp.html = htmlMatch[1];
-    }
-
-    // Extract renderer JS code block
-    const rendererMatch = content.match(/```renderer-js\n([\s\S]*?)\n```/);
-    if (rendererMatch && this.currentApp) {
-      this.currentApp.rendererCode = rendererMatch[1];
-    }
-
-    // Extract main process JS code block
-    const mainMatch = content.match(/```main-js\n([\s\S]*?)\n```/);
-    if (mainMatch && this.currentApp) {
-      this.currentApp.mainCode = mainMatch[1];
-    }
-
-    // Save updated app
-    if (this.currentApp && window.electronAPI && this.currentProject) {
-      try {
-        await window.electronAPI.saveApp(this.currentProject.path, this.currentApp);
-        this.renderAppPreview();
-      } catch (error) {
-        console.error('Failed to save app:', error);
       }
     }
   }
@@ -433,13 +345,15 @@ export class AppPanel extends HTMLElement {
     }
   }
 
-  private handleViewApp(): void {
+  private handleViewApp(htmlCode: string): void {
+    this.previewHtmlCode = htmlCode;
     this.showingPreview = true;
     this.render();
   }
 
   private handleClosePreview(): void {
     this.showingPreview = false;
+    this.previewHtmlCode = null; // Clear the preview HTML code
     this.render();
   }
 

@@ -68,6 +68,7 @@ export function registerAppAgentIPCHandlers(): void {
     });
 
     // 4. Send completion event
+    saveAgent(projectPath, agent);
     event.sender.send('chat-complete');
 
     return fullResponse;

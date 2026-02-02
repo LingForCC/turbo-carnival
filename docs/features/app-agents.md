@@ -1,12 +1,12 @@
 # App Agents
 
-App agents are a specialized agent type in Turbo Carnival that enable users to generate and execute interactive JavaScript + HTML applications through conversational AI.
+App agents are a specialized agent type in Turbo Carnival that enable users to generate and preview interactive HTML applications through conversational AI.
 
 ## Overview
 
 When an App-type agent is selected, the interface changes from the standard chat panel to a conditional layout:
 - **Default View**: Full-width conversation panel for guiding the AI to build the app
-- **Preview View**: Full-width live preview of the generated application (accessed via "View App" button in app code callouts)
+- **Preview View**: Full-width live preview of the generated HTML application (accessed via "View App" button in app code callouts)
 
 ## Creating an App Agent
 
@@ -18,41 +18,6 @@ When an App-type agent is selected, the interface changes from the standard chat
    - **Description**: What this app does
 4. Save the agent
 
-## App File Structure
-
-Apps are stored as JSON files alongside their parent agent files:
-
-**File Location**: `{projectFolder}/app-{agent-name}.json`
-
-**File Structure**:
-```json
-{
-  "name": "My App",
-  "agentName": "My Agent",
-  "html": "<div>App HTML here</div>",
-  "rendererCode": "// JavaScript for renderer process\nconsole.log('App loaded');",
-  "mainCode": "// JavaScript for main process\n",
-  "data": {
-    // Persistent app data
-  },
-  "createdAt": 1234567890000,
-  "updatedAt": 1234567890000
-}
-```
-
-### File Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | string | App name (matches agent name) |
-| `agentName` | string | Links app to its parent agent |
-| `html` | string | HTML structure of the app |
-| `rendererCode` | string | JavaScript code that runs in the renderer (browser) process |
-| `mainCode` | string | JavaScript code that can run in the main (Node.js) process |
-| `data` | object | Persistent data storage for the app |
-| `createdAt` | number | Timestamp when app was created |
-| `updatedAt` | number | Timestamp when app was last modified |
-
 ## Chat Interface
 
 The default view provides a full-width conversation panel for interacting with the AI:
@@ -60,7 +25,7 @@ The default view provides a full-width conversation panel for interacting with t
 ### Features
 - **Message History**: Conversation is saved in the agent's `history` array
 - **Streaming Responses**: Real-time streaming of AI responses
-- **Code Parsing**: Automatically detects and extracts code blocks from AI responses
+- **Code Parsing**: Automatically detects and extracts HTML code blocks from AI responses
 - **HTML Code Callouts**: HTML code blocks are displayed in indigo-styled callouts labeled "App Code"
 - **View App Button**: Eye icon button in each callout to open the app preview in full-screen mode
 - **Clear Chat**: Clear the chat history (does not delete from agent file)
@@ -85,39 +50,27 @@ App agents use the `app-code-message` Web Component that:
 
 ### Code Block Format
 
-When the AI generates app code, it should use specific markdown code block tags:
+When the AI generates app code, it should use HTML markdown code blocks:
 
 ````markdown
-Here's the HTML structure:
+Here's the HTML structure for your app:
 
 ```html
 <div id="app">
   <h1>Hello World</h1>
   <button id="btn">Click Me</button>
+  <script>
+    document.getElementById('btn').addEventListener('click', () => {
+      alert('Button clicked!');
+    });
+  </script>
 </div>
-```
-
-Here's the JavaScript for the browser:
-
-```renderer-js
-document.getElementById('btn').addEventListener('click', () => {
-  console.log('Button clicked!');
-});
-```
-
-Here's the JavaScript for the main process:
-
-```main-js
-function saveData(data) {
-  // This runs in Node.js
-  return true;
-}
 ```
 ````
 
 ## App Preview Panel
 
-The preview view shows a full-screen live preview of the generated application, accessed by clicking the "View App" button in an app code callout.
+The preview view shows a full-screen live preview of the generated HTML application, accessed by clicking the "View App" button in an app code callout.
 
 ### Opening the Preview
 
@@ -129,7 +82,7 @@ The preview view shows a full-screen live preview of the generated application, 
 ### Preview Features
 
 1. **Live Preview**: Shows the app running in an isolated iframe
-2. **Code View**: Toggle to view the underlying HTML, JavaScript, and data
+2. **Code View**: Toggle to view the underlying HTML source
 3. **Refresh/Reload**: Manually reload the app preview
 4. **Close Preview**: Back arrow button returns to conversation view
 
@@ -137,10 +90,7 @@ The preview view shows a full-screen live preview of the generated application, 
 
 When "Show Code" is enabled, the panel displays:
 
-1. **HTML**: The app's HTML structure
-2. **Renderer JavaScript**: Code that runs in the browser
-3. **Main Process JavaScript**: Code that can execute in the Node.js main process
-4. **Data**: Current persistent data stored in the app
+1. **HTML**: The app's HTML structure (including any embedded JavaScript and CSS)
 
 ## App Execution
 
@@ -153,93 +103,54 @@ App code runs in an isolated iframe within the renderer process. This provides:
 - **Sandboxed Context**: Separate JavaScript execution context
 - **Easy Reload**: iframe can be reloaded to reset app state
 
-### Main Process Execution
+### Limitations
 
-Apps can execute JavaScript code in the main process via the `window.electronAPI.executeAppMain()` method:
-
-```javascript
-// From app's rendererCode
-const result = await window.electronAPI.executeAppMain(
-  projectPath,
-  agentName,
-  'functionName',  // Name of function to call from mainCode
-  [arg1, arg2]     // Arguments to pass
-);
-```
-
-**Important**: Main process code has full Node.js access and can:
-- Read/write files
-- Make network requests
-- Execute system commands
+Apps run entirely in the browser (renderer process) and cannot:
+- Access the Node.js main process
+- Read/write files directly
+- Make network requests to arbitrary servers (same-origin policy applies)
 - Access native modules
 
-### Data Persistence
-
-Apps can persist data using the `window.electronAPI.updateAppData()` method:
-
-```javascript
-// Save data to app file
-await window.electronAPI.updateAppData(
-  projectPath,
-  agentName,
-  { key: 'value', count: 42 }
-);
-```
-
-Data is stored in the app's `data` field and persists across app reloads.
+All functionality must be implemented using standard web technologies (HTML, CSS, JavaScript).
 
 ## IPC Channels
 
-### App Management
+### App Agent Streaming
 
 | Channel | Description |
 |---------|-------------|
-| `apps:get` | Load app for an agent |
-| `apps:save` | Save or update app |
-| `apps:delete` | Delete app file |
-| `apps:executeMain` | Execute main process function |
-| `apps:updateData` | Update app data |
+| `app-agent:streamMessage` | Stream app agent message with files context |
+| `app-agent:clearHistory` | Clear app agent conversation history |
 
 ### Usage Example
 
 ```javascript
-// Get app
-const app = await window.electronAPI.getApp(projectPath, agentName);
-
-// Save app
-await window.electronAPI.saveApp(projectPath, app);
-
-// Delete app
-await window.electronAPI.deleteApp(projectPath, agentName);
-
-// Execute main process code
-const result = await window.electronAPI.executeAppMain(
+// Stream app agent message
+await window.electronAPI.streamAppAgentMessage(
   projectPath,
   agentName,
-  'myFunction',
-  [arg1, arg2]
-);
-
-// Update app data
-await window.electronAPI.updateAppData(
-  projectPath,
-  agentName,
-  { counter: 10 }
+  message,
+  filePaths,  // Optional: array of file paths for context
+  onChunk,    // Callback for streaming text chunks
+  onReasoning,// Callback for reasoning content
+  onComplete, // Callback when streaming completes
+  onError     // Callback for errors
 );
 ```
 
 ## Security Considerations
 
-⚠️ **Important**: App agents execute user-generated code with the following privileges:
+⚠️ **Important**: App agents execute user-generated HTML/JavaScript with the following privileges:
 
 - **Renderer Process**: Full DOM access within the iframe context
-- **Main Process**: Full Node.js access including file system, network, and system commands
+- **Same-Origin Policy**: Restricted to iframe origin
+- **No Main Process Access**: Cannot execute Node.js code
 
 ### Recommendations
 
 1. **Trust**: Only create App agents for trusted AI assistants
 2. **Review**: Review generated code before running critical operations
-3. **Isolation**: Consider running untrusted apps in a separate environment
+3. **Isolation**: Apps run in iframes for security isolation
 4. **Data Validation**: Validate all inputs from external sources
 
 ## Best Practices
@@ -249,85 +160,88 @@ await window.electronAPI.updateAppData(
 When creating an App agent, consider setting a custom system prompt:
 
 ```typescript
-const defaultSystemPrompt = `You are an expert web application developer. You help users build interactive JavaScript + HTML applications.
+const defaultSystemPrompt = `You are an expert web application developer. You help users build interactive HTML applications.
 
 When the user describes an app they want to build:
 1. Ask clarifying questions if needed
-2. Generate the HTML, JavaScript (renderer), and JavaScript (main process) code
-3. Present the code in markdown code blocks with these tags:
+2. Generate the HTML code (including embedded CSS and JavaScript)
+3. Present the code in markdown code blocks with the tag:
    - \`\`\`html ... \`\`\` for HTML structure
-   - \`\`\`renderer-js ... \`\`\` for JavaScript that runs in the browser
-   - \`\`\`main-js ... \`\`\` for JavaScript that runs in Node.js (main process)
 
 Guidelines:
 - Keep HTML semantic and accessible
 - Use vanilla JavaScript (no frameworks)
-- Include error handling
+- Include CSS in <style> tags within the HTML
+- Include JavaScript in <script> tags within the HTML
+- Add error handling where appropriate
 - Comment complex logic
-- Main process code should export functions that can be called from renderer
 - Keep the UI simple and functional`;
 ```
 
 ### For App Development
 
 1. **Start Simple**: Begin with basic HTML and incrementally add functionality
-2. **Use Console**: Add `console.log()` statements to debug renderer code
+2. **Use Console**: Add `console.log()` statements to debug code (check browser DevTools)
 3. **Test Incrementally**: Refresh the preview after each change
-4. **Main Process**: Use main process code for file operations and network requests
-5. **Data Storage**: Use the `data` field for app state persistence
+4. **Embedded Code**: Include CSS and JavaScript directly in the HTML file
+5. **No Persistence**: Apps do not persist data between sessions (use localStorage if needed)
 
 ## Example: Simple Counter App
 
 Here's a complete example of a simple counter app:
 
-**HTML**:
 ```html
 <div id="counter-app">
+  <style>
+    #counter-app {
+      font-family: sans-serif;
+      padding: 20px;
+      text-align: center;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+  </style>
+
   <h1>Counter: <span id="count">0</span></h1>
   <button id="increment">Increment</button>
   <button id="decrement">Decrement</button>
-  <button id="save">Save</button>
-</div>
-```
+  <button id="reset">Reset</button>
 
-**Renderer JavaScript**:
-```javascript
-let count = 0;
-
-// Load saved count
-window.electronAPI.getApp(projectPath, agentName).then(app => {
-  if (app.data.count !== undefined) {
-    count = app.data.count;
+  <script>
+    // Load saved count from localStorage
+    let count = parseInt(localStorage.getItem('counter') || '0');
     updateDisplay();
-  }
-});
 
-document.getElementById('increment').addEventListener('click', () => {
-  count++;
-  updateDisplay();
-});
+    document.getElementById('increment').addEventListener('click', () => {
+      count++;
+      updateDisplay();
+      saveCount();
+    });
 
-document.getElementById('decrement').addEventListener('click', () => {
-  count--;
-  updateDisplay();
-});
+    document.getElementById('decrement').addEventListener('click', () => {
+      count--;
+      updateDisplay();
+      saveCount();
+    });
 
-document.getElementById('save').addEventListener('click', async () => {
-  await window.electronAPI.updateAppData(projectPath, agentName, { count });
-  alert('Count saved!');
-});
+    document.getElementById('reset').addEventListener('click', () => {
+      count = 0;
+      updateDisplay();
+      saveCount();
+    });
 
-function updateDisplay() {
-  document.getElementById('count').textContent = count;
-}
-```
+    function updateDisplay() {
+      document.getElementById('count').textContent = count;
+    }
 
-**Main Process JavaScript**:
-```javascript
-// Optional: Add main process functions here
-function logCount(count) {
-  console.log('Current count:', count);
-}
+    function saveCount() {
+      localStorage.setItem('counter', count.toString());
+    }
+  </script>
+</div>
 ```
 
 ## Troubleshooting
@@ -336,24 +250,26 @@ function logCount(count) {
 
 1. Click the "Reload" button in the app preview header
 2. Clear the chat and send a new message
-3. Check that code blocks are properly formatted
+3. Check that code blocks are properly formatted with `````html
 
 ### Code Not Detected
 
 Ensure code blocks use the correct format:
-- `````html` for HTML
-- `````renderer-js` for renderer JavaScript
-- `````main-js` for main process JavaScript
+- `````html` for HTML structure
+- JavaScript should be embedded in `<script>` tags within the HTML
+- CSS should be embedded in `<style>` tags within the HTML
 
-### Main Process Errors
+### JavaScript Errors
 
-1. Check the main process console (DevTools)
-2. Ensure function names match between renderer and main code
-3. Verify the function is properly exported in mainCode
+1. Open browser DevTools (F12 or Cmd+Option+I)
+2. Check the Console tab for error messages
+3. Verify JavaScript syntax is correct
+4. Ensure DOM elements exist before attaching event listeners
 
 ## Related Files
 
 - **Source Code**: `src/components/app-panel.ts`
-- **Storage Module**: `src/main/app-management.ts`
-- **Type Definitions**: `src/global.d.ts` (App interface)
+- **Message Component**: `src/components/conversation/app-code-message.ts`
+- **Type Definitions**: `src/global.d.ts`
 - **Routing Logic**: `src/components/app-container.ts`
+- **IPC Handlers**: `src/main/app-agent-management.ts`

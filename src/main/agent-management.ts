@@ -2,7 +2,6 @@ import { ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import type { Agent } from '../global.d.ts';
-import { deleteAppFile } from './app-management';
 
 // ============ AGENT STORAGE HELPERS ============
 
@@ -105,14 +104,6 @@ export function deleteAgent(projectPath: string, agentName: string): void {
       console.error(`Failed to delete agent file ${filePath}:`, error);
       throw error;
     }
-  }
-
-  // Also delete associated app file if it exists
-  try {
-    deleteAppFile(projectPath, agentName);
-  } catch (error) {
-    // Log but don't fail - app file might not exist (non-App agents)
-    console.warn(`Note: Could not delete app file for agent ${agentName}:`, error);
   }
 }
 

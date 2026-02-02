@@ -24,13 +24,6 @@ The main process is organized into dedicated modules:
 - Storage helpers: `loadAgents`, `saveAgent`, `deleteAgent`, `sanitizeAgentName`, `getAgentFilePath`
 - IPC handler registration: `registerAgentIPCHandlers`
 
-**`src/main/app-management.ts`**
-- App CRUD operations (for App-type agents)
-- Storage helpers: `loadApp`, `saveApp`, `deleteAppFile`, `sanitizeAppName`, `getAppFilePath`, `createApp`
-- IPC handler registration: `registerAppIPCHandlers`
-- App execution: `apps:executeMain` for running main process code
-- Data persistence: `apps:updateData` for updating app.data field
-
 **`src/main/provider-management.ts`**
 - LLM provider CRUD operations
 - Storage helpers: `getProvidersPath`, `loadProviders`, `saveProviders`, `getProviderById`
@@ -99,9 +92,6 @@ The main process is organized into dedicated modules:
   - `openFolderDialog()` - Opens native folder picker dialog
   - `getProjects()`, `addProject(path)`, `removeProject(path)` - Project operations
   - `getAgents(projectPath)`, `addAgent(...)`, `removeAgent(...)`, `updateAgent(...)` - Agent operations
-  - `getApp(projectPath, agentName)`, `saveApp(...)`, `deleteApp(...)` - App operations
-  - `executeAppMain(...)` - Execute main process code from app
-  - `updateAppData(...)` - Update app data storage
   - `getProviders()`, `addProvider(...)`, `updateProvider(id, ...)`, `removeProvider(id)`, `getProviderById(id)` - Provider operations
   - `getTools()`, `addTool(...)`, `updateTool(...)`, `removeTool(toolName)` - Tool operations
   - `executeTool(request)` - Executes a tool (routes based on environment)

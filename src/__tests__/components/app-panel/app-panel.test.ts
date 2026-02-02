@@ -3,7 +3,7 @@
  */
 
 import { mountComponent, createMockProject, mockElectronAPI, waitForAsync } from '../../helpers/component-testing';
-import { createMockAgent, createMockApp } from '../../helpers/mocks';
+import { createMockAgent } from '../../helpers/mocks';
 
 // Import the conversation component since app-panel uses it
 require('../../../components/conversation/conversation-panel.ts');
@@ -20,8 +20,6 @@ describe('AppPanel Web Component', () => {
 
   describe('Rendering', () => {
     it('should render with correct initial structure', async () => {
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(null));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
       await waitForAsync();
@@ -37,8 +35,6 @@ describe('AppPanel Web Component', () => {
     });
 
     it('should show empty state when no agent selected', async () => {
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(null));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
       await waitForAsync();
@@ -52,106 +48,42 @@ describe('AppPanel Web Component', () => {
     });
 
     it('should show chat interface when agent selected', async () => {
-      const mockApp = createMockApp();
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
-      mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
-
-      const mockAgent = createMockAgent({ type: 'app', name: 'Test Agent' });
+      const mockAgent = createMockAgent({ name: 'Test Agent', type: 'app' });
       const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
 
-      await waitForAsync(50);
+      await waitForAsync();
 
       const html = element.innerHTML;
       expect(html).toContain('Test Agent');
-      // App Preview is not shown by default (only in preview mode)
       expect(html).toContain('App Agent');
+      expect(html).toContain('conversation-panel');
 
       cleanup();
     });
 
     it('should render conversation view by default (full width)', async () => {
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(null));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
-
-      // Check for conversation-panel (full width by default)
-      const conversationPanel = element.querySelector('conversation-panel');
-      expect(conversationPanel).toBeTruthy();
-
-      // No split layout - conversation takes full width
-      const leftPanel = element.querySelector('.w-1\\/4');
-      expect(leftPanel).toBeFalsy();
-
-      cleanup();
-    });
-
-    it('should render code view when showCodeView is true', async () => {
-      const mockApp = createMockApp();
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
-      mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-
-      const { element, cleanup } = mountComponent<AppPanel>('app-panel');
-
-      await waitForAsync();
-
-      const mockAgent = createMockAgent({ type: 'app' });
+      const mockAgent = createMockAgent({ name: 'Test Agent', type: 'app' });
       const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
-
-      await waitForAsync(50);
-
-      // First, need to trigger preview mode by clicking view app button
-      // For testing, we'll manually trigger the preview mode by accessing internal state
-      // In real usage, this would be triggered by the "View App" button in app-code-message
-
-      // Since we can't easily trigger preview mode from the test without the View App button,
-      // let's skip this test for now or implement a different approach
-      // For now, let's just verify the component renders without error
-      expect(element.innerHTML).toBeTruthy();
-
-      cleanup();
-    });
-
-    it('should render iframe for live preview', async () => {
-      const mockApp = createMockApp();
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
-      mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-
-      const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
       await waitForAsync();
 
-      const mockAgent = createMockAgent({ type: 'app' });
-      const mockProject = createMockProject();
-
-      element.dispatchEvent(new CustomEvent('agent-selected', {
-        detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
-      }));
-
-      await waitForAsync(50);
-
-      // iframe is not visible by default (only in preview mode)
-      const iframe = element.querySelector('#app-preview');
-      expect(iframe).toBeFalsy();
+      // Should show conversation panel, not preview
+      expect(element.querySelector('conversation-panel')).toBeTruthy();
+      expect(element.querySelector('#app-preview')).toBeFalsy();
 
       cleanup();
     });
@@ -159,202 +91,177 @@ describe('AppPanel Web Component', () => {
 
   describe('Interactions', () => {
     it('should emit chat-back event when back button clicked', async () => {
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(null));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
       await waitForAsync();
 
-      const chatBackSpy = jest.fn();
-      element.addEventListener('chat-back', chatBackSpy);
+      const emitSpy = jest.spyOn(element, 'dispatchEvent');
 
       const backBtn = element.querySelector('#back-btn') as HTMLElement;
-      backBtn?.click();
+      backBtn.click();
 
-      expect(chatBackSpy).toHaveBeenCalled();
+      await waitForAsync();
+
+      expect(emitSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'chat-back',
+          bubbles: true,
+          composed: true,
+        })
+      );
 
       cleanup();
     });
 
     it('should toggle code view when toggle button clicked', async () => {
-      const mockApp = createMockApp();
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
-      mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
-
-      const mockAgent = createMockAgent({ type: 'app' });
+      const mockAgent = createMockAgent({ name: 'Test Agent', type: 'app' });
       const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
 
-      await waitForAsync(50);
+      await waitForAsync();
 
-      // Toggle button not visible by default (only in preview mode)
-      const toggleBtn = element.querySelector('#code-view-toggle') as HTMLElement;
-      expect(toggleBtn).toBeFalsy();
+      // Manually set preview mode for testing
+      (element as any).previewHtmlCode = '<div>Test HTML</div>';
+      (element as any).showingPreview = true;
+      (element as any).showCodeView = false;
+      (element as any).render();
+
+      await waitForAsync();
+
+      const codeViewToggle = element.querySelector('#code-view-toggle') as HTMLElement;
+      expect(codeViewToggle).toBeTruthy();
+      expect((element as any).showCodeView).toBe(false);
+
+      codeViewToggle.click();
+
+      await waitForAsync();
+
+      expect((element as any).showCodeView).toBe(true);
 
       cleanup();
     });
 
     it('should refresh app when refresh button clicked', async () => {
-      const mockApp = createMockApp();
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
-      mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
-
-      const mockAgent = createMockAgent({ type: 'app' });
+      const mockAgent = createMockAgent({ name: 'Test Agent', type: 'app' });
       const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
 
-      await waitForAsync(50);
+      await waitForAsync();
 
-      // Refresh button not visible by default (only in preview mode)
+      // Set preview mode
+      (element as any).previewHtmlCode = '<div>Test HTML</div>';
+      (element as any).showingPreview = true;
+      (element as any).render();
+
+      await waitForAsync();
+
       const refreshBtn = element.querySelector('#refresh-app-btn') as HTMLElement;
-      expect(refreshBtn).toBeFalsy();
+      expect(refreshBtn).toBeTruthy();
+
+      const renderSpy = jest.spyOn(element as any, 'renderAppPreview');
+      refreshBtn.click();
+
+      await waitForAsync();
+
+      expect(renderSpy).toHaveBeenCalled();
 
       cleanup();
     });
 
     it('should clear chat when clear button clicked', async () => {
-      const mockApp = createMockApp();
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
-      mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
-
-      const mockAgent = createMockAgent({ type: 'app', history: [
-        { role: 'user', content: 'test', timestamp: Date.now() }
-      ]});
+      const mockAgent = createMockAgent({ name: 'Test Agent', type: 'app' });
       const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
 
-      await waitForAsync(50);
+      await waitForAsync();
 
-      // Just verify the clear button exists and can be clicked
       const clearBtn = element.querySelector('#clear-chat-btn') as HTMLElement;
       expect(clearBtn).toBeTruthy();
 
-      clearBtn?.click();
-      await waitForAsync(50);
+      // Mock window.confirm - define it on globalThis if it doesn't exist
+      const mockConfirm = jest.fn().mockReturnValue(true);
+      (globalThis as any).confirm = mockConfirm;
 
-      // Verify the button was clicked (no error thrown)
+      const conversation = element.querySelector('conversation-panel') as any;
+      const clearChatSpy = jest.spyOn(conversation, 'clearChat');
+
+      clearBtn.click();
+
+      await waitForAsync();
+
+      expect(mockConfirm).toHaveBeenCalled();
+      expect(clearChatSpy).toHaveBeenCalled();
+
+      delete (globalThis as any).confirm;
+
       cleanup();
     });
   });
 
   describe('Agent Selection', () => {
-    it('should load app when agent is selected', async () => {
-      const mockApp = createMockApp({
-        name: 'Test App',
-        agentName: 'Test Agent',
-      });
-
-      const getAppSpy = jest.fn().mockResolvedValue(mockApp);
-      const saveAppSpy = jest.fn().mockResolvedValue(undefined);
-
-      mockElectronAPI('getApp', getAppSpy);
-      mockElectronAPI('saveApp', saveAppSpy);
-
+    it('should handle agent selection event', async () => {
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
-
-      const mockAgent = createMockAgent({ type: 'app', name: 'Test Agent' });
-      const mockProject = createMockProject({ path: '/test-project' });
+      const mockAgent = createMockAgent({ name: 'Test Agent', type: 'app' });
+      const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
-
-      await waitForAsync(100);
-
-      expect(getAppSpy).toHaveBeenCalledWith('/test-project', 'Test Agent');
-      expect(getAppSpy).toHaveBeenCalled();
-
-      cleanup();
-    });
-
-    it('should create new app if none exists', async () => {
-      const getAppSpy = jest.fn().mockResolvedValue(null);
-      const saveAppSpy = jest.fn().mockResolvedValue(undefined);
-
-      mockElectronAPI('getApp', getAppSpy);
-      mockElectronAPI('saveApp', saveAppSpy);
-
-      const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
       await waitForAsync();
 
-      const mockAgent = createMockAgent({ type: 'app', name: 'Test Agent' });
-      const mockProject = createMockProject({ path: '/test-project' });
-
-      element.dispatchEvent(new CustomEvent('agent-selected', {
-        detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
-      }));
-
-      await waitForAsync(100);
-
-      expect(getAppSpy).toHaveBeenCalledWith('/test-project', 'Test Agent');
-      expect(saveAppSpy).toHaveBeenCalled();
+      expect((element as any).currentAgent).toBe(mockAgent);
+      expect((element as any).currentProject).toBe(mockProject);
+      expect(element.innerHTML).toContain('Test Agent');
 
       cleanup();
     });
 
     it('should load conversation history from agent', async () => {
-      const mockApp = createMockApp();
-      const history = [
-        { role: 'user' as const, content: 'Hello', timestamp: Date.now() },
-        { role: 'assistant' as const, content: 'Hi there!', timestamp: Date.now() },
-      ];
-
-      const mockAgent = createMockAgent({ type: 'app', history });
-      const mockProject = createMockProject();
-
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
-      mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
+      const history = [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hi there!' },
+      ];
+
+      const mockAgent = createMockAgent({
+        name: 'Test Agent',
+        type: 'app',
+        history,
+      });
+      const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
 
-      await waitForAsync(100);
+      await waitForAsync();
 
-      // Verify that the component rendered the conversation
-      const html = element.innerHTML;
-      expect(html).toContain('Hello');
-      expect(html).toContain('Hi there!');
+      const conversation = element.querySelector('conversation-panel') as any;
+      expect(conversation).toBeTruthy();
+      expect(conversation.chatHistory).toEqual(history);
 
       cleanup();
     });
@@ -362,86 +269,53 @@ describe('AppPanel Web Component', () => {
 
   describe('XSS Prevention', () => {
     it('should escape HTML in agent name', async () => {
-      const mockApp = createMockApp();
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
-      mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
-
       const mockAgent = createMockAgent({
-        type: 'app',
         name: '<script>alert("xss")</script>',
+        type: 'app',
       });
       const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
 
-      await waitForAsync(50);
+      await waitForAsync();
 
       const html = element.innerHTML;
-      expect(html).not.toContain('<script>');
+      expect(html).not.toContain('<script>alert("xss")</script>');
       expect(html).toContain('&lt;script&gt;');
 
       cleanup();
     });
 
     it('should escape HTML in chat messages', async () => {
-      const mockApp = createMockApp();
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
-      mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-      mockElectronAPI('streamAppAgentMessage', jest.fn().mockImplementation((
-        _projectPath: string,
-        _agentName: string,
-        _message: string,
-        _filePaths: string[] | undefined,
-        _onChunk: (chunk: string) => void,
-        _onComplete: () => void,
-        _onError: (error: string) => void
-      ) => Promise.resolve()));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
+      const history = [
+        { role: 'user', content: '<script>alert("xss")</script>' },
+      ];
 
-      // Create agent with malicious content in history
       const mockAgent = createMockAgent({
-        type: 'app',
         name: 'Test Agent',
-        history: [
-          { role: 'user' as const, content: '<img src=x onerror=alert(1)>', timestamp: Date.now() }
-        ],
+        type: 'app',
+        history,
       });
       const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
 
-      await waitForAsync(50);
+      await waitForAsync();
 
+      // Check that the conversation panel escapes HTML
       const html = element.innerHTML;
-      // Just verify agent loaded and component rendered without crashing
-      expect(html).toContain('Test Agent');
-
-      // Check that the user-message element exists
-      const userMessageElement = element.querySelector('user-message');
-      expect(userMessageElement).toBeTruthy();
-
-      // Check that the rendered content inside user-message is properly escaped
-      // The content attribute may contain raw HTML, but the rendered content should be escaped
-      if (userMessageElement) {
-        const renderedContent = userMessageElement.textContent || '';
-        // Text content should not contain the unescaped malicious HTML
-        expect(renderedContent).toContain('<img src=x onerror=alert(1)>');
-      }
+      // The user-message component should escape the HTML
+      expect(html).not.toContain('<script>alert("xss")</script>');
 
       cleanup();
     });
@@ -449,39 +323,35 @@ describe('AppPanel Web Component', () => {
 
   describe('Code Parsing', () => {
     it('should parse HTML code blocks', async () => {
-      const mockApp = createMockApp();
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
-      mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-      mockElectronAPI('streamAppAgentMessage', jest.fn().mockImplementation((
-        _projectPath: string,
-        _agentName: string,
-        _message: string,
-        _filePaths: string[] | undefined,
-        onChunk: (chunk: string) => void,
-        onComplete: () => void,
-        _onError: (error: string) => void
-      ) => {
-        // Simulate streaming response with code
-        const response = '```html\n<div>Test App</div>\n```';
-        onChunk(response);
-        onComplete();
-        return Promise.resolve();
-      }));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
+      const content = `
+        Here is your app:
 
-      const mockAgent = createMockAgent({ type: 'app' });
-      const mockProject = createMockProject({ path: '/test-project' });
+        \`\`\`html
+        <div>
+          <h1>Hello World</h1>
+        </div>
+        \`\`\`
+
+        Let me know if you need any changes!
+      `;
+
+      const mockAgent = createMockAgent({
+        name: 'Test Agent',
+        type: 'app',
+      });
+      const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
 
-      await waitForAsync(50);
+      await waitForAsync();
+
+      // The AppCodeMessage component should parse HTML blocks
+      // This is tested more thoroughly in the app-code-message tests
 
       cleanup();
     });
@@ -489,51 +359,49 @@ describe('AppPanel Web Component', () => {
 
   describe('Streaming', () => {
     it('should handle message streaming', async () => {
-      const mockApp = createMockApp();
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
-      mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-
-      mockElectronAPI('streamAppAgentMessage', jest.fn().mockImplementation((
-        _projectPath: string,
-        _agentName: string,
-        _message: string,
-        _filePaths: string[] | undefined,
-        _onChunk: (chunk: string) => void,
-        _onComplete: () => void,
-        _onError: (error: string) => void
-      ) => {
-        // Just verify it was called, don't test the callback complexity
-        return Promise.resolve();
-      }));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
-
-      const mockAgent = createMockAgent({ type: 'app' });
+      const mockAgent = createMockAgent({ name: 'Test Agent', type: 'app' });
       const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
 
-      await waitForAsync(50);
+      await waitForAsync();
 
-      // Simulate sending a message
-      const input = element.querySelector('#chat-input') as HTMLTextAreaElement;
-      if (input) {
-        input.value = 'Create a counter app';
-        const sendBtn = element.querySelector('#send-btn') as HTMLElement;
-        sendBtn?.click();
-      }
+      // Mock the electronAPI for streaming
+      mockElectronAPI('streamAppAgentMessage', jest.fn().mockImplementation(async (
+        _projectPath: string,
+        _agentName: string,
+        _message: string,
+        _filePaths: string[],
+        _onChunk: (chunk: string) => void,
+        _onReasoning: (reasoning: string) => void,
+        onComplete: () => void,
+        _onError: (error: string) => void
+      ) => {
+        onComplete();
+      }));
 
-      await waitForAsync(50);
+      const conversation = element.querySelector('conversation-panel') as any;
 
-      // Verify streamAppAgentMessage was called
-      const streamAppAgentMock = (window.electronAPI as any).streamAppAgentMessage;
-      expect(streamAppAgentMock).toHaveBeenCalled();
+      // Trigger a message send event
+      conversation.dispatchEvent(new CustomEvent('message-sent', {
+        detail: {
+          projectPath: '/test-project',
+          agentName: 'Test Agent',
+          message: 'Create a counter app',
+          filePaths: [],
+        },
+        bubbles: true,
+      }));
+
+      await waitForAsync();
+
+      // Verify streaming was called
+      expect(window.electronAPI?.streamAppAgentMessage).toHaveBeenCalled();
 
       cleanup();
     });
@@ -541,72 +409,139 @@ describe('AppPanel Web Component', () => {
 
   describe('Layout', () => {
     it('should show empty state message when no agent', async () => {
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(null));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
       await waitForAsync();
 
-      const html = element.innerHTML;
-      // Check for conversation-panel with correct attributes
-      expect(html).toContain('conversation-panel');
-      expect(html).toContain('Describe the app you want to build');
+      expect(element.innerHTML).toContain('No Agent Selected');
 
       cleanup();
     });
 
     it('should show prompt when agent selected but no messages', async () => {
-      const mockApp = createMockApp();
-      mockElectronAPI('getApp', jest.fn().mockResolvedValue(mockApp));
-      mockElectronAPI('saveApp', jest.fn().mockResolvedValue(undefined));
-
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
-
-      const mockAgent = createMockAgent({ type: 'app', history: [] });
+      const mockAgent = createMockAgent({ name: 'Test Agent', type: 'app', history: [] });
       const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
 
-      await waitForAsync(50);
+      await waitForAsync();
 
-      // Check for conversation panel
-      const conversationPanel = element.querySelector('conversation-panel');
-      expect(conversationPanel).toBeTruthy();
+      expect(element.innerHTML).toContain('Describe the app you want to build');
 
-      // The conversation-panel should have the correct placeholder attribute
-      expect(conversationPanel?.getAttribute('placeholder')).toContain('Describe the app you want to build');
+      cleanup();
+    });
+  });
+
+  describe('Preview', () => {
+    it('should show preview when view app is triggered', async () => {
+      const { element, cleanup } = mountComponent<AppPanel>('app-panel');
+
+      const mockAgent = createMockAgent({ name: 'Test Agent', type: 'app' });
+      const mockProject = createMockProject();
+
+      element.dispatchEvent(new CustomEvent('agent-selected', {
+        detail: { agent: mockAgent, project: mockProject },
+        bubbles: true,
+      }));
+
+      await waitForAsync();
+
+      // Simulate viewing app
+      (element as any).handleViewApp('<div>Test App</div>');
+
+      await waitForAsync();
+
+      expect((element as any).showingPreview).toBe(true);
+      expect((element as any).previewHtmlCode).toBe('<div>Test App</div>');
+      expect(element.querySelector('#app-preview')).toBeTruthy();
+
+      cleanup();
+    });
+
+    it('should close preview when close button clicked', async () => {
+      const { element, cleanup } = mountComponent<AppPanel>('app-panel');
+
+      const mockAgent = createMockAgent({ name: 'Test Agent', type: 'app' });
+      const mockProject = createMockProject();
+
+      element.dispatchEvent(new CustomEvent('agent-selected', {
+        detail: { agent: mockAgent, project: mockProject },
+        bubbles: true,
+      }));
+
+      await waitForAsync();
+
+      // Open preview
+      (element as any).handleViewApp('<div>Test App</div>');
+      await waitForAsync();
+
+      expect((element as any).showingPreview).toBe(true);
+
+      // Click close button
+      const closeBtn = element.querySelector('#close-preview-btn') as HTMLElement;
+      closeBtn.click();
+
+      await waitForAsync();
+
+      expect((element as any).showingPreview).toBe(false);
+      expect((element as any).previewHtmlCode).toBeNull();
 
       cleanup();
     });
   });
 
   describe('Error Handling', () => {
-    it('should handle app load failure gracefully', async () => {
-      mockElectronAPI('getApp', jest.fn().mockRejectedValue(new Error('Failed to load')));
-
+    it('should handle streaming errors gracefully', async () => {
       const { element, cleanup } = mountComponent<AppPanel>('app-panel');
 
-      await waitForAsync();
-
-      const mockAgent = createMockAgent({ type: 'app' });
+      const mockAgent = createMockAgent({ name: 'Test Agent', type: 'app' });
       const mockProject = createMockProject();
 
       element.dispatchEvent(new CustomEvent('agent-selected', {
         detail: { agent: mockAgent, project: mockProject },
-        bubbles: false,
-        composed: true,
+        bubbles: true,
       }));
 
-      await waitForAsync(100);
+      await waitForAsync();
 
-      // Should still render without crashing
-      expect(element.innerHTML).toBeTruthy();
+      // Mock the electronAPI to return an error
+      mockElectronAPI('streamAppAgentMessage', jest.fn().mockImplementation(async (
+        _projectPath: string,
+        _agentName: string,
+        _message: string,
+        _filePaths: string[],
+        _onChunk: (chunk: string) => void,
+        _onReasoning: (reasoning: string) => void,
+        _onComplete: () => void,
+        onError: (error: string) => void
+      ) => {
+        onError('Stream failed');
+      }));
+
+      const conversation = element.querySelector('conversation-panel') as any;
+      const handleStreamErrorSpy = jest.spyOn(conversation, 'handleStreamError');
+
+      // Trigger a message send event
+      conversation.dispatchEvent(new CustomEvent('message-sent', {
+        detail: {
+          projectPath: '/test-project',
+          agentName: 'Test Agent',
+          message: 'Create a counter app',
+          filePaths: [],
+        },
+        bubbles: true,
+      }));
+
+      await waitForAsync();
+
+      // The error is caught and wrapped in try-catch, so it should call handleStreamError
+      // with just the error message
+      expect(handleStreamErrorSpy).toHaveBeenCalledWith('Stream failed');
 
       cleanup();
     });

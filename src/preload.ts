@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { Project, Agent, LLMProvider, ModelConfig, Tool, ToolExecutionRequest, ToolCallEvent, App, AppSettings } from './global.d.ts';
+import type { Project, Agent, LLMProvider, ModelConfig, Tool, ToolExecutionRequest, ToolCallEvent, AppSettings } from './global.d.ts';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -269,26 +269,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
         }
       });
   },
-
-  // ============ APP METHODS ============
-
-  // Get app for an agent
-  getApp: (projectPath: string, agentName: string) =>
-    ipcRenderer.invoke('apps:get', projectPath, agentName),
-
-  // Save or update app
-  saveApp: (projectPath: string, app: App) =>
-    ipcRenderer.invoke('apps:save', projectPath, app),
-
-  // Delete app
-  deleteApp: (projectPath: string, agentName: string) =>
-    ipcRenderer.invoke('apps:delete', projectPath, agentName),
-
-  // Execute app main process function
-  executeAppMain: (projectPath: string, agentName: string, functionName: string, args: any[]) =>
-    ipcRenderer.invoke('apps:executeMain', projectPath, agentName, functionName, args),
-
-  // Update app data
-  updateAppData: (projectPath: string, agentName: string, data: Record<string, any>) =>
-    ipcRenderer.invoke('apps:updateData', projectPath, agentName, data),
 });

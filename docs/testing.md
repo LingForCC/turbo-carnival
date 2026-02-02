@@ -114,11 +114,6 @@ Tests are organized in `src/__tests__/` by feature:
 - `file-listing.test.ts` - File listing helper tests (listFilesRecursive)
 - `ipc-handlers.test.ts` - IPC handler tests (projects:add, projects:remove, project:getFileTree, files:list, files:readContents)
 
-### `src/__tests__/main/app-management/`
-- `app-storage.test.ts` - Storage helper tests (sanitizeAppName, getAppFilePath, createApp, saveApp, loadApp, deleteAppFile)
-- `ipc-handlers.test.ts` - IPC handler tests (apps:get, apps:save, apps:delete, apps:executeMain, apps:updateData)
-- `agent-deletion.test.ts` - Agent deletion tests with app file cleanup
-
 ### `src/__tests__/main/agent-management/`
 - `agents.test.ts` - Storage helper tests (loadAgents, saveAgent, deleteAgent, sanitizeAgentName)
 - `ipc-handlers.test.ts` - IPC handler tests (agents:get, agents:add, agents:remove, agents:update)

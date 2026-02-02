@@ -49,19 +49,6 @@ export interface AgentSettings {
   [key: string]: any;              // Flexible settings object
 }
 
-/**
- * Generated App interface representing a JavaScript + HTML application
- */
-export interface App {
-  name: string;                    // App name (matches agent name)
-  agentName: string;               // Link to parent agent
-  html: string;                    // HTML content for the app
-  rendererCode: string;            // JavaScript code to run in renderer process
-  mainCode: string;                // JavaScript code to run in main process
-  data: Record<string, any>;       // Persistent data storage for the app
-  createdAt: number;               // Timestamp when created
-  updatedAt: number;               // Timestamp when last updated
-}
 
 /**
  * LLM Provider type discriminator
@@ -338,13 +325,6 @@ interface ElectronAPI {
 
   // Tool call events for chat-agent streaming
   onToolCallEvent: (callback: (event: ToolCallEvent) => void) => void;
-
-  // App management methods
-  getApp: (projectPath: string, agentName: string) => Promise<App | null>;
-  saveApp: (projectPath: string, app: App) => Promise<void>;
-  deleteApp: (projectPath: string, agentName: string) => Promise<void>;
-  executeAppMain: (projectPath: string, agentName: string, functionName: string, args: any[]) => Promise<any>;
-  updateAppData: (projectPath: string, agentName: string, data: Record<string, any>) => Promise<void>;
 }
 
 declare global {
