@@ -116,9 +116,17 @@ The documentation has been split into focused modules for better performance:
 - `src/main/app-agent-management.ts` - App agent system prompt generation, IPC handlers
 - `src/main/tool-management.ts` - Tool CRUD, JSON Schema validation, execution routing
 
+### Preload Modules
+- `src/preload.ts` - Main preload script, exposes `window.electronAPI` via contextBridge
+- `src/preload/project-management.ts` - Project management functions for preload (uses ipcRenderer)
+
+### Renderer API Layer
+- `src/api/project-management.ts` - Renderer-safe project management API (wraps window.electronAPI)
+- `src/api/project-management.d.ts` - Project management type definitions (Project, FileTreeNode, etc.)
+
 ### UI Components (Web Components)
 - `app-container` - Root layout, event forwarding
-- `project-panel` - Left sidebar, project management
+- `project-panel` - Left sidebar, project management (uses `getProjectManagementAPI()`)
 - `project-agent-dashboard` - Center area, agent grid/chat switching
 - `conversation-panel` - Reusable chat interface (event-driven, tool call indicators, message factories for user, assistant, and tool call messages)
 - `user-message` - Web Component for user messages (plain text rendering, HTML escaping, blue background, right-aligned)
@@ -127,7 +135,7 @@ The documentation has been split into focused modules for better performance:
 - `tool-call-message` - Web Component for tool call messages (status indicators, parameter/result display, collapsible details, factory pattern)
 - `chat-panel` - Right sidebar chat interface (uses conversation-panel, provides message factories for user, assistant, and tool call messages, handles chat-agent IPC)
 - `app-panel` - Conditional layout for App-type agents: default conversation view (full-width) or preview view (full-width app preview with close button), uses conversation-panel, provides AppCodeMessage factory for app-specific rendering, handles app-agent IPC
-- `project-detail-panel` - Right sidebar, file tree
+- `project-detail-panel` - Right sidebar, file tree (uses `getProjectManagementAPI()`)
 - `agent-form-dialog` - Agent creation/editing with model config and provider selection
 - `provider-dialog` - LLM provider management (OpenAI, GLM, custom providers)
 - `model-config-dialog` - Model configuration management with extra properties support
@@ -168,7 +176,10 @@ The documentation has been split into focused modules for better performance:
 - Target: ES2020, Module: CommonJS
 - Strict mode enabled
 - Outputs to `dist/` from `src/` root
-- Global types defined in `src/global.d.ts`
+- Global types defined in `src/global.d.ts` (core types like Agent, Tool, Provider)
+- Project management types in `src/api/project-management.d.ts` (Project, FileTreeNode, etc.)
+- Preload modules in `src/preload/*.ts` (contextBridge exposure)
+- Renderer API modules in `src/api/*.ts` (type-safe wrappers for window.electronAPI)
 
 ## Styling
 
@@ -178,6 +189,38 @@ The documentation has been split into focused modules for better performance:
 - No separate CSS files per component
 
 ## Common Workflows
+
+### Using the Renderer API Layer
+
+When creating renderer components that need project management functionality:
+
+```typescript
+// Import the API getter function and types
+import { getProjectManagementAPI } from '../api/project-management';
+import type { ProjectManagementAPI, Project } from '../api/project-management.d';
+
+export class MyComponent extends HTMLElement {
+  private api: ProjectManagementAPI;
+
+  constructor() {
+    super();
+    // Initialize API instance
+    this.api = getProjectManagementAPI();
+  }
+
+  async loadProjects() {
+    // Use the API - type-safe and testable
+    const projects = await this.api.getProjects();
+    // ... rest of implementation
+  }
+}
+```
+
+**Benefits:**
+- Type safety through `ProjectManagementAPI` interface
+- Easy to mock in tests (just create a mock object)
+- No direct dependency on `window.electronAPI`
+- Prevents bundling Electron APIs into renderer code
 
 ### Adding a New Feature
 1. Read relevant documentation in `docs/`

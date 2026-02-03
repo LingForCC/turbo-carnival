@@ -1,4 +1,5 @@
-import type { Project } from '../global.d.ts';
+import { getProjectManagementAPI } from '../api/project-management';
+import type { Project, ProjectManagementAPI } from '../api/project-management.d';
 
 /**
  * ProjectPanel Web Component
@@ -9,9 +10,11 @@ export class ProjectPanel extends HTMLElement {
   private isCollapsed: boolean = false;
   private projects: Project[] = [];
   private selectedProject: Project | null = null;
+  private api: ProjectManagementAPI;
 
   constructor() {
     super();
+    this.api = getProjectManagementAPI();
   }
 
   async connectedCallback(): Promise<void> {
@@ -98,13 +101,11 @@ export class ProjectPanel extends HTMLElement {
    * Load projects from storage
    */
   private async loadProjects(): Promise<void> {
-    if (window.electronAPI) {
-      try {
-        this.projects = await window.electronAPI.getProjects();
-        this.renderProjects();
-      } catch (error) {
-        console.error('Failed to load projects:', error);
-      }
+    try {
+      this.projects = await this.api.getProjects();
+      this.renderProjects();
+    } catch (error) {
+      console.error('Failed to load projects:', error);
     }
   }
 
@@ -112,12 +113,10 @@ export class ProjectPanel extends HTMLElement {
    * Open folder picker and add project
    */
   private async addProject(): Promise<void> {
-    if (!window.electronAPI) return;
-
     try {
-      const folderPath = await window.electronAPI.openFolderDialog();
+      const folderPath = await this.api.openFolderDialog();
       if (folderPath) {
-        this.projects = await window.electronAPI.addProject(folderPath);
+        this.projects = await this.api.addProject(folderPath);
         this.renderProjects();
       }
     } catch (error) {
@@ -129,10 +128,8 @@ export class ProjectPanel extends HTMLElement {
    * Remove a project
    */
   private async removeProject(project: Project): Promise<void> {
-    if (!window.electronAPI) return;
-
     try {
-      this.projects = await window.electronAPI.removeProject(project.path);
+      this.projects = await this.api.removeProject(project.path);
       if (this.selectedProject?.path === project.path) {
         this.selectedProject = null;
       }

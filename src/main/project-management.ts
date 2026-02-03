@@ -1,7 +1,7 @@
 import { app, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { Project } from '../global.d.ts';
+import type { Project } from '../api/project-management.d';
 
 // ============ PROJECT STORAGE HELPERS ============
 

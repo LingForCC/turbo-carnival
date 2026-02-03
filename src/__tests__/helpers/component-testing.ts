@@ -2,7 +2,7 @@
  * Helper utilities for testing Web Components
  */
 
-import type { Project } from '../../global.d';
+import type { Project } from '../../api/project-management.d';
 
 /**
  * Mount a custom element and return it with testing helpers

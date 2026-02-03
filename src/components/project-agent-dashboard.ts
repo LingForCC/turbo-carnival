@@ -1,4 +1,5 @@
-import type { Project, Agent, ModelConfig } from '../global.d.ts';
+import type { Agent, ModelConfig } from '../global.d.ts';
+import type { Project } from '../api/project-management.d';
 
 /**
  * ProjectAgentDashboard Web Component

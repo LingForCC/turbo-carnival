@@ -87,6 +87,7 @@ The main process is organized into dedicated modules:
 
 ### Preload Script (`src/preload.ts`)
 - Bridges main and renderer via contextBridge
+- Organized into modules for better maintainability
 - Exposes `window.electronAPI` with:
   - `platform` - Current platform (darwin/win32/linux)
   - `openFolderDialog()` - Opens native folder picker dialog
@@ -104,10 +105,39 @@ The main process is organized into dedicated modules:
   - `streamChatAgentMessage(projectPath, agentName, message, filePaths, onChunk, onComplete, onError)` - Streams chat agent message
   - `streamAppAgentMessage(projectPath, agentName, message, filePaths, onChunk, onComplete, onError)` - Streams app agent message
 
+### Preload Module Organization
+The preload script is organized into focused modules:
+
+**`src/preload/project-management.ts`**
+- Project management functions for preload context
+- Uses `ipcRenderer` directly to invoke IPC channels
+- Exported as `projectManagement` for use in `preload.ts`
+- Functions: `openFolderDialog`, `getProjects`, `addProject`, `removeProject`, `getFileTree`, `listProjectFiles`, `readFileContents`, `saveMessageToFile`, `onProjectFileUpdated`
+
+**`src/preload.ts`**
+- Imports and exposes `projectManagement` via spread operator in `electronAPI`
+- All other API methods remain inline in this file
+
 ### Renderer Process (`src/renderer.ts`)
 - Web Components UI, runs in browser context
 - Includes browser tool execution handler
 - Listens for `tools:executeBrowser` events and executes tools via `browser-tool-executor.ts`
+
+### Renderer API Layer (`src/api/`)
+Renderer-safe API modules that wrap `window.electronAPI`:
+
+**`src/api/project-management.ts`**
+- Renderer-safe project management API
+- Exports `getProjectManagementAPI()` function that returns a `ProjectManagementAPI` instance
+- Internally wraps `window.electronAPI` calls
+- Used by renderer components (`project-panel`, `project-detail-panel`) for type-safe API access
+
+**Benefits of the API Layer:**
+- Type safety through interfaces (`ProjectManagementAPI`)
+- Encapsulation of `window.electronAPI` access
+- Easier to mock for testing
+- Consistent API patterns across renderer components
+- Prevents Electron APIs from being bundled into renderer code
 
 ## Build System
 
@@ -123,13 +153,13 @@ The renderer uses vanilla JavaScript Web Components (not Vue/React). Each compon
 
 **Components:**
 - `app-container` (`src/components/app-container.ts`) - Root layout container, manages panel visibility and toggle buttons, forwards events between components, manages provider dialog, routes between chat-panel and app-panel based on agent type
-- `project-panel` (`src/components/project-panel.ts`) - Collapsible left sidebar (264px wide) that manages local folder projects
+- `project-panel` (`src/components/project-panel.ts`) - Collapsible left sidebar (264px wide) that manages local folder projects using `projectManagementAPI`
 - `project-agent-dashboard` (`src/components/project-agent-dashboard.ts`) - Center content area that displays agents in a grid, handles dashboard/chat view switching
 - `conversation-panel` (`src/components/conversation-panel.ts`) - Reusable chat interface with streaming, tool call indicators, and optional file tagging
 - `assistant-message` (`src/components/conversation/assistant-message.ts`) - Web Component for rendering assistant messages with markdown, reasoning display, save/copy buttons; uses factory pattern for handler injection
 - `chat-panel` (`src/components/chat-panel.ts`) - Interactive chat interface with streaming support, wraps conversation-panel for chat agents, provides assistant message factory with save handler
 - `app-panel` (`src/components/app-panel.ts`) - Split-panel interface for App-type agents with chat (left 25%) and live app preview (right 75%), provides custom renderers for app-specific message rendering
-- `project-detail-panel` (`src/components/project-detail-panel.ts`) - Collapsible right sidebar (264px wide) that displays recursive file tree
+- `project-detail-panel` (`src/components/project-detail-panel.ts`) - Collapsible right sidebar (264px wide) that displays recursive file tree using `projectManagementAPI`
 - `agent-form-dialog` (`src/components/agent-form-dialog.ts`) - Modal dialog for creating and editing agents
 - `provider-dialog` (`src/components/provider-dialog.ts`) - Modal dialog for managing LLM providers
 - `tools-dialog` (`src/components/tools-dialog.ts`) - Modal dialog for managing custom tools with add/edit/delete/test functionality
@@ -253,13 +283,14 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 
 ## Type Definitions
 
-Global types defined in `src/global.d.ts`:
+### Global Types (`src/global.d.ts`)
+Core type definitions for the application:
 
-- `Project` - Local folder project with `path`, `name`, and `addedAt` properties
 - `Agent` - AI agent with full metadata including conversation history (stored as flexible `any[]` to support different message formats)
 - `AgentConfig` - Model configuration (modelId, providerId, model @deprecated, temperature @deprecated, maxTokens @deprecated, topP @deprecated)
 - `AgentPrompts` - System and user prompts
 - `AgentSettings` - Flexible settings object
+- `AppSettings` - Application settings (theme preference)
 - `LLMProviderType` - Union type for provider types ('openai' | 'glm' | 'azure' | 'custom')
 - `LLMProvider` - LLM provider storage (id, type, name, apiKey, baseURL?, createdAt, updatedAt?)
 - `ModelConfig` - Model configuration for reusing model settings (id, name, model, type as LLMProviderType, temperature, maxTokens, topP, extra, createdAt, updatedAt)
@@ -267,15 +298,21 @@ Global types defined in `src/global.d.ts`:
 - `ToolExecutionRequest` - Request for tool execution (toolName, parameters, optional tool)
 - `ToolExecutionResult` - Result from tool execution (success, result, error, executionTime)
 - `ToolCallEvent` - Tool call event for IPC communication (toolName, parameters, status, result, executionTime, error)
+- `ElectronAPI` - Exposed API methods from preload script (imports project types from `api/project-management.d`)
+
+### Project Management Types (`src/api/project-management.d.ts`)
+Project-related types organized in a dedicated module:
+
+- `Project` - Local folder project with `path`, `name`, and `addedAt` properties
 - `FileType` - Discriminator union for file system nodes ('file' | 'directory')
 - `FileTreeNode` - Node in the file tree (name, path, type, children, expanded)
 - `FileTreeOptions` - Configuration for file tree traversal (maxDepth, excludeHidden, includeExtensions)
 - `FileReference` - File reference for @mention (name, path, extension)
 - `FileContent` - File content with metadata (path, name, content, size, error)
 - `FileListOptions` - Configuration for file listing (extensions, maxDepth, excludeHidden)
-- `ElectronAPI` - Exposed API methods from preload script
+- `ProjectManagementAPI` - Interface for project management operations
 
-**Component-Specific Types:**
+### Component-Specific Types
 
 Some UI components define their own types locally for better encapsulation:
 - `conversation-panel.ts` defines `ChatMessage` and `ToolCallData` interfaces for UI display (exported for testing)

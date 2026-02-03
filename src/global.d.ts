@@ -1,13 +1,15 @@
 // Global TypeScript declarations for Turbo Carnival
 
-/**
- * Project interface representing a folder on disk
- */
-export interface Project {
-  path: string;      // Full absolute path to the folder
-  name: string;      // Folder name only (e.g., "my-project")
-  addedAt: number;   // Timestamp when added (for sorting)
-}
+// Import project management types for use in ElectronAPI interface
+import type {
+  Project,
+  FileTreeOptions,
+  FileListOptions,
+  FileTreeNode,
+  FileReference,
+  FileContent
+} from './api/project-management.d';
+
 
 /**
  * Agent interface representing an AI agent configuration
@@ -151,60 +153,6 @@ export interface ToolCallEvent {
   result?: any;
   executionTime?: number;
   error?: string;
-}
-
-/**
- * File system node type discriminator
- */
-export type FileType = 'file' | 'directory';
-
-/**
- * Represents a node in the file tree (file or directory)
- */
-export interface FileTreeNode {
-  name: string;              // File/directory name with extension
-  path: string;              // Full absolute path
-  type: FileType;            // 'file' or 'directory'
-  children?: FileTreeNode[]; // Only present for directories
-  expanded?: boolean;        // UI state: whether directory is expanded
-}
-
-/**
- * Options for file tree traversal
- */
-export interface FileTreeOptions {
-  maxDepth?: number;           // Maximum recursion depth (default: unlimited)
-  excludeHidden?: boolean;     // Filter out hidden files (default: true)
-  includeExtensions?: string[]; // Only include certain extensions (optional)
-}
-
-/**
- * File reference for @mention in chat
- */
-export interface FileReference {
-  name: string;        // File name (e.g., "README.md")
-  path: string;        // Full absolute path
-  extension: string;   // File extension (e.g., ".md", ".txt")
-}
-
-/**
- * File content with metadata
- */
-export interface FileContent {
-  path: string;        // Full absolute path
-  name: string;        // File name
-  content: string;     // File content as text
-  size: number;        // File size in bytes
-  error?: string;      // Error message if read failed
-}
-
-/**
- * Options for file listing
- */
-export interface FileListOptions {
-  extensions?: string[];  // Filter by extensions (e.g., ['.txt', '.md'])
-  maxDepth?: number;      // Maximum directory depth to search
-  excludeHidden?: boolean; // Exclude hidden files (default: true)
 }
 
 interface ElectronAPI {

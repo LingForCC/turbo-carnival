@@ -1,4 +1,5 @@
-import type { Project, FileTreeNode } from '../global.d.ts';
+import { getProjectManagementAPI } from '../api/project-management';
+import type { Project, FileTreeNode, ProjectManagementAPI } from '../api/project-management.d';
 
 /**
  * ProjectDetailPanel Web Component
@@ -9,9 +10,11 @@ export class ProjectDetailPanel extends HTMLElement {
   private currentProject: Project | null = null;
   private fileTree: FileTreeNode[] = [];
   private expandedNodes: Set<string> = new Set(); // Track expanded state by path
+  private api: ProjectManagementAPI;
 
   constructor() {
     super();
+    this.api = getProjectManagementAPI();
   }
 
   connectedCallback(): void {
@@ -22,13 +25,11 @@ export class ProjectDetailPanel extends HTMLElement {
     });
 
     // Listen for file update events from main process
-    if (window.electronAPI) {
-      (window.electronAPI as any).onProjectFileUpdated((data: { projectPath: string; filePath: string }) => {
-        if (this.currentProject && data.projectPath === this.currentProject.path) {
-          this.loadFileTree();
-        }
-      });
-    }
+    this.api.onProjectFileUpdated((data: { projectPath: string; filePath: string }) => {
+      if (this.currentProject && data.projectPath === this.currentProject.path) {
+        this.loadFileTree();
+      }
+    });
 
     this.render();
   }
@@ -210,20 +211,18 @@ export class ProjectDetailPanel extends HTMLElement {
     this.currentProject = project;
     this.expandedNodes.clear(); // Reset expanded state
 
-    if (window.electronAPI) {
-      try {
-        // Load file tree with default options
-        this.fileTree = await window.electronAPI.getFileTree(project.path, {
-          excludeHidden: true
-        });
-        this.render();
-        this.attachEventListeners();
-      } catch (error) {
-        console.error('Failed to load file tree:', error);
-        this.fileTree = [];
-        this.render();
-        this.attachEventListeners();
-      }
+    try {
+      // Load file tree with default options
+      this.fileTree = await this.api.getFileTree(project.path, {
+        excludeHidden: true
+      });
+      this.render();
+      this.attachEventListeners();
+    } catch (error) {
+      console.error('Failed to load file tree:', error);
+      this.fileTree = [];
+      this.render();
+      this.attachEventListeners();
     }
   }
 
@@ -233,20 +232,18 @@ export class ProjectDetailPanel extends HTMLElement {
   private async loadFileTree(): Promise<void> {
     if (!this.currentProject) return;
 
-    if (window.electronAPI) {
-      try {
-        // Load file tree with default options
-        this.fileTree = await window.electronAPI.getFileTree(this.currentProject.path, {
-          excludeHidden: true
-        });
-        this.render();
-        this.attachEventListeners();
-      } catch (error) {
-        console.error('Failed to load file tree:', error);
-        this.fileTree = [];
-        this.render();
-        this.attachEventListeners();
-      }
+    try {
+      // Load file tree with default options
+      this.fileTree = await this.api.getFileTree(this.currentProject.path, {
+        excludeHidden: true
+      });
+      this.render();
+      this.attachEventListeners();
+    } catch (error) {
+      console.error('Failed to load file tree:', error);
+      this.fileTree = [];
+      this.render();
+      this.attachEventListeners();
     }
   }
 

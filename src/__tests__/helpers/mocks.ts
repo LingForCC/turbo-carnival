@@ -1,4 +1,5 @@
-import type { Project, Agent } from '../../global.d';
+import type { Agent } from '../../global.d';
+import type { Project } from '../../api/project-management.d';
 
 /**
  * Create a mock Project object with optional overrides

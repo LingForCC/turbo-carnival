@@ -1,4 +1,5 @@
-import type { Agent, Project } from '../global.d.ts';
+import type { Agent } from '../global.d.ts';
+import type { Project } from '../api/project-management.d';
 import type { ToolCallData } from './conversation/conversation-panel';
 import { AppCodeMessage } from './conversation/app-code-message';
 import { UserMessage } from './conversation/user-message';
