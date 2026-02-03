@@ -1,5 +1,8 @@
-import type { Agent, ModelConfig } from '../global.d.ts';
+import type { Agent } from '../api/agent-management.d';
+import type { ModelConfig } from '../global.d.ts';
 import type { Project } from '../api/project-management.d';
+import { getAgentManagementAPI } from '../api/agent-management';
+import type { AgentManagementAPI } from '../api/agent-management.d';
 
 /**
  * ProjectAgentDashboard Web Component
@@ -10,9 +13,11 @@ export class ProjectAgentDashboard extends HTMLElement {
   private agents: Agent[] = [];
   private selectedAgent: Agent | null = null;
   private modelConfigs: ModelConfig[] = [];
+  private agentAPI: AgentManagementAPI;
 
   constructor() {
     super();
+    this.agentAPI = getAgentManagementAPI();
   }
 
   connectedCallback(): void {
@@ -230,13 +235,13 @@ export class ProjectAgentDashboard extends HTMLElement {
    * Load agents for current project
    */
   private async loadAgents(): Promise<void> {
-    if (!this.currentProject || !window.electronAPI) {
+    if (!this.currentProject) {
       this.agents = [];
       return;
     }
 
     try {
-      this.agents = await window.electronAPI.getAgents(this.currentProject.path);
+      this.agents = await this.agentAPI.getAgents(this.currentProject.path);
     } catch (error) {
       console.error('Failed to load agents:', error);
       this.agents = [];
@@ -253,6 +258,7 @@ export class ProjectAgentDashboard extends HTMLElement {
     }
 
     try {
+      // Model configs are not part of agent management API, use window.electronAPI
       this.modelConfigs = await window.electronAPI.getModelConfigs();
     } catch (error) {
       console.error('Failed to load model configs:', error);
@@ -299,14 +305,14 @@ export class ProjectAgentDashboard extends HTMLElement {
       try {
         if (agent) {
           // Update existing agent
-          await window.electronAPI?.updateAgent(
+          await this.agentAPI.updateAgent(
             this.currentProject!.path,
             agent.name,
             agentData
           );
         } else {
           // Create new agent
-          await window.electronAPI?.addAgent(
+          await this.agentAPI.addAgent(
             this.currentProject!.path,
             agentData
           );
@@ -343,7 +349,7 @@ export class ProjectAgentDashboard extends HTMLElement {
     if (!confirmed) return;
 
     try {
-      await window.electronAPI?.removeAgent(this.currentProject!.path, agent.name);
+      await this.agentAPI.removeAgent(this.currentProject!.path, agent.name);
 
       // Clear selection if deleted agent was selected
       if (this.selectedAgent?.name === agent.name) {

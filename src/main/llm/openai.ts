@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { getDefaultBaseURL } from '../provider-management';
-import type { ModelConfig, LLMProvider, Tool, Agent } from '../../global.d.ts';
+import type { ModelConfig, LLMProvider, Tool } from '../../global.d.ts';
+import type { Agent } from '../../api/agent-management.d';
 import { getToolByName, validateJSONSchema } from '../tool-management';
 import { executeToolWithRouting } from './index';
 import type { StreamLLMOptions, StreamResult } from './index';

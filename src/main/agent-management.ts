@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { Agent } from '../global.d.ts';
+import type { Agent } from '../api/agent-management.d';
 
 // ============ AGENT STORAGE HELPERS ============
 

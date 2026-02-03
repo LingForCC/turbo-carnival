@@ -1,4 +1,5 @@
-import type { Agent, LLMProviderType } from '../../global.d.ts';
+import type { Agent } from '../../api/agent-management.d';
+import type { LLMProviderType } from '../../global.d.ts';
 import type { Project } from '../../api/project-management.d';
 import { createTransformer } from '../transformers';
 

@@ -1,9 +1,11 @@
-import type { Agent, ToolCallEvent } from '../global.d.ts';
+import type { Agent } from '../api/agent-management.d';
 import type { Project } from '../api/project-management.d';
 import type { ToolCallData } from './conversation/conversation-panel';
 import { AssistantMessage } from './conversation/assistant-message';
 import { UserMessage } from './conversation/user-message';
 import { ToolCallMessage } from './conversation/tool-call-message';
+import { getAgentManagementAPI } from '../api/agent-management';
+import type { AgentManagementAPI, ToolCallEvent } from '../api/agent-management.d';
 
 /**
  * ChatPanel Web Component
@@ -16,9 +18,11 @@ export class ChatPanel extends HTMLElement {
   private currentProject: Project | null = null;
   private currentAgent: Agent | null = null;
   private toolCallListenerSetup = false;
+  private agentAPI: AgentManagementAPI;
 
   constructor() {
     super();
+    this.agentAPI = getAgentManagementAPI();
   }
 
   connectedCallback(): void {
@@ -26,9 +30,9 @@ export class ChatPanel extends HTMLElement {
     this.attachConversationListeners();
 
     // Set up tool call listener ONCE when component connects (before any tool execution)
-    if (!this.toolCallListenerSetup && window.electronAPI) {
+    if (!this.toolCallListenerSetup) {
       this.toolCallListenerSetup = true;
-      (window.electronAPI as any).onToolCallEvent((toolEvent: ToolCallEvent) => {
+      this.agentAPI.onToolCallEvent((toolEvent: ToolCallEvent) => {
         // Query for fresh reference on each event
         const conversation = this.querySelector('#conversation') as any;
         if (!conversation) {
@@ -188,7 +192,7 @@ export class ChatPanel extends HTMLElement {
       const { projectPath, agentName } = customEvent.detail;
 
       try {
-        await window.electronAPI?.clearChatAgentHistory(projectPath, agentName);
+        await this.agentAPI.clearChatAgentHistory(projectPath, agentName);
       } catch (error: any) {
         console.error('Failed to clear agent history:', error);
       }
@@ -215,10 +219,8 @@ export class ChatPanel extends HTMLElement {
     filePaths: string[],
     conversation: any
   ): Promise<void> {
-    if (!window.electronAPI) return;
-
     // Call new chat-agent stream IPC channel
-    await (window.electronAPI as any).streamChatAgentMessage(
+    await this.agentAPI.streamChatAgentMessage(
       projectPath,
       agentName,
       message,

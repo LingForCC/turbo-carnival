@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import type { Agent } from '../global.d.ts';
+import type { Agent } from '../api/agent-management.d';
 import { loadAgents, saveAgent } from './agent-management';
 import { getProviderById } from './provider-management';
 import { getModelConfigById } from './model-config-management';

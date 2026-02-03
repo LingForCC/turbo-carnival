@@ -10,46 +10,8 @@ import type {
   FileContent
 } from './api/project-management.d';
 
-
-/**
- * Agent interface representing an AI agent configuration
- */
-export interface Agent {
-  name: string;                    // Unique agent name
-  type: string;                    // Agent type: "chat", "code", "assistant", etc.
-  description: string;             // Human-readable description
-  config: AgentConfig;             // Model configuration
-  prompts: AgentPrompts;           // System and user prompts
-  history: any[];                  // Conversation history (flexible type to support different message formats)
-  settings: AgentSettings;         // Additional settings
-}
-
-/**
- * Agent model configuration
- */
-export interface AgentConfig {
-  modelId?: string;              // Reference to ModelConfig (NEW - primary way)
-  providerId?: string;           // Reference to LLM provider by ID
-  model?: string;                // Direct model string (DEPRECATED - use modelId instead)
-  temperature?: number;          // DEPRECATED - use modelId instead
-  maxTokens?: number;            // DEPRECATED - use modelId instead
-  topP?: number;                 // DEPRECATED - use modelId instead
-}
-
-/**
- * Agent prompts
- */
-export interface AgentPrompts {
-  system?: string;                 // System prompt
-  user?: string;                   // Default user prompt
-}
-
-/**
- * Additional agent settings
- */
-export interface AgentSettings {
-  [key: string]: any;              // Flexible settings object
-}
+// Import agent management types for use in ElectronAPI interface
+import type { Agent } from './api/agent-management.d';
 
 
 /**
@@ -229,6 +191,7 @@ interface ElectronAPI {
     message: string,
     filePaths: string[] | undefined,
     onChunk: (chunk: string) => void,
+    onReasoning: (reasoning: string) => void,
     onComplete: () => void,
     onError: (error: string) => void
   ) => Promise<void>;
@@ -253,6 +216,7 @@ interface ElectronAPI {
     message: string,
     filePaths: string[] | undefined,
     onChunk: (chunk: string) => void,
+    onReasoning: (reasoning: string) => void,
     onComplete: () => void,
     onError: (error: string) => void
   ) => Promise<void>;

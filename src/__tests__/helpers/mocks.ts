@@ -1,4 +1,4 @@
-import type { Agent } from '../../global.d';
+import type { Agent } from '../../api/agent-management.d';
 import type { Project } from '../../api/project-management.d';
 
 /**

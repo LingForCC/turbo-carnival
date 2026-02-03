@@ -1,9 +1,11 @@
-import type { Agent } from '../global.d.ts';
+import type { Agent } from '../api/agent-management.d';
 import type { Project } from '../api/project-management.d';
 import type { ToolCallData } from './conversation/conversation-panel';
 import { AppCodeMessage } from './conversation/app-code-message';
 import { UserMessage } from './conversation/user-message';
 import { ToolCallMessage } from './conversation/tool-call-message';
+import { getAgentManagementAPI } from '../api/agent-management';
+import type { AgentManagementAPI } from '../api/agent-management.d';
 
 /**
  * AppPanel Web Component
@@ -18,9 +20,11 @@ export class AppPanel extends HTMLElement {
   private showCodeView: boolean = false;
   private showingPreview: boolean = false;
   private previewHtmlCode: string | null = null;
+  private agentAPI: AgentManagementAPI;
 
   constructor() {
     super();
+    this.agentAPI = getAgentManagementAPI();
   }
 
   connectedCallback(): void {
@@ -245,7 +249,7 @@ export class AppPanel extends HTMLElement {
       const { projectPath, agentName } = customEvent.detail;
 
       try {
-        await window.electronAPI?.clearAppAgentHistory(projectPath, agentName);
+        await this.agentAPI.clearAppAgentHistory(projectPath, agentName);
       } catch (error: any) {
         console.error('Failed to clear agent history:', error);
       }
@@ -267,8 +271,6 @@ export class AppPanel extends HTMLElement {
     filePaths: string[],
     conversation: any
   ): Promise<void> {
-    if (!window.electronAPI) return;
-
     // Add empty assistant message to history before streaming starts
     const currentHistory = conversation.chatHistory || [];
     conversation.chatHistory = [...currentHistory, { role: 'assistant', content: '' }];
@@ -276,7 +278,7 @@ export class AppPanel extends HTMLElement {
     conversation.scrollToBottom();
 
     // Call new app-agent stream IPC channel
-    await (window.electronAPI as any).streamAppAgentMessage(
+    await this.agentAPI.streamAppAgentMessage(
       projectPath,
       agentName,
       message,

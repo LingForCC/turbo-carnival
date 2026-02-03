@@ -1,4 +1,5 @@
-import type { Agent, ModelConfig } from '../global.d.ts';
+import type { Agent } from '../api/agent-management.d';
+import type { ModelConfig } from '../global.d.ts';
 
 /**
  * AgentFormDialog Web Component
