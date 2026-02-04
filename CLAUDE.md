@@ -122,6 +122,7 @@ The documentation has been split into focused modules for better performance:
 - `src/preload/agent-management.ts` - Agent management functions for preload (uses ipcRenderer)
 - `src/preload/provider-management.ts` - Provider and model config functions for preload (uses ipcRenderer)
 - `src/preload/tool-management.ts` - Tool management functions for preload (uses ipcRenderer)
+- `src/preload/settings-management.ts` - Settings management functions for preload (uses ipcRenderer)
 
 ### Renderer API Layer
 - `src/api/project-management.ts` - Renderer-safe project management API (wraps window.electronAPI)
@@ -132,9 +133,11 @@ The documentation has been split into focused modules for better performance:
 - `src/api/provider-management.d.ts` - Provider and model config type definitions (LLMProvider, ModelConfig, LLMProviderType)
 - `src/api/tool-management.ts` - Renderer-safe tool management API (wraps window.electronAPI)
 - `src/api/tool-management.d.ts` - Tool management type definitions (Tool, ToolExecutionRequest, ToolExecutionResult, JSONSchema)
+- `src/api/settings-management.ts` - Renderer-safe settings management API (wraps window.electronAPI)
+- `src/api/settings-management.d.ts` - Settings management type definitions (AppSettings, SettingsManagementAPI)
 
 ### UI Components (Web Components)
-- `app-container` - Root layout, event forwarding
+- `app-container` - Root layout, event forwarding (uses `getSettingsManagementAPI()`)
 - `project-panel` - Left sidebar, project management (uses `getProjectManagementAPI()`)
 - `project-agent-dashboard` - Center area, agent grid/chat switching
 - `conversation-panel` - Reusable chat interface (event-driven, tool call indicators, message factories for user, assistant, and tool call messages)
@@ -190,6 +193,7 @@ The documentation has been split into focused modules for better performance:
 - Agent management types in `src/api/agent-management.d.ts` (Agent, etc.)
 - Provider management types in `src/api/provider-management.d.ts` (LLMProvider, ModelConfig, LLMProviderType)
 - Tool management types in `src/api/tool-management.d.ts` (Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent, JSONSchema)
+- Settings management types in `src/api/settings-management.d.ts` (AppSettings, SettingsManagementAPI)
 - Preload modules in `src/preload/*.ts` (contextBridge exposure)
 - Renderer API modules in `src/api/*.ts` (type-safe wrappers for window.electronAPI)
 

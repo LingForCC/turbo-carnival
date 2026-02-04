@@ -36,7 +36,7 @@ interface ElectronAPI {
 
   // Settings management
   getSettings: () => Promise<AppSettings>;
-  updateSettings: (settings: Partial<AppSettings>) => Promise<AppSettings>;
+  updateSettings: (settings: Record<string, any>) => Promise<AppSettings>;
 
   // Agent-related methods
   getAgents: (projectPath: string) => Promise<Agent[]>;

@@ -66,6 +66,11 @@ The main process is organized into dedicated modules:
 - JSON Schema validator: `validateJSONSchema`
 - IPC handlers: CRUD operations, execution routing based on environment, validation
 
+**`src/main/settings-management.ts`**
+- Settings CRUD operations
+- Storage helpers: `getSettingsPath`, `loadSettings`, `saveSettings`, `updateSettingsFields`
+- IPC handler registration: `registerSettingsIPCHandlers`
+
 **`src/renderer/browser-tool-executor.ts`**
 - Browser tool execution module
 - Runs tools in renderer context with access to browser APIs
@@ -127,10 +132,21 @@ The preload script is organized into focused modules:
 - Provider functions: `getProviders`, `addProvider`, `updateProvider`, `removeProvider`, `getProviderById`
 - Model config functions: `getModelConfigs`, `addModelConfig`, `updateModelConfig`, `removeModelConfig`, `getModelConfigById`
 
+**`src/preload/tool-management.ts`**
+- Tool management functions for preload context
+- Uses `ipcRenderer` directly to invoke IPC channels
+- Exported as `toolManagement` for use in `preload.ts`
+- Functions: `getTools`, `addTool`, `updateTool`, `removeTool`, `executeTool`, `onBrowserToolExecution`, `sendBrowserToolResult`
+
+**`src/preload/settings-management.ts`**
+- Settings management functions for preload context
+- Uses `ipcRenderer` directly to invoke IPC channels
+- Exported as `settingsManagement` for use in `preload.ts`
+- Functions: `getSettings`, `updateSettings`
+
 **`src/preload.ts`**
 - Main preload script that imports and exposes all modules via spread operator in `electronAPI`
-- Imports: `projectManagement`, `agentManagement`, `providerManagement`
-- Tool and settings methods remain inline in this file
+- Imports: `projectManagement`, `agentManagement`, `providerManagement`, `toolManagement`, `settingsManagement`
 
 ### Renderer Process (`src/renderer.ts`)
 - Web Components UI, runs in browser context
@@ -158,8 +174,20 @@ Renderer-safe API modules that wrap `window.electronAPI`:
 - Internally wraps `window.electronAPI` calls
 - Used by renderer components (`provider-dialog`, `model-config-dialog`, `agent-form-dialog`) for type-safe provider and model config operations
 
+**`src/api/tool-management.ts`**
+- Renderer-safe tool management API
+- Exports `getToolManagementAPI()` function that returns a `ToolManagementAPI` instance
+- Internally wraps `window.electronAPI` calls
+- Used by renderer components (`tools-dialog`, `tool-test-dialog`) for type-safe tool operations
+
+**`src/api/settings-management.ts`**
+- Renderer-safe settings management API
+- Exports `getSettingsManagementAPI()` function that returns a `SettingsManagementAPI` instance
+- Internally wraps `window.electronAPI` calls
+- Used by renderer components (`app-container`) for type-safe settings operations
+
 **Benefits of the API Layer:**
-- Type safety through interfaces (`ProjectManagementAPI`, `AgentManagementAPI`, `ProviderManagementAPI`)
+- Type safety through interfaces (`ProjectManagementAPI`, `AgentManagementAPI`, `ProviderManagementAPI`, `ToolManagementAPI`, `SettingsManagementAPI`)
 - Encapsulation of `window.electronAPI` access
 - Easier to mock for testing
 - Consistent API patterns across renderer components
@@ -243,6 +271,10 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - `providers:update` - Updates an existing provider (preserves createdAt, sets updatedAt)
 - `providers:remove` - Removes a provider by ID
 - `providers:getById` - Gets a single provider by ID
+
+### Settings IPC Channels
+- `settings:get` - Returns all settings from storage
+- `settings:update` - Updates settings (supports partial updates)
 
 ### Tool IPC Channels
 - `tools:get` - Returns all stored tools
@@ -362,6 +394,12 @@ Provider and model config types organized in a dedicated module:
 - `LLMProvider` - LLM provider storage (id, type as LLMProviderType, name, apiKey, baseURL?, createdAt, updatedAt?)
 - `ModelConfig` - Model configuration for reusing model settings (id, name, model, type as LLMProviderType, temperature, maxTokens, topP, extra, createdAt, updatedAt)
 - `ProviderManagementAPI` - Interface for provider and model config operations
+
+### Settings Management Types (`src/api/settings-management.d.ts`)
+Settings-related types organized in a dedicated module:
+
+- `AppSettings` - Application settings (theme preference)
+- `SettingsManagementAPI` - Interface for settings management operations
 
 ### Component-Specific Types
 

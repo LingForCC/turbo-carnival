@@ -4,6 +4,8 @@ import './tool-test-dialog';
 import './provider-dialog';
 import './model-config-dialog';
 import './app-panel';
+import { getSettingsManagementAPI } from '../api/settings-management';
+import type { SettingsManagementAPI } from '../api/settings-management.d';
 
 /**
  * AppContainer Web Component
@@ -20,9 +22,12 @@ export class AppContainer extends HTMLElement {
   private showingChat: boolean = false;
   private isAppAgent: boolean = false;
   private currentTheme: 'light' | 'dark' = 'light';
+  private settingsAPI: SettingsManagementAPI;
 
   constructor() {
     super();
+    // Initialize API instance
+    this.settingsAPI = getSettingsManagementAPI();
   }
 
   async connectedCallback(): Promise<void> {
@@ -300,14 +305,12 @@ export class AppContainer extends HTMLElement {
   }
 
   private async loadTheme(): Promise<void> {
-    if (window.electronAPI) {
-      try {
-        const settings = await window.electronAPI.getSettings();
-        this.currentTheme = settings.theme === 'dark' ? 'dark' : 'light';
-        this.applyTheme();
-      } catch (error) {
-        console.error('Failed to load theme:', error);
-      }
+    try {
+      const settings = await this.settingsAPI.getSettings();
+      this.currentTheme = settings.theme === 'dark' ? 'dark' : 'light';
+      this.applyTheme();
+    } catch (error) {
+      console.error('Failed to load theme:', error);
     }
   }
 
@@ -325,17 +328,15 @@ export class AppContainer extends HTMLElement {
     }
 
     // Save the preference asynchronously
-    if (window.electronAPI) {
-      try {
-        await window.electronAPI.updateSettings({ theme: newTheme });
-      } catch (error) {
-        console.error('Failed to update theme:', error);
-        // Revert the change if it failed to save
-        this.currentTheme = newTheme === 'dark' ? 'light' : 'dark';
-        this.applyTheme();
-        if (themeToggleBtn) {
-          themeToggleBtn.innerHTML = this.getThemeIcon();
-        }
+    try {
+      await this.settingsAPI.updateSettings({ theme: newTheme });
+    } catch (error) {
+      console.error('Failed to update theme:', error);
+      // Revert the change if it failed to save
+      this.currentTheme = newTheme === 'dark' ? 'light' : 'dark';
+      this.applyTheme();
+      if (themeToggleBtn) {
+        themeToggleBtn.innerHTML = this.getThemeIcon();
       }
     }
   }
