@@ -1,4 +1,5 @@
-import type { ModelConfig } from '../global.d.ts';
+import type { ModelConfig } from '../api/provider-management.d';
+import { getProviderManagementAPI } from '../api/provider-management';
 
 /**
  * ModelConfigDialog Web Component
@@ -6,6 +7,7 @@ import type { ModelConfig } from '../global.d.ts';
  */
 export class ModelConfigDialog extends HTMLElement {
   private modelConfigs: ModelConfig[] = [];
+  private api = getProviderManagementAPI();
   private mode: 'list' | 'add' | 'edit' = 'list';
   private editingModelConfig?: ModelConfig;
 
@@ -306,12 +308,10 @@ export class ModelConfigDialog extends HTMLElement {
   }
 
   private async loadModelConfigs(): Promise<void> {
-    if (window.electronAPI) {
-      try {
-        this.modelConfigs = await window.electronAPI.getModelConfigs();
-      } catch (error) {
-        console.error('Failed to load model configs:', error);
-      }
+    try {
+      this.modelConfigs = await this.api.getModelConfigs();
+    } catch (error) {
+      console.error('Failed to load model configs:', error);
     }
   }
 
@@ -368,14 +368,12 @@ export class ModelConfigDialog extends HTMLElement {
     };
 
     try {
-      if (window.electronAPI) {
-        if (this.mode === 'edit' && this.editingModelConfig) {
-          this.modelConfigs = await window.electronAPI.updateModelConfig(this.editingModelConfig.id, newModelConfig);
-        } else {
-          this.modelConfigs = await window.electronAPI.addModelConfig(newModelConfig);
-        }
-        this.showList();
+      if (this.mode === 'edit' && this.editingModelConfig) {
+        this.modelConfigs = await this.api.updateModelConfig(this.editingModelConfig.id, newModelConfig);
+      } else {
+        this.modelConfigs = await this.api.addModelConfig(newModelConfig);
       }
+      this.showList();
     } catch (error: any) {
       alert(`Failed to save model configuration: ${error.message}`);
     }
@@ -392,10 +390,8 @@ export class ModelConfigDialog extends HTMLElement {
     if (!confirmed) return;
 
     try {
-      if (window.electronAPI) {
-        this.modelConfigs = await window.electronAPI.removeModelConfig(id);
-        this.render();
-      }
+      this.modelConfigs = await this.api.removeModelConfig(id);
+      this.render();
     } catch (error: any) {
       alert(`Failed to delete model configuration: ${error.message}`);
     }

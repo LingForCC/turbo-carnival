@@ -1,5 +1,6 @@
 import type { Agent } from '../api/agent-management.d';
-import type { ModelConfig } from '../global.d.ts';
+import type { ModelConfig } from '../api/provider-management.d';
+import { getProviderManagementAPI } from '../api/provider-management';
 
 /**
  * AgentFormDialog Web Component
@@ -10,6 +11,7 @@ export class AgentFormDialog extends HTMLElement {
   private agent: Agent | null = null;
   private form: HTMLFormElement | null = null;
   private modelConfigs: ModelConfig[] = [];
+  private api = getProviderManagementAPI();
   private selectedModelConfig?: ModelConfig;
 
   constructor() {
@@ -310,10 +312,8 @@ export class AgentFormDialog extends HTMLElement {
   }
 
   private async loadProviders(): Promise<void> {
-    if (!window.electronAPI) return;
-
     try {
-      const providers = await window.electronAPI.getProviders();
+      const providers = await this.api.getProviders();
       const select = this.querySelector('#provider-ref') as HTMLSelectElement;
       if (!select) return;
 
@@ -335,10 +335,8 @@ export class AgentFormDialog extends HTMLElement {
   }
 
   private async loadModelConfigs(): Promise<void> {
-    if (!window.electronAPI) return;
-
     try {
-      this.modelConfigs = await window.electronAPI.getModelConfigs();
+      this.modelConfigs = await this.api.getModelConfigs();
       const select = this.querySelector('#model-config-ref') as HTMLSelectElement;
       if (!select) return;
 

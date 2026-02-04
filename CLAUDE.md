@@ -119,10 +119,16 @@ The documentation has been split into focused modules for better performance:
 ### Preload Modules
 - `src/preload.ts` - Main preload script, exposes `window.electronAPI` via contextBridge
 - `src/preload/project-management.ts` - Project management functions for preload (uses ipcRenderer)
+- `src/preload/agent-management.ts` - Agent management functions for preload (uses ipcRenderer)
+- `src/preload/provider-management.ts` - Provider and model config functions for preload (uses ipcRenderer)
 
 ### Renderer API Layer
 - `src/api/project-management.ts` - Renderer-safe project management API (wraps window.electronAPI)
 - `src/api/project-management.d.ts` - Project management type definitions (Project, FileTreeNode, etc.)
+- `src/api/agent-management.ts` - Renderer-safe agent management API (wraps window.electronAPI)
+- `src/api/agent-management.d.ts` - Agent management type definitions (Agent, etc.)
+- `src/api/provider-management.ts` - Renderer-safe provider management API (wraps window.electronAPI)
+- `src/api/provider-management.d.ts` - Provider and model config type definitions (LLMProvider, ModelConfig, LLMProviderType)
 
 ### UI Components (Web Components)
 - `app-container` - Root layout, event forwarding
@@ -136,9 +142,9 @@ The documentation has been split into focused modules for better performance:
 - `chat-panel` - Right sidebar chat interface (uses conversation-panel, provides message factories for user, assistant, and tool call messages, handles chat-agent IPC)
 - `app-panel` - Conditional layout for App-type agents: default conversation view (full-width) or preview view (full-width app preview with close button), uses conversation-panel, provides AppCodeMessage factory for app-specific rendering, handles app-agent IPC
 - `project-detail-panel` - Right sidebar, file tree (uses `getProjectManagementAPI()`)
-- `agent-form-dialog` - Agent creation/editing with model config and provider selection
-- `provider-dialog` - LLM provider management (OpenAI, GLM, custom providers)
-- `model-config-dialog` - Model configuration management with extra properties support
+- `agent-form-dialog` - Agent creation/editing with model config and provider selection (uses `getAgentManagementAPI()` and `getProviderManagementAPI()`)
+- `provider-dialog` - LLM provider management (uses `getProviderManagementAPI()`)
+- `model-config-dialog` - Model configuration management with extra properties support (uses `getProviderManagementAPI()`)
 - `tools-dialog` - Tool management with testing
 - `tool-test-dialog` - Tool execution testing
 
@@ -176,8 +182,10 @@ The documentation has been split into focused modules for better performance:
 - Target: ES2020, Module: CommonJS
 - Strict mode enabled
 - Outputs to `dist/` from `src/` root
-- Global types defined in `src/global.d.ts` (core types like Agent, Tool, Provider)
+- Global types defined in `src/global.d.ts` (core types like Agent, Tool, AppSettings, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent)
 - Project management types in `src/api/project-management.d.ts` (Project, FileTreeNode, etc.)
+- Agent management types in `src/api/agent-management.d.ts` (Agent, etc.)
+- Provider management types in `src/api/provider-management.d.ts` (LLMProvider, ModelConfig, LLMProviderType)
 - Preload modules in `src/preload/*.ts` (contextBridge exposure)
 - Renderer API modules in `src/api/*.ts` (type-safe wrappers for window.electronAPI)
 
@@ -191,6 +199,30 @@ The documentation has been split into focused modules for better performance:
 ## Common Workflows
 
 ### Using the Renderer API Layer
+
+When creating renderer components that need provider or model config management functionality:
+
+```typescript
+// Import the API getter function and types
+import { getProviderManagementAPI } from '../api/provider-management';
+import type { ProviderManagementAPI, LLMProvider, ModelConfig } from '../api/provider-management.d';
+
+export class MyComponent extends HTMLElement {
+  private api: ProviderManagementAPI;
+
+  constructor() {
+    super();
+    // Initialize API instance
+    this.api = getProviderManagementAPI();
+  }
+
+  async loadProviders() {
+    // Use the API - type-safe and testable
+    const providers = await this.api.getProviders();
+    // ... rest of implementation
+  }
+}
+```
 
 When creating renderer components that need project management functionality:
 

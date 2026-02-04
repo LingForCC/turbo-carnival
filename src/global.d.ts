@@ -13,40 +13,9 @@ import type {
 // Import agent management types for use in ElectronAPI interface
 import type { Agent } from './api/agent-management.d';
 
+// Import provider management types for use in ElectronAPI interface
+import type { LLMProvider, ModelConfig } from './api/provider-management.d';
 
-/**
- * LLM Provider type discriminator
- */
-export type LLMProviderType = 'openai' | 'glm' | 'azure' | 'custom';
-
-/**
- * LLM Provider configuration
- */
-export interface LLMProvider {
-  id: string;                    // Unique identifier (e.g., "openai-main")
-  type: LLMProviderType;         // Provider type discriminator
-  name: string;                  // Display name
-  apiKey: string;                // API key/secret
-  baseURL?: string;              // Custom endpoint (overrides default)
-  createdAt: number;             // Timestamp when created
-  updatedAt?: number;            // Timestamp when last updated
-}
-
-/**
- * Model configuration for reusing model settings across agents
- */
-export interface ModelConfig {
-  id: string;                    // Unique identifier (e.g., "gpt4-creative")
-  name: string;                  // Display name (e.g., "GPT-4 Creative")
-  model: string;                 // Model identifier (e.g., "gpt-4", "claude-3.5")
-  type: LLMProviderType;         // Provider type discriminator (openai, glm, azure, custom)
-  temperature?: number;          // Optional temperature (0-2)
-  maxTokens?: number;            // Optional max tokens
-  topP?: number;                 // Optional top_p (0-1)
-  extra?: Record<string, any>;   // Model-specific properties (e.g., thinking mode)
-  createdAt: number;             // Timestamp when created
-  updatedAt?: number;            // Timestamp when last updated
-}
 
 /**
  * App settings for user preferences

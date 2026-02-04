@@ -1,6 +1,7 @@
 import type { Agent } from '../../api/agent-management.d';
-import type { LLMProviderType } from '../../global.d.ts';
+import type { LLMProviderType } from '../../api/provider-management.d';
 import type { Project } from '../../api/project-management.d';
+import { getProviderManagementAPI } from '../../api/provider-management';
 import { createTransformer } from '../transformers';
 
 /**
@@ -42,6 +43,7 @@ export class ConversationPanel extends HTMLElement {
   private currentStreamedContent: string = '';
   private currentStreamedReasoning: string = '';
   private activeToolCalls: Map<string, ToolCallData> = new Map();
+  private providerAPI = getProviderManagementAPI();
 
   // Configuration from attributes
   private enableFileTagging: boolean = false;
@@ -163,12 +165,12 @@ export class ConversationPanel extends HTMLElement {
    * Get the provider type for an agent from its model config
    */
   private async getProviderType(agent: Agent): Promise<LLMProviderType> {
-    if (!agent.config.modelId || !window.electronAPI) {
+    if (!agent.config.modelId) {
       return 'openai'; // Default fallback
     }
 
     try {
-      const modelConfig = await window.electronAPI.getModelConfigById(agent.config.modelId);
+      const modelConfig = await this.providerAPI.getModelConfigById(agent.config.modelId);
       return modelConfig?.type || 'openai';
     } catch (error) {
       console.error('Failed to get provider type:', error);

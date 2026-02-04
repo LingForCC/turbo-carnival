@@ -1,4 +1,5 @@
-import type { LLMProvider, LLMProviderType } from '../global.d.ts';
+import type { LLMProvider, LLMProviderType } from '../api/provider-management.d';
+import { getProviderManagementAPI } from '../api/provider-management';
 
 /**
  * ProviderDialog Web Component
@@ -6,6 +7,7 @@ import type { LLMProvider, LLMProviderType } from '../global.d.ts';
  */
 export class ProviderDialog extends HTMLElement {
   private providers: LLMProvider[] = [];
+  private api = getProviderManagementAPI();
   private mode: 'list' | 'add' | 'edit' = 'list';
   private editingProvider?: LLMProvider;
 
@@ -294,12 +296,10 @@ export class ProviderDialog extends HTMLElement {
   }
 
   private async loadProviders(): Promise<void> {
-    if (window.electronAPI) {
-      try {
-        this.providers = await window.electronAPI.getProviders();
-      } catch (error) {
-        console.error('Failed to load providers:', error);
-      }
+    try {
+      this.providers = await this.api.getProviders();
+    } catch (error) {
+      console.error('Failed to load providers:', error);
     }
   }
 
@@ -341,14 +341,12 @@ export class ProviderDialog extends HTMLElement {
     };
 
     try {
-      if (window.electronAPI) {
-        if (this.mode === 'edit' && this.editingProvider) {
-          this.providers = await window.electronAPI.updateProvider(this.editingProvider.id, newProvider);
-        } else {
-          this.providers = await window.electronAPI.addProvider(newProvider);
-        }
-        this.showList();
+      if (this.mode === 'edit' && this.editingProvider) {
+        this.providers = await this.api.updateProvider(this.editingProvider.id, newProvider);
+      } else {
+        this.providers = await this.api.addProvider(newProvider);
       }
+      this.showList();
     } catch (error: any) {
       alert(`Failed to save provider: ${error.message}`);
     }
@@ -365,10 +363,8 @@ export class ProviderDialog extends HTMLElement {
     if (!confirmed) return;
 
     try {
-      if (window.electronAPI) {
-        this.providers = await window.electronAPI.removeProvider(id);
-        this.render();
-      }
+      this.providers = await this.api.removeProvider(id);
+      this.render();
     } catch (error: any) {
       alert(`Failed to delete provider: ${error.message}`);
     }

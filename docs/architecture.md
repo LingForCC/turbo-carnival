@@ -114,9 +114,23 @@ The preload script is organized into focused modules:
 - Exported as `projectManagement` for use in `preload.ts`
 - Functions: `openFolderDialog`, `getProjects`, `addProject`, `removeProject`, `getFileTree`, `listProjectFiles`, `readFileContents`, `saveMessageToFile`, `onProjectFileUpdated`
 
+**`src/preload/agent-management.ts`**
+- Agent management functions for preload context
+- Uses `ipcRenderer` directly to invoke IPC channels
+- Exported as `agentManagement` for use in `preload.ts`
+- Functions: `getAgents`, `addAgent`, `removeAgent`, `updateAgent`, `clearChatAgentHistory`, `streamChatAgentMessage`, `clearAppAgentHistory`, `streamAppAgentMessage`, `onToolCallEvent`
+
+**`src/preload/provider-management.ts`**
+- Provider and model config management functions for preload context
+- Uses `ipcRenderer` directly to invoke IPC channels
+- Exported as `providerManagement` for use in `preload.ts`
+- Provider functions: `getProviders`, `addProvider`, `updateProvider`, `removeProvider`, `getProviderById`
+- Model config functions: `getModelConfigs`, `addModelConfig`, `updateModelConfig`, `removeModelConfig`, `getModelConfigById`
+
 **`src/preload.ts`**
-- Imports and exposes `projectManagement` via spread operator in `electronAPI`
-- All other API methods remain inline in this file
+- Main preload script that imports and exposes all modules via spread operator in `electronAPI`
+- Imports: `projectManagement`, `agentManagement`, `providerManagement`
+- Tool and settings methods remain inline in this file
 
 ### Renderer Process (`src/renderer.ts`)
 - Web Components UI, runs in browser context
@@ -132,8 +146,20 @@ Renderer-safe API modules that wrap `window.electronAPI`:
 - Internally wraps `window.electronAPI` calls
 - Used by renderer components (`project-panel`, `project-detail-panel`) for type-safe API access
 
+**`src/api/agent-management.ts`**
+- Renderer-safe agent management API
+- Exports `getAgentManagementAPI()` function that returns an `AgentManagementAPI` instance
+- Internally wraps `window.electronAPI` calls
+- Used by renderer components for type-safe agent operations
+
+**`src/api/provider-management.ts`**
+- Renderer-safe provider management API
+- Exports `getProviderManagementAPI()` function that returns a `ProviderManagementAPI` instance
+- Internally wraps `window.electronAPI` calls
+- Used by renderer components (`provider-dialog`, `model-config-dialog`, `agent-form-dialog`) for type-safe provider and model config operations
+
 **Benefits of the API Layer:**
-- Type safety through interfaces (`ProjectManagementAPI`)
+- Type safety through interfaces (`ProjectManagementAPI`, `AgentManagementAPI`, `ProviderManagementAPI`)
 - Encapsulation of `window.electronAPI` access
 - Easier to mock for testing
 - Consistent API patterns across renderer components
@@ -286,19 +312,18 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 ### Global Types (`src/global.d.ts`)
 Core type definitions for the application:
 
-- `Agent` - AI agent with full metadata including conversation history (stored as flexible `any[]` to support different message formats)
+- `Agent` - AI agent with full metadata including conversation history (imported from `api/agent-management.d`)
 - `AgentConfig` - Model configuration (modelId, providerId, model @deprecated, temperature @deprecated, maxTokens @deprecated, topP @deprecated)
 - `AgentPrompts` - System and user prompts
 - `AgentSettings` - Flexible settings object
 - `AppSettings` - Application settings (theme preference)
-- `LLMProviderType` - Union type for provider types ('openai' | 'glm' | 'azure' | 'custom')
-- `LLMProvider` - LLM provider storage (id, type, name, apiKey, baseURL?, createdAt, updatedAt?)
-- `ModelConfig` - Model configuration for reusing model settings (id, name, model, type as LLMProviderType, temperature, maxTokens, topP, extra, createdAt, updatedAt)
+- `LLMProvider` - LLM provider storage (imported from `api/provider-management.d`)
+- `ModelConfig` - Model configuration for reusing model settings (imported from `api/provider-management.d`)
 - `Tool` - Custom tool definition (name, description, code, parameters, returns, timeout, environment, enabled, createdAt, updatedAt)
 - `ToolExecutionRequest` - Request for tool execution (toolName, parameters, optional tool)
 - `ToolExecutionResult` - Result from tool execution (success, result, error, executionTime)
 - `ToolCallEvent` - Tool call event for IPC communication (toolName, parameters, status, result, executionTime, error)
-- `ElectronAPI` - Exposed API methods from preload script (imports project types from `api/project-management.d`)
+- `ElectronAPI` - Exposed API methods from preload script (imports types from `api/project-management.d`, `api/agent-management.d`, and `api/provider-management.d`)
 
 ### Project Management Types (`src/api/project-management.d.ts`)
 Project-related types organized in a dedicated module:
@@ -311,6 +336,24 @@ Project-related types organized in a dedicated module:
 - `FileContent` - File content with metadata (path, name, content, size, error)
 - `FileListOptions` - Configuration for file listing (extensions, maxDepth, excludeHidden)
 - `ProjectManagementAPI` - Interface for project management operations
+
+### Agent Management Types (`src/api/agent-management.d.ts`)
+Agent-related types organized in a dedicated module:
+
+- `Agent` - AI agent with name, type, description, config, prompts, history, and settings
+- `AgentConfig` - Model configuration (modelId, providerId, and deprecated fields)
+- `AgentPrompts` - System and user prompts
+- `AgentSettings` - Flexible settings object
+- `AgentManagementAPI` - Interface for agent management operations
+- Re-exports: `Tool`, `ToolExecutionRequest`, `ToolExecutionResult`, `ToolCallEvent` from global.d.ts
+
+### Provider Management Types (`src/api/provider-management.d.ts`)
+Provider and model config types organized in a dedicated module:
+
+- `LLMProviderType` - Union type for provider types ('openai' | 'glm' | 'azure' | 'custom')
+- `LLMProvider` - LLM provider storage (id, type as LLMProviderType, name, apiKey, baseURL?, createdAt, updatedAt?)
+- `ModelConfig` - Model configuration for reusing model settings (id, name, model, type as LLMProviderType, temperature, maxTokens, topP, extra, createdAt, updatedAt)
+- `ProviderManagementAPI` - Interface for provider and model config operations
 
 ### Component-Specific Types
 

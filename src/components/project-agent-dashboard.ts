@@ -1,7 +1,8 @@
 import type { Agent } from '../api/agent-management.d';
-import type { ModelConfig } from '../global.d.ts';
+import type { ModelConfig } from '../api/provider-management.d';
 import type { Project } from '../api/project-management.d';
 import { getAgentManagementAPI } from '../api/agent-management';
+import { getProviderManagementAPI } from '../api/provider-management';
 import type { AgentManagementAPI } from '../api/agent-management.d';
 
 /**
@@ -14,6 +15,7 @@ export class ProjectAgentDashboard extends HTMLElement {
   private selectedAgent: Agent | null = null;
   private modelConfigs: ModelConfig[] = [];
   private agentAPI: AgentManagementAPI;
+  private providerAPI = getProviderManagementAPI();
 
   constructor() {
     super();
@@ -252,14 +254,8 @@ export class ProjectAgentDashboard extends HTMLElement {
    * Load all model configs
    */
   private async loadModelConfigs(): Promise<void> {
-    if (!window.electronAPI) {
-      this.modelConfigs = [];
-      return;
-    }
-
     try {
-      // Model configs are not part of agent management API, use window.electronAPI
-      this.modelConfigs = await window.electronAPI.getModelConfigs();
+      this.modelConfigs = await this.providerAPI.getModelConfigs();
     } catch (error) {
       console.error('Failed to load model configs:', error);
       this.modelConfigs = [];
