@@ -16,74 +16,15 @@ import type { Agent } from './api/agent-management.d';
 // Import provider management types for use in ElectronAPI interface
 import type { LLMProvider, ModelConfig } from './api/provider-management.d';
 
+// Import tool management types for use in ElectronAPI interface
+import type { Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent } from './api/tool-management.d';
+
 
 /**
  * App settings for user preferences
  */
 export interface AppSettings {
   theme: 'light' | 'dark';  // Theme preference
-}
-
-/**
- * JSON Schema definition for tool parameters and return values
- * Follows JSON Schema draft-07 specification
- */
-export interface JSONSchema {
-  type: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
-  description?: string;
-  properties?: Record<string, JSONSchema>;
-  required?: string[];
-  items?: JSONSchema;
-  enum?: (string | number | boolean | null)[];
-  [key: string]: any; // Allow additional JSON Schema keywords
-}
-
-/**
- * Custom Tool that can be invoked by AI agents
- */
-export interface Tool {
-  name: string;                    // Unique tool identifier
-  description: string;             // Human-readable description (shown to agent in system prompt)
-  code: string;                    // JavaScript code to execute (must export function named "tool" or "run")
-  parameters: JSONSchema;          // JSON Schema for input parameter validation
-  returns?: JSONSchema;            // JSON Schema for output structure (shown to agent)
-  timeout?: number;                // Execution timeout in milliseconds (default: 30000)
-  enabled: boolean;                // Whether tool is enabled for use
-  environment?: 'node' | 'browser'; // Execution environment (default: 'node')
-  createdAt: number;               // Timestamp when created
-  updatedAt?: number;              // Timestamp when last updated
-}
-
-/**
- * Tool execution request
- */
-export interface ToolExecutionRequest {
-  toolName: string;
-  parameters: Record<string, any>;
-  tool?: Tool;  // Optional: Full tool data for direct execution (e.g., testing unsaved tools)
-}
-
-/**
- * Tool execution result
- */
-export interface ToolExecutionResult {
-  success: boolean;
-  result: any;                     // Return value from tool execution
-  error?: string;                  // Error message if failed
-  executionTime: number;           // Execution time in milliseconds
-}
-
-/**
- * Tool call event for IPC communication
- * Sent from main process to renderer during tool execution
- */
-export interface ToolCallEvent {
-  toolName: string;
-  parameters: Record<string, any>;
-  status: 'started' | 'completed' | 'failed';
-  result?: any;
-  executionTime?: number;
-  error?: string;
 }
 
 interface ElectronAPI {

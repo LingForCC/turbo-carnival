@@ -1,15 +1,18 @@
-import type { Tool } from '../global.d.ts';
+import { getToolManagementAPI } from '../api/tool-management';
+import type { ToolManagementAPI, Tool } from '../api/tool-management.d';
 
 /**
  * ToolsDialog Web Component
  * Modal dialog for managing custom tools
  */
 export class ToolsDialog extends HTMLElement {
+  private api: ToolManagementAPI;
   private tools: Tool[] = [];
   private editingTool: Tool | null = null;
 
   constructor() {
     super();
+    this.api = getToolManagementAPI();
   }
 
   async connectedCallback(): Promise<void> {
@@ -281,12 +284,10 @@ export class ToolsDialog extends HTMLElement {
   }
 
   private async loadTools(): Promise<void> {
-    if (window.electronAPI) {
-      try {
-        this.tools = await window.electronAPI.getTools();
-      } catch (error) {
-        console.error('Failed to load tools:', error);
-      }
+    try {
+      this.tools = await this.api.getTools();
+    } catch (error) {
+      console.error('Failed to load tools:', error);
     }
   }
 
@@ -364,9 +365,9 @@ export class ToolsDialog extends HTMLElement {
       };
 
       if (this.editingTool) {
-        await window.electronAPI!.updateTool(this.editingTool.name, toolData);
+        await this.api.updateTool(this.editingTool.name, toolData);
       } else {
-        await window.electronAPI!.addTool(toolData);
+        await this.api.addTool(toolData);
       }
 
       await this.loadTools();
@@ -383,7 +384,7 @@ export class ToolsDialog extends HTMLElement {
     }
 
     try {
-      await window.electronAPI!.removeTool(toolName);
+      await this.api.removeTool(toolName);
       await this.loadTools();
       this.render();
     } catch (error: any) {

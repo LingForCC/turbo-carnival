@@ -1,6 +1,6 @@
 import type { AgentManagementAPI } from './agent-management.d';
 import type { Agent } from './agent-management.d';
-import type { ToolCallEvent } from '../global.d';
+import type { ToolCallEvent } from './tool-management.d';
 
 /**
  * Agent Management API for Renderer Components

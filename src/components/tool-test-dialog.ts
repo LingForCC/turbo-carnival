@@ -1,4 +1,5 @@
-import type { Tool, ToolExecutionResult, JSONSchema } from '../global.d.ts';
+import { getToolManagementAPI } from '../api/tool-management';
+import type { ToolManagementAPI, Tool, ToolExecutionResult, JSONSchema } from '../api/tool-management.d';
 import { executeToolInBrowser } from '../renderer/browser-tool-executor';
 
 /**
@@ -6,6 +7,7 @@ import { executeToolInBrowser } from '../renderer/browser-tool-executor';
  * Modal dialog for testing tool execution with custom parameters
  */
 export class ToolTestDialog extends HTMLElement {
+  private api: ToolManagementAPI;
   private tool: Tool | null = null;
   private executionResult: ToolExecutionResult | null = null;
   private isExecuting: boolean = false;
@@ -13,6 +15,7 @@ export class ToolTestDialog extends HTMLElement {
 
   constructor() {
     super();
+    this.api = getToolManagementAPI();
   }
 
   connectedCallback(): void {
@@ -378,7 +381,7 @@ export class ToolTestDialog extends HTMLElement {
         result = browserResult;
       } else {
         // Execute Node.js tools via main process
-        result = await window.electronAPI!.executeTool({
+        result = await this.api.executeTool({
           toolName: this.tool.name,
           parameters,
           tool: this.tool  // Pass full tool data for direct execution

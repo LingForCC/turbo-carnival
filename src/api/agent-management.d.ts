@@ -43,8 +43,8 @@ export interface AgentSettings {
   [key: string]: any;              // Flexible settings object
 }
 
-// Import other types from global.d.ts that are still needed
-import type { Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent } from '../global.d';
+// Import tool types from tool-management.d.ts for ToolCallEvent
+import type { ToolCallEvent } from './tool-management.d';
 
 /**
  * Agent Management API interface

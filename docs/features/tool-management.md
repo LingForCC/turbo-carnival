@@ -136,5 +136,48 @@ Tools are called by AI agents during conversations:
 - `src/main/llm/index.ts` - Tool execution routing (executeToolWithRouting)
 - `src/tool-worker.ts` - Node.js tool worker process
 - `src/renderer/browser-tool-executor.ts` - Browser tool executor
+- `src/preload/tool-management.ts` - Preload module for tool management (uses ipcRenderer)
+- `src/api/tool-management.ts` - Renderer-safe tool management API (wraps window.electronAPI)
+- `src/api/tool-management.d.ts` - Tool management type definitions (Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent, JSONSchema)
 - `src/components/tools-dialog.ts` - Tool management UI
 - `src/components/tool-test-dialog.ts` - Tool testing UI
+
+## Using the Tool Management API in Components
+
+When creating renderer components that need tool management functionality:
+
+```typescript
+// Import the API getter function and types
+import { getToolManagementAPI } from '../api/tool-management';
+import type { ToolManagementAPI, Tool, ToolExecutionResult } from '../api/tool-management.d';
+
+export class MyComponent extends HTMLElement {
+  private api: ToolManagementAPI;
+
+  constructor() {
+    super();
+    // Initialize API instance
+    this.api = getToolManagementAPI();
+  }
+
+  async loadTools() {
+    // Use the API - type-safe and testable
+    const tools = await this.api.getTools();
+    // ... rest of implementation
+  }
+
+  async executeTool(toolName: string, parameters: Record<string, any>) {
+    const result = await this.api.executeTool({
+      toolName,
+      parameters
+    });
+    // ... handle result
+  }
+}
+```
+
+**Benefits:**
+- Type safety through `ToolManagementAPI` interface
+- Easy to mock in tests (just create a mock object)
+- No direct dependency on `window.electronAPI`
+- Prevents bundling Electron APIs into renderer code

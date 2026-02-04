@@ -319,11 +319,20 @@ Core type definitions for the application:
 - `AppSettings` - Application settings (theme preference)
 - `LLMProvider` - LLM provider storage (imported from `api/provider-management.d`)
 - `ModelConfig` - Model configuration for reusing model settings (imported from `api/provider-management.d`)
+- `ToolCallEvent` - Tool call event for IPC communication (imported from `api/tool-management.d`)
+- `ElectronAPI` - Exposed API methods from preload script (imports types from `api/project-management.d`, `api/agent-management.d`, `api/provider-management.d`, and `api/tool-management.d`)
+
+### Tool Management Types (`src/api/tool-management.d.ts`)
+Tool-related types organized in a dedicated module:
+
 - `Tool` - Custom tool definition (name, description, code, parameters, returns, timeout, environment, enabled, createdAt, updatedAt)
 - `ToolExecutionRequest` - Request for tool execution (toolName, parameters, optional tool)
 - `ToolExecutionResult` - Result from tool execution (success, result, error, executionTime)
 - `ToolCallEvent` - Tool call event for IPC communication (toolName, parameters, status, result, executionTime, error)
-- `ElectronAPI` - Exposed API methods from preload script (imports types from `api/project-management.d`, `api/agent-management.d`, and `api/provider-management.d`)
+- `JSONSchema` - JSON Schema definition for tool parameters and return values
+- `BrowserToolExecutionRequest` - Browser tool execution request from main to renderer
+- `BrowserToolExecutionResult` - Browser tool execution result from renderer to main
+- `ToolManagementAPI` - Interface for tool management operations
 
 ### Project Management Types (`src/api/project-management.d.ts`)
 Project-related types organized in a dedicated module:
@@ -344,8 +353,7 @@ Agent-related types organized in a dedicated module:
 - `AgentConfig` - Model configuration (modelId, providerId, and deprecated fields)
 - `AgentPrompts` - System and user prompts
 - `AgentSettings` - Flexible settings object
-- `AgentManagementAPI` - Interface for agent management operations
-- Re-exports: `Tool`, `ToolExecutionRequest`, `ToolExecutionResult`, `ToolCallEvent` from global.d.ts
+- `AgentManagementAPI` - Interface for agent management operations (imports ToolCallEvent from `api/tool-management.d`)
 
 ### Provider Management Types (`src/api/provider-management.d.ts`)
 Provider and model config types organized in a dedicated module:
