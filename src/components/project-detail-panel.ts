@@ -1,5 +1,5 @@
 import { getProjectManagementAPI } from '../api/project-management';
-import type { Project, FileTreeNode, ProjectManagementAPI } from '../api/project-management.d';
+import type { Project, FileTreeNode, ProjectManagementAPI } from '../types/project-management';
 
 /**
  * ProjectDetailPanel Web Component

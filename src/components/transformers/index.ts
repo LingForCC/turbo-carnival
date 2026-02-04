@@ -1,4 +1,4 @@
-import type { LLMProviderType } from '../../api/provider-management.d';
+import type { LLMProviderType } from '../../types/provider-management';
 import { OpenAITransformer } from './openai-transformer';
 import { GLMTransformer } from './glm-transformer';
 

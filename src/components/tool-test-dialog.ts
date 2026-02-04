@@ -1,5 +1,5 @@
 import { getToolManagementAPI } from '../api/tool-management';
-import type { ToolManagementAPI, Tool, ToolExecutionResult, JSONSchema } from '../api/tool-management.d';
+import type { ToolManagementAPI, Tool, ToolExecutionResult, JSONSchema } from '../types/tool-management';
 import { executeToolInBrowser } from '../renderer/browser-tool-executor';
 
 /**

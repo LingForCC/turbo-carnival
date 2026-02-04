@@ -126,15 +126,15 @@ The documentation has been split into focused modules for better performance:
 
 ### Renderer API Layer
 - `src/api/project-management.ts` - Renderer-safe project management API (wraps window.electronAPI)
-- `src/api/project-management.d.ts` - Project management type definitions (Project, FileTreeNode, etc.)
+- `src/types/project-management.d.ts` - Project management type definitions (Project, FileTreeNode, etc.)
 - `src/api/agent-management.ts` - Renderer-safe agent management API (wraps window.electronAPI)
-- `src/api/agent-management.d.ts` - Agent management type definitions (Agent, etc.)
+- `src/types/agent-management.d.ts` - Agent management type definitions (Agent, etc.)
 - `src/api/provider-management.ts` - Renderer-safe provider management API (wraps window.electronAPI)
-- `src/api/provider-management.d.ts` - Provider and model config type definitions (LLMProvider, ModelConfig, LLMProviderType)
+- `src/types/provider-management.d.ts` - Provider and model config type definitions (LLMProvider, ModelConfig, LLMProviderType)
 - `src/api/tool-management.ts` - Renderer-safe tool management API (wraps window.electronAPI)
-- `src/api/tool-management.d.ts` - Tool management type definitions (Tool, ToolExecutionRequest, ToolExecutionResult, JSONSchema)
+- `src/types/tool-management.d.ts` - Tool management type definitions (Tool, ToolExecutionRequest, ToolExecutionResult, JSONSchema)
 - `src/api/settings-management.ts` - Renderer-safe settings management API (wraps window.electronAPI)
-- `src/api/settings-management.d.ts` - Settings management type definitions (AppSettings, SettingsManagementAPI)
+- `src/types/settings-management.d.ts` - Settings management type definitions (AppSettings, SettingsManagementAPI)
 
 ### UI Components (Web Components)
 - `app-container` - Root layout, event forwarding (uses `getSettingsManagementAPI()`)
@@ -189,11 +189,11 @@ The documentation has been split into focused modules for better performance:
 - Strict mode enabled
 - Outputs to `dist/` from `src/` root
 - Global types defined in `src/global.d.ts` (core types like AppSettings)
-- Project management types in `src/api/project-management.d.ts` (Project, FileTreeNode, etc.)
-- Agent management types in `src/api/agent-management.d.ts` (Agent, etc.)
-- Provider management types in `src/api/provider-management.d.ts` (LLMProvider, ModelConfig, LLMProviderType)
-- Tool management types in `src/api/tool-management.d.ts` (Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent, JSONSchema)
-- Settings management types in `src/api/settings-management.d.ts` (AppSettings, SettingsManagementAPI)
+- Project management types in `src/types/project-management.d.ts` (Project, FileTreeNode, etc.)
+- Agent management types in `src/types/agent-management.d.ts` (Agent, etc.)
+- Provider management types in `src/types/provider-management.d.ts` (LLMProvider, ModelConfig, LLMProviderType)
+- Tool management types in `src/types/tool-management.d.ts` (Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent, JSONSchema)
+- Settings management types in `src/types/settings-management.d.ts` (AppSettings, SettingsManagementAPI)
 - Preload modules in `src/preload/*.ts` (contextBridge exposure)
 - Renderer API modules in `src/api/*.ts` (type-safe wrappers for window.electronAPI)
 
@@ -213,7 +213,7 @@ When creating renderer components that need provider or model config management 
 ```typescript
 // Import the API getter function and types
 import { getProviderManagementAPI } from '../api/provider-management';
-import type { ProviderManagementAPI, LLMProvider, ModelConfig } from '../api/provider-management.d';
+import type { ProviderManagementAPI, LLMProvider, ModelConfig } from '../types/provider-management';
 
 export class MyComponent extends HTMLElement {
   private api: ProviderManagementAPI;
@@ -237,7 +237,7 @@ When creating renderer components that need project management functionality:
 ```typescript
 // Import the API getter function and types
 import { getProjectManagementAPI } from '../api/project-management';
-import type { ProjectManagementAPI, Project } from '../api/project-management.d';
+import type { ProjectManagementAPI, Project } from '../types/project-management';
 
 export class MyComponent extends HTMLElement {
   private api: ProjectManagementAPI;

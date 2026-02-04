@@ -1,11 +1,11 @@
-import type { Agent } from '../api/agent-management.d';
-import type { Project } from '../api/project-management.d';
+import type { Agent } from '../types/agent-management';
+import type { Project } from '../types/project-management';
 import type { ToolCallData } from './conversation/conversation-panel';
 import { AssistantMessage } from './conversation/assistant-message';
 import { UserMessage } from './conversation/user-message';
 import { ToolCallMessage } from './conversation/tool-call-message';
 import { getAgentManagementAPI } from '../api/agent-management';
-import type { AgentManagementAPI, ToolCallEvent } from '../api/agent-management.d';
+import type { AgentManagementAPI, ToolCallEvent } from '../types/agent-management';
 
 /**
  * ChatPanel Web Component

@@ -149,7 +149,7 @@ When creating renderer components that need tool management functionality:
 ```typescript
 // Import the API getter function and types
 import { getToolManagementAPI } from '../api/tool-management';
-import type { ToolManagementAPI, Tool, ToolExecutionResult } from '../api/tool-management.d';
+import type { ToolManagementAPI, Tool, ToolExecutionResult } from '../types/tool-management';
 
 export class MyComponent extends HTMLElement {
   private api: ToolManagementAPI;

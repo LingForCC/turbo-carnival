@@ -3,7 +3,7 @@ import * as electron from 'electron';
 import * as path from 'path';
 import { registerProjectIPCHandlers } from '../../../main/project-management';
 import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
-import type { Project } from '../../../api/project-management.d';
+import type { Project } from '../../../types/project-management';
 
 describe('Project Management - IPC Handlers', () => {
   let mockHandlers: Map<string, Function>;

@@ -1,5 +1,5 @@
 import { getProjectManagementAPI } from '../api/project-management';
-import type { Project, ProjectManagementAPI } from '../api/project-management.d';
+import type { Project, ProjectManagementAPI } from '../types/project-management';
 
 /**
  * ProjectPanel Web Component

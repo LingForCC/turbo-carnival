@@ -1,5 +1,5 @@
 import { ipcRenderer } from 'electron';
-import type { Agent } from '../api/agent-management.d';
+import type { Agent } from '../types/agent-management';
 import type { ToolCallEvent } from '../global.d';
 
 /**

@@ -1,4 +1,4 @@
-import type { LLMProvider, LLMProviderType } from '../api/provider-management.d';
+import type { LLMProvider, LLMProviderType } from '../types/provider-management';
 import { getProviderManagementAPI } from '../api/provider-management';
 
 /**

@@ -1,4 +1,4 @@
-import type { ProjectManagementAPI, FileTreeOptions, FileListOptions } from './project-management.d';
+import type { ProjectManagementAPI, FileTreeOptions, FileListOptions } from '../types/project-management';
 
 /**
  * Project Management API for Renderer Components

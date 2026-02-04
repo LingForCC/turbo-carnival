@@ -1,4 +1,4 @@
-import type { SettingsManagementAPI, AppSettings } from './settings-management.d';
+import type { SettingsManagementAPI, AppSettings } from '../types/settings-management';
 
 /**
  * Settings Management API for Renderer Components
@@ -46,4 +46,4 @@ export function getSettingsManagementAPI(): SettingsManagementAPI {
 export const settingsManagementAPI = apiInstance;
 
 // Re-export types for convenience
-export type { AppSettings } from './settings-management.d';
+export type { AppSettings } from '../types/settings-management';

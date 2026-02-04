@@ -5,7 +5,7 @@ import type {
   ToolExecutionResult,
   BrowserToolExecutionRequest,
   BrowserToolExecutionResult
-} from './tool-management.d';
+} from '../types/tool-management';
 
 /**
  * Tool Management API for Renderer Components

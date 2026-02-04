@@ -1,4 +1,4 @@
-import type { ProviderManagementAPI, LLMProvider, ModelConfig } from './provider-management.d';
+import type { ProviderManagementAPI, LLMProvider, ModelConfig } from '../types/provider-management';
 
 /**
  * Provider Management API for Renderer Components

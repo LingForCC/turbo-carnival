@@ -1,5 +1,5 @@
 import { getToolManagementAPI } from '../api/tool-management';
-import type { ToolManagementAPI, Tool } from '../api/tool-management.d';
+import type { ToolManagementAPI, Tool } from '../types/tool-management';
 
 /**
  * ToolsDialog Web Component

@@ -5,7 +5,7 @@ import './provider-dialog';
 import './model-config-dialog';
 import './app-panel';
 import { getSettingsManagementAPI } from '../api/settings-management';
-import type { SettingsManagementAPI } from '../api/settings-management.d';
+import type { SettingsManagementAPI } from '../types/settings-management';
 
 /**
  * AppContainer Web Component

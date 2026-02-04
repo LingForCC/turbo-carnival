@@ -1,6 +1,6 @@
-import type { Agent } from '../../api/agent-management.d';
-import type { LLMProviderType } from '../../api/provider-management.d';
-import type { Project } from '../../api/project-management.d';
+import type { Agent } from '../../types/agent-management';
+import type { LLMProviderType } from '../../types/provider-management';
+import type { Project } from '../../types/project-management';
 import { getProviderManagementAPI } from '../../api/provider-management';
 import { createTransformer } from '../transformers';
 

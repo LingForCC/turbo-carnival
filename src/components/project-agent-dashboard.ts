@@ -1,9 +1,9 @@
-import type { Agent } from '../api/agent-management.d';
-import type { ModelConfig } from '../api/provider-management.d';
-import type { Project } from '../api/project-management.d';
+import type { Agent } from '../types/agent-management';
+import type { ModelConfig } from '../types/provider-management';
+import type { Project } from '../types/project-management';
 import { getAgentManagementAPI } from '../api/agent-management';
 import { getProviderManagementAPI } from '../api/provider-management';
-import type { AgentManagementAPI } from '../api/agent-management.d';
+import type { AgentManagementAPI } from '../types/agent-management';
 
 /**
  * ProjectAgentDashboard Web Component

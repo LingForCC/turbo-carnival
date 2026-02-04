@@ -1,5 +1,5 @@
-import type { Agent } from '../api/agent-management.d';
-import type { ModelConfig } from '../api/provider-management.d';
+import type { Agent } from '../types/agent-management';
+import type { ModelConfig } from '../types/provider-management';
 import { getProviderManagementAPI } from '../api/provider-management';
 
 /**
