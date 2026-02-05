@@ -341,12 +341,12 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 
 ## Type Definitions
 
-### Global Types (`src/global.d.ts`)
-Central type import file for the ElectronAPI interface:
+### ElectronAPI Interface (`src/types/electron-api.d.ts`)
+Central type definition file for the ElectronAPI interface:
 
-- Imports and re-exports types from dedicated type definition modules
-- Defines `ElectronAPI` interface that exposed to renderer via contextBridge
-- **Note**: Type definitions are now organized in dedicated modules under `src/types/`
+- Imports types from dedicated type definition modules
+- Defines `ElectronAPI` interface that is exposed to renderer via contextBridge
+- **Note**: All type definitions are organized in dedicated modules under `src/types/`
 
 ### Tool Management Types (`src/types/tool-management.d.ts`)
 Tool-related types organized in a dedicated module:

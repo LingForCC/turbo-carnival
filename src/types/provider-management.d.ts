@@ -3,7 +3,7 @@
  * Contains all types and interfaces related to LLM provider and model configuration management
  */
 
-// Import tool types from tool-management.d.ts (avoid circular dependency with global.d.ts)
+// Import tool types from tool-management.d.ts (avoid circular dependency with electron-api.d.ts)
 import type { Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent } from './tool-management';
 
 // Import AppSettings from settings-management.d.ts

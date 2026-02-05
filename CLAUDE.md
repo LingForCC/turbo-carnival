@@ -188,7 +188,7 @@ The documentation has been split into focused modules for better performance:
 - Target: ES2020, Module: CommonJS
 - Strict mode enabled
 - Outputs to `dist/` from `src/` root
-- Global types defined in `src/global.d.ts` (core types like AppSettings)
+- ElectronAPI interface defined in `src/types/electron-api.d.ts`
 - Project management types in `src/types/project-management.d.ts` (Project, FileTreeNode, etc.)
 - Agent management types in `src/types/agent-management.d.ts` (Agent, etc.)
 - Provider management types in `src/types/provider-management.d.ts` (LLMProvider, ModelConfig, LLMProviderType)
