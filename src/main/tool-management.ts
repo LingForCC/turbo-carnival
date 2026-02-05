@@ -2,6 +2,13 @@ import { ipcMain, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { executeToolInWorker } from './tool-worker-executor';
+import type {
+  Tool,
+  ToolExecutionRequest,
+  ToolExecutionResult,
+  JSONSchema,
+  BrowserToolExecutionRequest
+} from '../types/tool-management';
 
 // ============ TOOL STORAGE HELPERS ============
 
@@ -15,7 +22,7 @@ function getToolsPath(): string {
 /**
  * Load all tools from storage
  */
-export function loadTools(): any[] {
+export function loadTools(): Tool[] {
   const toolsPath = getToolsPath();
   if (fs.existsSync(toolsPath)) {
     try {
@@ -32,7 +39,7 @@ export function loadTools(): any[] {
 /**
  * Save tools to storage
  */
-function saveTools(tools: any[]): void {
+function saveTools(tools: Tool[]): void {
   const toolsPath = getToolsPath();
   const data = { tools };
   try {
@@ -45,7 +52,7 @@ function saveTools(tools: any[]): void {
 /**
  * Get a tool by name
  */
-export function getToolByName(name: string): any | undefined {
+export function getToolByName(name: string): Tool | undefined {
   const tools = loadTools();
   return tools.find(t => t.name === name);
 }
@@ -56,7 +63,7 @@ export function getToolByName(name: string): any | undefined {
  * Simple JSON Schema validator
  * Validates parameters against a JSON Schema
  */
-export function validateJSONSchema(params: Record<string, any>, schema: any): string | null {
+export function validateJSONSchema(params: Record<string, any>, schema: JSONSchema): string | null {
   // Check required properties
   if (schema.required) {
     for (const requiredProp of schema.required) {
@@ -102,7 +109,7 @@ export function registerToolIPCHandlers(): void {
   });
 
   // Handler: Add a new tool
-  ipcMain.handle('tools:add', async (_event, tool: any) => {
+  ipcMain.handle('tools:add', async (_event, tool: Tool) => {
     // Validate tool data
     if (!tool.name || !tool.description || !tool.code) {
       throw new Error('Tool must have name, description, and code');
@@ -114,19 +121,20 @@ export function registerToolIPCHandlers(): void {
 
     // Check for duplicate tool names
     const tools = loadTools();
-    if (tools.some((t: any) => t.name === tool.name)) {
+    if (tools.some((t: Tool) => t.name === tool.name)) {
       throw new Error(`Tool with name "${tool.name}" already exists`);
     }
 
     // Validate tool code by attempting to create a function
     try {
       new Function('params', `"use strict"; ${tool.code}`);
-    } catch (error: any) {
-      throw new Error(`Invalid tool code: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Invalid tool code: ${message}`);
     }
 
     // Initialize with defaults
-    const newTool: any = {
+    const newTool: Tool = {
       name: tool.name,
       description: tool.description,
       code: tool.code,
@@ -134,6 +142,7 @@ export function registerToolIPCHandlers(): void {
       returns: tool.returns, // Optional
       timeout: tool.timeout || 30000,
       enabled: tool.enabled !== undefined ? tool.enabled : true,
+      environment: tool.environment || 'node',
       createdAt: Date.now()
     };
 
@@ -143,9 +152,9 @@ export function registerToolIPCHandlers(): void {
   });
 
   // Handler: Update an existing tool
-  ipcMain.handle('tools:update', async (_event, toolName: string, updatedTool: any) => {
+  ipcMain.handle('tools:update', async (_event, toolName: string, updatedTool: Tool) => {
     const tools = loadTools();
-    const existingTool = tools.find((t: any) => t.name === toolName);
+    const existingTool = tools.find((t: Tool) => t.name === toolName);
 
     if (!existingTool) {
       throw new Error(`Tool "${toolName}" not found`);
@@ -153,7 +162,7 @@ export function registerToolIPCHandlers(): void {
 
     // If name changed, check for conflicts
     if (updatedTool.name !== toolName) {
-      if (tools.some((t: any) => t.name === updatedTool.name)) {
+      if (tools.some((t: Tool) => t.name === updatedTool.name)) {
         throw new Error(`Tool with name "${updatedTool.name}" already exists`);
       }
     }
@@ -161,12 +170,13 @@ export function registerToolIPCHandlers(): void {
     // Validate updated tool code
     try {
       new Function('params', `"use strict"; ${updatedTool.code}`);
-    } catch (error: any) {
-      throw new Error(`Invalid tool code: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Invalid tool code: ${message}`);
     }
 
     // Update tool
-    const index = tools.findIndex((t: any) => t.name === toolName);
+    const index = tools.findIndex((t: Tool) => t.name === toolName);
     tools[index] = {
       ...updatedTool,
       createdAt: existingTool.createdAt, // Preserve creation time
@@ -180,24 +190,25 @@ export function registerToolIPCHandlers(): void {
   // Handler: Remove a tool
   ipcMain.handle('tools:remove', async (_event, toolName: string) => {
     const tools = loadTools();
-    const filtered = tools.filter((t: any) => t.name !== toolName);
+    const filtered = tools.filter((t: Tool) => t.name !== toolName);
     saveTools(filtered);
     return filtered;
   });
 
   // Handler: Execute a tool
-  ipcMain.handle('tools:execute', async (event, request: any) => {
-    let tool;
+  ipcMain.handle('tools:execute', async (event, request: ToolExecutionRequest): Promise<ToolExecutionResult> => {
+    let tool: Tool;
 
     // If full tool data provided, use it directly (for testing unsaved tools)
     if (request.tool) {
       tool = request.tool;
     } else {
       // Otherwise, load from storage by name (for normal tool execution)
-      tool = getToolByName(request.toolName);
-      if (!tool) {
+      const foundTool = getToolByName(request.toolName);
+      if (!foundTool) {
         throw new Error(`Tool "${request.toolName}" not found`);
       }
+      tool = foundTool;
     }
 
     // Check if tool is enabled
@@ -216,7 +227,7 @@ export function registerToolIPCHandlers(): void {
 
     if (environment === 'browser') {
       // Browser tools: Forward to renderer process
-      return new Promise((resolve, reject) => {
+      return new Promise<ToolExecutionResult>((resolve, reject) => {
         const timeout = tool.timeout || 30000;
         const timer = setTimeout(() => {
           cleanup();
@@ -224,10 +235,14 @@ export function registerToolIPCHandlers(): void {
         }, timeout);
 
         // One-time listener for browser tool result
-        const responseHandler = (_event: any, result: any) => {
+        const responseHandler = (_event: unknown, result: ToolExecutionResult) => {
           cleanup();
           if (result.success) {
-            resolve(result);
+            resolve({
+              success: true,
+              result: result.result,
+              executionTime: result.executionTime
+            });
           } else {
             reject(new Error(result.error || 'Browser tool execution failed'));
           }
@@ -242,11 +257,12 @@ export function registerToolIPCHandlers(): void {
         ipcMain.on('tools:browserResult', responseHandler);
 
         // Send execution request to renderer
-        event.sender.send('tools:executeBrowser', {
+        const browserRequest: BrowserToolExecutionRequest = {
           code: tool.code,
           parameters: request.parameters,
           timeout
-        });
+        };
+        event.sender.send('tools:executeBrowser', browserRequest);
       });
     } else {
       // Node.js tools: Execute in worker process (existing behavior)

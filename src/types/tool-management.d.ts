@@ -51,7 +51,7 @@ export interface ToolExecutionRequest {
  */
 export interface ToolExecutionResult {
   success: boolean;
-  result: any;                     // Return value from tool execution
+  result?: any;                    // Return value from tool execution (only when success: true)
   error?: string;                  // Error message if failed
   executionTime: number;           // Execution time in milliseconds
 }
@@ -64,17 +64,6 @@ export interface BrowserToolExecutionRequest {
   code: string;
   parameters: Record<string, any>;
   timeout: number;
-}
-
-/**
- * Browser tool execution result
- * Sent from renderer back to main process
- */
-export interface BrowserToolExecutionResult {
-  success: boolean;
-  result?: any;
-  error?: string;
-  executionTime: number;
 }
 
 /**
@@ -141,5 +130,5 @@ export interface ToolManagementAPI {
    * Send browser tool execution result back to main process
    * @param result - Browser tool execution result
    */
-  sendBrowserToolResult(result: BrowserToolExecutionResult): void;
+  sendBrowserToolResult(result: ToolExecutionResult): void;
 }

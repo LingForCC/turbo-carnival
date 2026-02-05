@@ -357,7 +357,6 @@ Tool-related types organized in a dedicated module:
 - `ToolCallEvent` - Tool call event for IPC communication (toolName, parameters, status, result, executionTime, error)
 - `JSONSchema` - JSON Schema definition for tool parameters and return values
 - `BrowserToolExecutionRequest` - Browser tool execution request from main to renderer
-- `BrowserToolExecutionResult` - Browser tool execution result from renderer to main
 - `ToolManagementAPI` - Interface for tool management operations
 
 ### Project Management Types (`src/types/project-management.d.ts`)

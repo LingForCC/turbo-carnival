@@ -11,6 +11,8 @@
  * - Exits immediately after execution
  */
 
+import type { ToolExecutionResult } from './types/tool-management';
+
 interface WorkerMessage {
   type: 'execute';
   code: string;
@@ -18,28 +20,30 @@ interface WorkerMessage {
   timeout: number;
 }
 
-interface WorkerResponse {
-  success: boolean;
-  result?: any;
-  error?: string;
-  executionTime: number;
-}
-
 /**
  * Helper function to send response and ensure IPC delivery before exiting
  * This prevents race conditions where the process exits before the message is delivered
  */
-function sendResponseAndExit(response: WorkerResponse): void {
-  process.send(response, (err: Error | null) => {
-    // Only exit after the message is confirmed sent
-    process.exit(err ? 1 : 0);
-  });
+function sendResponseAndExit(response: ToolExecutionResult): void {
+  if (process.send) {
+    // Use a type assertion to work around the complex send() signature
+    (process.send as unknown as (message: unknown, callback?: (err: Error | null) => void) => boolean)(
+      response,
+      (err: Error | null) => {
+        // Only exit after the message is confirmed sent
+        process.exit(err ? 1 : 0);
+      }
+    );
+  } else {
+    // Fallback if process.send is not available
+    process.exit(1);
+  }
 }
 
 // Listen for messages from parent process
 process.on('message', (message: WorkerMessage) => {
   if (message.type !== 'execute') {
-    const response: WorkerResponse = {
+    const response: ToolExecutionResult = {
       success: false,
       error: 'Unknown message type',
       executionTime: 0
@@ -72,7 +76,7 @@ process.on('message', (message: WorkerMessage) => {
 
       // Set timeout to prevent infinite loops
       const timeoutId = setTimeout(() => {
-        const timeoutResponse: WorkerResponse = {
+        const timeoutResponse: ToolExecutionResult = {
           success: false,
           error: `Tool execution timed out after ${timeout}ms`,
           executionTime: timeout
@@ -94,18 +98,19 @@ process.on('message', (message: WorkerMessage) => {
       const executionTime = Date.now() - startTime;
 
       // Send result back to parent
-      const successResponse: WorkerResponse = {
+      const successResponse: ToolExecutionResult = {
         success: true,
         result,
         executionTime
       };
       sendResponseAndExit(successResponse);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       const executionTime = Date.now() - startTime;
-      const errorResponse: WorkerResponse = {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorResponse: ToolExecutionResult = {
         success: false,
-        error: error.message || String(error),
+        error: errorMessage,
         executionTime
       };
       sendResponseAndExit(errorResponse);

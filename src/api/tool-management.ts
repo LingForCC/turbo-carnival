@@ -3,8 +3,7 @@ import type {
   Tool,
   ToolExecutionRequest,
   ToolExecutionResult,
-  BrowserToolExecutionRequest,
-  BrowserToolExecutionResult
+  BrowserToolExecutionRequest
 } from '../types/tool-management';
 
 /**
@@ -71,7 +70,7 @@ const apiInstance: ToolManagementAPI = {
   /**
    * Send browser tool execution result back to main process
    */
-  sendBrowserToolResult: (result: BrowserToolExecutionResult) => {
+  sendBrowserToolResult: (result: ToolExecutionResult) => {
     return getElectronAPI().sendBrowserToolResult(result);
   },
 };

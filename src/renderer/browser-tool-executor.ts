@@ -6,12 +6,7 @@
  * instead of Node.js APIs (fs, path, child_process, etc.)
  */
 
-export interface BrowserToolExecutionResult {
-  success: boolean;
-  result?: any;
-  error?: string;
-  executionTime: number;
-}
+import type { ToolExecutionResult } from '../types/tool-management';
 
 /**
  * Execute tool code in browser context
@@ -24,7 +19,7 @@ export async function executeToolInBrowser(
   code: string,
   parameters: Record<string, any>,
   timeout: number
-): Promise<BrowserToolExecutionResult> {
+): Promise<ToolExecutionResult> {
   const startTime = Date.now();
 
   try {
@@ -76,12 +71,13 @@ export async function executeToolInBrowser(
       executionTime
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     const executionTime = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : String(error);
 
     return {
       success: false,
-      error: error.message || String(error),
+      error: errorMessage,
       executionTime
     };
   }
