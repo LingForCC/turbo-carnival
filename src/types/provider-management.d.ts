@@ -3,8 +3,11 @@
  * Contains all types and interfaces related to LLM provider and model configuration management
  */
 
-// Import types from global.d.ts that are still needed for main process usage
-import type { Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent, AppSettings } from '../global.d';
+// Import tool types from tool-management.d.ts (avoid circular dependency with global.d.ts)
+import type { Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent } from './tool-management';
+
+// Import AppSettings from settings-management.d.ts
+import type { AppSettings } from './settings-management';
 
 /**
  * LLM Provider type discriminator

@@ -5,7 +5,8 @@ import { AssistantMessage } from './conversation/assistant-message';
 import { UserMessage } from './conversation/user-message';
 import { ToolCallMessage } from './conversation/tool-call-message';
 import { getAgentManagementAPI } from '../api/agent-management';
-import type { AgentManagementAPI, ToolCallEvent } from '../types/agent-management';
+import type { AgentManagementAPI } from '../types/agent-management';
+import type { ToolCallEvent } from '../types/tool-management';
 
 /**
  * ChatPanel Web Component

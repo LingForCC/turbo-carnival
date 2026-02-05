@@ -1,5 +1,5 @@
 import { ipcRenderer } from 'electron';
-import type { LLMProvider, ModelConfig } from '../global.d';
+import type { LLMProvider, ModelConfig } from '../types/provider-management';
 
 /**
  * Preload module - uses ipcRenderer directly

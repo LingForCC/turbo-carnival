@@ -1,7 +1,7 @@
 import { ipcMain, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { AppSettings } from '../global.d.ts';
+import type { AppSettings } from '../types/settings-management';
 
 // ============ SETTINGS STORAGE HELPERS ============
 

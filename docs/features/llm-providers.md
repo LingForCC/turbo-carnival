@@ -261,7 +261,7 @@ To add support for a new provider type:
 
 ### 1. Update Type Definition
 
-In `src/global.d.ts`:
+In `src/types/provider-management.d.ts`:
 
 ```typescript
 export type LLMProviderType = 'openai' | 'glm' | 'your-provider' | 'custom';

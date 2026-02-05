@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
-import type { LLMProvider, ModelConfig, Tool } from '../../global.d.ts';
+import type { LLMProvider, ModelConfig } from '../../types/provider-management';
+import type { Tool } from '../../types/tool-management';
 import type { Agent } from '../../types/agent-management';
 import { streamOpenAI } from './openai';
 import { streamGLM } from './glm';

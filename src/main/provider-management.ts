@@ -1,7 +1,7 @@
 import { ipcMain, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { LLMProvider, LLMProviderType } from '../global.d.ts';
+import type { LLMProvider, LLMProviderType } from '../types/provider-management';
 
 // ============ PROVIDER STORAGE HELPERS ============
 

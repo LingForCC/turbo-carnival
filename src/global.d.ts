@@ -8,24 +8,19 @@ import type {
   FileTreeNode,
   FileReference,
   FileContent
-} from './api/project-management.d';
+} from './types/project-management';
 
 // Import agent management types for use in ElectronAPI interface
-import type { Agent } from './api/agent-management.d';
+import type { Agent } from './types/agent-management';
 
 // Import provider management types for use in ElectronAPI interface
-import type { LLMProvider, ModelConfig } from './api/provider-management.d';
+import type { LLMProvider, ModelConfig } from './types/provider-management';
 
 // Import tool management types for use in ElectronAPI interface
-import type { Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent } from './api/tool-management.d';
+import type { Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent } from './types/tool-management';
 
-
-/**
- * App settings for user preferences
- */
-export interface AppSettings {
-  theme: 'light' | 'dark';  // Theme preference
-}
+// Import settings types for use in ElectronAPI interface
+import type { AppSettings } from './types/settings-management';
 
 interface ElectronAPI {
   platform: string;

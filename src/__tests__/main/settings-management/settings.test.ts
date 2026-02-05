@@ -6,7 +6,7 @@ import {
   updateSettingsFields,
 } from '../../../main/settings-management';
 import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
-import type { AppSettings } from '../../../global.d';
+import type { AppSettings } from '../../../types/settings-management';
 
 describe('Settings Management - Storage Helpers', () => {
   // Mock app.getPath before each test

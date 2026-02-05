@@ -342,19 +342,13 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 ## Type Definitions
 
 ### Global Types (`src/global.d.ts`)
-Core type definitions for the application:
+Central type import file for the ElectronAPI interface:
 
-- `Agent` - AI agent with full metadata including conversation history (imported from `api/agent-management.d`)
-- `AgentConfig` - Model configuration (modelId, providerId, model @deprecated, temperature @deprecated, maxTokens @deprecated, topP @deprecated)
-- `AgentPrompts` - System and user prompts
-- `AgentSettings` - Flexible settings object
-- `AppSettings` - Application settings (theme preference)
-- `LLMProvider` - LLM provider storage (imported from `api/provider-management.d`)
-- `ModelConfig` - Model configuration for reusing model settings (imported from `api/provider-management.d`)
-- `ToolCallEvent` - Tool call event for IPC communication (imported from `api/tool-management.d`)
-- `ElectronAPI` - Exposed API methods from preload script (imports types from `api/project-management.d`, `api/agent-management.d`, `api/provider-management.d`, and `api/tool-management.d`)
+- Imports and re-exports types from dedicated type definition modules
+- Defines `ElectronAPI` interface that exposed to renderer via contextBridge
+- **Note**: Type definitions are now organized in dedicated modules under `src/types/`
 
-### Tool Management Types (`src/api/tool-management.d.ts`)
+### Tool Management Types (`src/types/tool-management.d.ts`)
 Tool-related types organized in a dedicated module:
 
 - `Tool` - Custom tool definition (name, description, code, parameters, returns, timeout, environment, enabled, createdAt, updatedAt)
@@ -366,7 +360,7 @@ Tool-related types organized in a dedicated module:
 - `BrowserToolExecutionResult` - Browser tool execution result from renderer to main
 - `ToolManagementAPI` - Interface for tool management operations
 
-### Project Management Types (`src/api/project-management.d.ts`)
+### Project Management Types (`src/types/project-management.d.ts`)
 Project-related types organized in a dedicated module:
 
 - `Project` - Local folder project with `path`, `name`, and `addedAt` properties
@@ -378,16 +372,16 @@ Project-related types organized in a dedicated module:
 - `FileListOptions` - Configuration for file listing (extensions, maxDepth, excludeHidden)
 - `ProjectManagementAPI` - Interface for project management operations
 
-### Agent Management Types (`src/api/agent-management.d.ts`)
+### Agent Management Types (`src/types/agent-management.d.ts`)
 Agent-related types organized in a dedicated module:
 
 - `Agent` - AI agent with name, type, description, config, prompts, history, and settings
 - `AgentConfig` - Model configuration (modelId, providerId, and deprecated fields)
 - `AgentPrompts` - System and user prompts
 - `AgentSettings` - Flexible settings object
-- `AgentManagementAPI` - Interface for agent management operations (imports ToolCallEvent from `api/tool-management.d`)
+- `AgentManagementAPI` - Interface for agent management operations (imports ToolCallEvent from `types/tool-management.d`)
 
-### Provider Management Types (`src/api/provider-management.d.ts`)
+### Provider Management Types (`src/types/provider-management.d.ts`)
 Provider and model config types organized in a dedicated module:
 
 - `LLMProviderType` - Union type for provider types ('openai' | 'glm' | 'azure' | 'custom')
@@ -395,7 +389,7 @@ Provider and model config types organized in a dedicated module:
 - `ModelConfig` - Model configuration for reusing model settings (id, name, model, type as LLMProviderType, temperature, maxTokens, topP, extra, createdAt, updatedAt)
 - `ProviderManagementAPI` - Interface for provider and model config operations
 
-### Settings Management Types (`src/api/settings-management.d.ts`)
+### Settings Management Types (`src/types/settings-management.d.ts`)
 Settings-related types organized in a dedicated module:
 
 - `AppSettings` - Application settings (theme preference)

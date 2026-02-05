@@ -226,5 +226,5 @@ Project panel dark mode tests (`src/__tests__/components/project-panel/project-p
 - `src/components/project-panel.ts` - Left sidebar with dark mode
 - `src/components/project-agent-dashboard.ts` - Agent list with dark mode
 - `src/styles.css` - Tailwind dark mode configuration
-- `src/global.d.ts` - AppSettings type definition
+- `src/types/settings-management.d.ts` - AppSettings type definition
 - `src/preload.ts` - Settings API exposure

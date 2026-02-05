@@ -270,6 +270,6 @@ Ensure code blocks use the correct format:
 
 - **Source Code**: `src/components/app-panel.ts`
 - **Message Component**: `src/components/conversation/app-code-message.ts`
-- **Type Definitions**: `src/global.d.ts`
+- **Type Definitions**: `src/types/agent-management.d.ts` (Agent types)
 - **Routing Logic**: `src/components/app-container.ts`
 - **IPC Handlers**: `src/main/app-agent-management.ts`

@@ -1,7 +1,7 @@
 import { ipcMain, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { ModelConfig, LLMProviderType } from '../global.d.ts';
+import type { ModelConfig, LLMProviderType } from '../types/provider-management';
 
 // ============ MODEL CONFIG STORAGE HELPERS ============
 
