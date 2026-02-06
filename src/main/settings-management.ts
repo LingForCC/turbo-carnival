@@ -1,4 +1,4 @@
-import { ipcMain, app } from 'electron';
+import { ipcMain, app, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import type { AppSettings } from '../types/settings-management';
@@ -69,5 +69,19 @@ export function registerSettingsIPCHandlers(): void {
   ipcMain.handle('settings:update', async (_event, updates: Partial<AppSettings>) => {
     const newSettings = updateSettingsFields(updates);
     return newSettings;
+  });
+
+  // Handler: Open folder picker dialog
+  ipcMain.handle('settings:openFolderDialog', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+      title: 'Select Folder'
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    return result.filePaths[0];
   });
 }

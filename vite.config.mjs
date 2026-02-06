@@ -64,6 +64,12 @@ export default defineConfig({
   build: {
     outDir: 'dist-renderer',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        index: './index.html',
+        notepad: './notepad.html'
+      }
+    }
   },
   clearScreen: false,
 });

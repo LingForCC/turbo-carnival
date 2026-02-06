@@ -10,6 +10,8 @@ import { registerProjectIPCHandlers } from './main/project-management';
 import { registerChatAgentIPCHandlers } from './main/chat-agent-management';
 import { registerAppAgentIPCHandlers } from './main/app-agent-management';
 import { registerSettingsIPCHandlers } from './main/settings-management';
+import { registerNotepadIPCHandlers } from './main/notepad-management';
+import { registerGlobalShortcut, unregisterGlobalShortcut, closeNotepadWindow } from './main/notepad-window';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -54,6 +56,9 @@ app.whenReady().then(() => {
   // Register IPC handlers
   registerIPCHandlers();
 
+  // Register global shortcut for notepad
+  registerGlobalShortcut();
+
   app.on('activate', () => {
     // On macOS, re-create a window when the dock icon is clicked
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -87,6 +92,9 @@ function registerIPCHandlers(): void {
 
   // ============ SETTINGS IPC HANDLERS ============
   registerSettingsIPCHandlers();
+
+  // ============ NOTEPAD IPC HANDLERS ============
+  registerNotepadIPCHandlers();
 }
 
 // Quit when all windows are closed, except on macOS
@@ -94,4 +102,16 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+// Clean up before app quits (called before will-quit)
+app.on('before-quit', () => {
+  // Close notepad window first
+  closeNotepadWindow();
+});
+
+// Clean up shortcuts before app quits
+app.on('will-quit', () => {
+  // Unregister global shortcut
+  unregisterGlobalShortcut();
 });

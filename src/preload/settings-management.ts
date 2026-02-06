@@ -11,4 +11,7 @@ export const settingsManagement = {
   // Update settings (supports partial updates)
   updateSettings: (updates: Record<string, any>) =>
     ipcRenderer.invoke('settings:update', updates),
+
+  // Open folder picker dialog
+  openFolderDialog: () => ipcRenderer.invoke('settings:openFolderDialog'),
 };

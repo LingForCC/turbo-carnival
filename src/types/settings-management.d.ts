@@ -8,6 +8,7 @@
  */
 export interface AppSettings {
   theme: 'light' | 'dark';  // Theme preference
+  notepadSaveLocation?: string;  // Quick notepad save location (optional)
 }
 
 /**
@@ -28,4 +29,10 @@ export interface SettingsManagementAPI {
    * @returns Promise resolving to updated app settings
    */
   updateSettings(updates: Partial<AppSettings>): Promise<AppSettings>;
+
+  /**
+   * Open folder picker dialog
+   * @returns Promise resolving to selected folder path, or null if canceled
+   */
+  openFolderDialog(): Promise<string | null>;
 }

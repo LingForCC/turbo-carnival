@@ -32,6 +32,13 @@ const apiInstance: SettingsManagementAPI = {
   updateSettings: (updates: Partial<AppSettings>): Promise<AppSettings> => {
     return getElectronAPI().updateSettings(updates);
   },
+
+  /**
+   * Open folder picker dialog
+   */
+  openFolderDialog: (): Promise<string | null> => {
+    return getElectronAPI().openFolderDialog();
+  },
 };
 
 /**

@@ -71,6 +71,18 @@ The main process is organized into dedicated modules:
 - Storage helpers: `getSettingsPath`, `loadSettings`, `saveSettings`, `updateSettingsFields`
 - IPC handler registration: `registerSettingsIPCHandlers`
 
+**`src/main/notepad-management.ts`**
+- Notepad CRUD operations
+- Storage helpers: `getNotepadDir`, `ensureNotepadDir`, `loadNotepadFiles`, `createNotepadFile`, `readNotepadContent`, `saveNotepadContent`, `deleteNotepadFile`
+- IPC handlers: `notepad:getFiles`, `notepad:readFile`, `notepad:createFile`, `notepad:saveContent`, `notepad:deleteFile`
+- Returns null if no save location configured (user's preference: no default save)
+
+**`src/main/notepad-window.ts`**
+- Notepad window lifecycle management
+- Global shortcut registration: `registerGlobalShortcut`, `unregisterGlobalShortcut`
+- Window management: `createNotepadWindow`, `showNotepadWindow`, `toggleNotepadWindow`
+- Show/hide pattern (preserves state between activations)
+
 **`src/renderer/browser-tool-executor.ts`**
 - Browser tool execution module
 - Runs tools in renderer context with access to browser APIs
@@ -81,7 +93,8 @@ The main process is organized into dedicated modules:
 - `llm/glm.ts` imports from: `provider-management.ts`, `tool-management.ts`, `llm/index.ts` (executeToolWithRouting)
 - `chat-agent-management.ts` imports from: `llm/index.ts` (streamLLM), `agent-management.ts`, `provider-management.ts`, `model-config-management.ts`, `tool-management.ts`
 - `app-agent-management.ts` imports from: `llm/index.ts` (streamLLM), `agent-management.ts`, `provider-management.ts`, `model-config-management.ts`
-- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `model-config-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`
+- `notepad-management.ts` imports from: `settings-management.ts` (loadSettings)
+- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `model-config-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`, `settings-management.ts`, `notepad-management.ts`, `notepad-window.ts`
 
 ### Pattern for Creating New Modules
 1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)

@@ -3,6 +3,7 @@ import './tools-dialog';
 import './tool-test-dialog';
 import './provider-dialog';
 import './model-config-dialog';
+import './settings-dialog';
 import './app-panel';
 import { getSettingsManagementAPI } from '../api/settings-management';
 import type { SettingsManagementAPI } from '../types/settings-management';
@@ -67,6 +68,13 @@ export class AppContainer extends HTMLElement {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
             </svg>
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Providers</span>
+          </button>
+          <button id="settings-btn" class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent">
+            <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Settings</span>
           </button>
         </div>
       </header>
@@ -149,6 +157,14 @@ export class AppContainer extends HTMLElement {
       const newBtn = providersBtn.cloneNode(true);
       providersBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.openProvidersDialog());
+    }
+
+    // Settings button
+    const settingsBtn = this.querySelector('#settings-btn');
+    if (settingsBtn) {
+      const newBtn = settingsBtn.cloneNode(true);
+      settingsBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.openSettingsDialog());
     }
 
     // Theme toggle button
@@ -385,6 +401,15 @@ export class AppContainer extends HTMLElement {
     document.body.appendChild(dialog);
 
     dialog.addEventListener('provider-dialog-close', () => {
+      dialog.remove();
+    });
+  }
+
+  private openSettingsDialog(): void {
+    const dialog = document.createElement('settings-dialog');
+    document.body.appendChild(dialog);
+
+    dialog.addEventListener('settings-dialog-close', () => {
       dialog.remove();
     });
   }

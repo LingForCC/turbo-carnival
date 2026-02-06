@@ -22,6 +22,9 @@ import type { Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent } f
 // Import settings types for use in ElectronAPI interface
 import type { AppSettings } from './settings-management';
 
+// Import notepad types for use in ElectronAPI interface
+import type { NotepadFile } from './notepad-management';
+
 interface ElectronAPI {
   platform: string;
   openFolderDialog: () => Promise<string | null>;
@@ -75,6 +78,23 @@ interface ElectronAPI {
     error?: string;
     executionTime: number
   }) => void;
+
+  // ============ NOTEPAD METHODS ============
+
+  // Get list of notepad files
+  getFiles: () => Promise<NotepadFile[]>;
+
+  // Read notepad file content
+  readFile: (filePath: string) => Promise<string>;
+
+  // Create new notepad file
+  createFile: () => Promise<NotepadFile>;
+
+  // Save notepad content
+  saveContent: (filePath: string, content: string) => Promise<void>;
+
+  // Delete notepad file
+  deleteFile: (filePath: string) => Promise<void>;
 
   // ============ CHAT-AGENT METHODS ============
 

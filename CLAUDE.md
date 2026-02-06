@@ -15,6 +15,7 @@ Turbo Carnival is an Electron desktop application built with TypeScript, using W
 - Model configuration management for reusing model settings across agents
 - Custom tool execution in Node.js or Browser environments
 - App agent type for generating interactive JavaScript + HTML applications
+- Quick notepad with global shortcut (Option+A), auto-save, and file management
 
 ## Build and Development Commands
 
@@ -92,6 +93,7 @@ The documentation has been split into focused modules for better performance:
 - **[docs/features/project-panel.md](docs/features/project-panel.md)** - Project sidebar and file tree panel
 - **[docs/features/tool-management.md](docs/features/tool-management.md)** - Custom tools with Node.js/Browser execution
 - **[docs/features/app-agents.md](docs/features/app-agents.md)** - App agent type for generating interactive applications
+- **[docs/features/quick-notepad.md](docs/features/quick-notepad.md)** - Quick notepad with global shortcut, auto-save, and file management
 
 ### Development
 - **[docs/development.md](docs/development.md)** - Development notes, security, styling, common tasks, debugging tips
@@ -115,6 +117,8 @@ The documentation has been split into focused modules for better performance:
 - `src/main/chat-agent-management.ts` - Chat agent system prompt generation, IPC handlers
 - `src/main/app-agent-management.ts` - App agent system prompt generation, IPC handlers
 - `src/main/tool-management.ts` - Tool CRUD, JSON Schema validation, execution routing
+- `src/main/notepad-management.ts` - Notepad file operations, IPC handlers
+- `src/main/notepad-window.ts` - Notepad window lifecycle, global shortcut registration
 
 ### Preload Modules
 - `src/preload.ts` - Main preload script, exposes `window.electronAPI` via contextBridge
@@ -123,6 +127,7 @@ The documentation has been split into focused modules for better performance:
 - `src/preload/provider-management.ts` - Provider and model config functions for preload (uses ipcRenderer)
 - `src/preload/tool-management.ts` - Tool management functions for preload (uses ipcRenderer)
 - `src/preload/settings-management.ts` - Settings management functions for preload (uses ipcRenderer)
+- `src/preload/notepad-management.ts` - Notepad management functions for preload (uses ipcRenderer)
 
 ### Renderer API Layer
 - `src/api/project-management.ts` - Renderer-safe project management API (wraps window.electronAPI)
@@ -135,6 +140,8 @@ The documentation has been split into focused modules for better performance:
 - `src/types/tool-management.d.ts` - Tool management type definitions (Tool, ToolExecutionRequest, ToolExecutionResult, JSONSchema)
 - `src/api/settings-management.ts` - Renderer-safe settings management API (wraps window.electronAPI)
 - `src/types/settings-management.d.ts` - Settings management type definitions (AppSettings, SettingsManagementAPI)
+- `src/api/notepad-management.ts` - Renderer-safe notepad management API (wraps window.electronAPI)
+- `src/types/notepad-management.d.ts` - Notepad management type definitions (NotepadFile, NotepadManagementAPI)
 
 ### UI Components (Web Components)
 - `app-container` - Root layout, event forwarding (uses `getSettingsManagementAPI()`)
@@ -153,6 +160,8 @@ The documentation has been split into focused modules for better performance:
 - `model-config-dialog` - Model configuration management with extra properties support (uses `getProviderManagementAPI()`)
 - `tools-dialog` - Tool management with testing (uses `getToolManagementAPI()`)
 - `tool-test-dialog` - Tool execution testing (uses `getToolManagementAPI()`)
+- `settings-dialog` - App settings management with notepad save location (uses `getSettingsManagementAPI()`)
+- `notepad-window` - Standalone notepad window with file list and auto-save (uses `getNotepadManagementAPI()`)
 
 ### Transformers
 - `src/components/transformers/openai-transformer.ts` - Transforms OpenAI native message format to ChatMessage format for UI display
@@ -174,13 +183,19 @@ The documentation has been split into focused modules for better performance:
 - `chat-agent:toolCall` - Real-time tool call status updates (one-way IPC from main to renderer)
 - `app-agent:streamMessage` - App agent streaming (files only, no tools)
 - `app-agent:clearHistory` - Clear app agent conversation history
+- `notepad:getFiles` - Get list of notepad files
+- `notepad:readFile` - Read notepad file content
+- `notepad:createFile` - Create new notepad file
+- `notepad:saveContent` - Save notepad content (auto-save)
+- `notepad:deleteFile` - Delete notepad file
 
 ### Storage Locations
 - `app.getPath('userData')/projects.json` - Project list
 - `app.getPath('userData')/providers.json` - LLM providers
 - `app.getPath('userData')/model-configs.json` - Model configurations
-- `app.getPath('userData')/settings.json` - App settings (theme preference)
+- `app.getPath('userData')/settings.json` - App settings (theme preference, notepad save location)
 - `app.getPath('userData')/tools.json` - Custom tools
+- `{notepadSaveLocation}/` - Notepad files (.txt format, timestamp naming) - user-configured location
 - `{projectFolder}/agent-{name}.json` - Agent files (stored in project folders)
 
 ## TypeScript Configuration
