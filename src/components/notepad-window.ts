@@ -1,5 +1,7 @@
 import { getNotepadManagementAPI } from '../api/notepad-management';
+import { getSettingsManagementAPI } from '../api/settings-management';
 import type { NotepadFile, NotepadManagementAPI } from '../types/notepad-management';
+import type { SettingsManagementAPI } from '../types/settings-management';
 
 /**
  * NotepadWindow - Quick Notepad Web Component
@@ -10,25 +12,83 @@ import type { NotepadFile, NotepadManagementAPI } from '../types/notepad-managem
  * - New Note button for creating files
  * - Save status indicator
  * - Handles "no save location configured" error gracefully
+ * - Dark mode support synced with app settings
  */
 export class NotepadWindow extends HTMLElement {
   private api: NotepadManagementAPI;
+  private settingsAPI: SettingsManagementAPI;
   private files: NotepadFile[] = [];
   private currentFile: NotepadFile | null = null;
   private content: string = '';
   private saveTimeout: number | null = null;
   private saveStatus: 'saved' | 'saving' | 'unsaved' | 'error' = 'saved';
   private noLocationConfigured: boolean = false;
+  private currentTheme: 'light' | 'dark' = 'light';
+  private unsubscribeWindowShown: (() => void) | null = null;
 
   constructor() {
     super();
     this.api = getNotepadManagementAPI();
+    this.settingsAPI = getSettingsManagementAPI();
   }
 
   async connectedCallback(): Promise<void> {
+    // Load theme preference first, before rendering
+    await this.loadTheme();
     await this.loadFiles();
     this.render();
     this.attachEventListeners();
+    this.setupWindowShownListener();
+  }
+
+  disconnectedCallback(): void {
+    // Clean up window shown listener
+    if (this.unsubscribeWindowShown) {
+      this.unsubscribeWindowShown();
+      this.unsubscribeWindowShown = null;
+    }
+  }
+
+  /**
+   * Load theme preference from settings
+   */
+  private async loadTheme(): Promise<void> {
+    try {
+      const settings = await this.settingsAPI.getSettings();
+      this.currentTheme = settings.theme === 'dark' ? 'dark' : 'light';
+      this.applyTheme();
+    } catch (error) {
+      console.error('Failed to load theme:', error);
+      // Default to light mode on error
+      this.currentTheme = 'light';
+      this.applyTheme();
+    }
+  }
+
+  /**
+   * Apply theme to the document
+   */
+  private applyTheme(): void {
+    const htmlElement = document.documentElement;
+    if (this.currentTheme === 'dark') {
+      htmlElement.classList.add('dark');
+    } else {
+      htmlElement.classList.remove('dark');
+    }
+  }
+
+  /**
+   * Set up listener for window shown event
+   * Reloads files when window is shown after being hidden
+   */
+  private setupWindowShownListener(): void {
+    this.unsubscribeWindowShown = this.api.onWindowShown(async () => {
+      // Reload files and theme when window is shown
+      await this.loadTheme();
+      await this.loadFiles();
+      this.renderFileList();
+      this.renderContent();
+    });
   }
 
   /**
@@ -228,7 +288,7 @@ export class NotepadWindow extends HTMLElement {
       const newItem = item.cloneNode(true);
       item.replaceWith(newItem);
 
-      const filePath = newItem.getAttribute('data-file-path');
+      const filePath = (newItem as Element).getAttribute('data-file-path');
       if (filePath) {
         (newItem as HTMLElement).addEventListener('click', () => this.switchFile(filePath));
       }

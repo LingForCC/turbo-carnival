@@ -40,12 +40,15 @@ export function createNotepadWindow(): BrowserWindow {
   if (isDev) {
     // In development, load from the Vite dev server
     notepadWindow.loadURL('http://localhost:5173/notepad.html');
-    // Open DevTools in development
-    notepadWindow.webContents.openDevTools();
   } else {
     // In production, load from the built file
     notepadWindow.loadFile(path.join(__dirname, '../dist-renderer/notepad.html'));
   }
+
+  // Reload files when window is shown (after being hidden)
+  notepadWindow.on('show', () => {
+    notepadWindow?.webContents.send('notepad:windowShown');
+  });
 
   // Hide instead of closing to preserve state (unless we're quitting)
   notepadWindow.on('close', (e) => {

@@ -20,4 +20,12 @@ export const notepadManagement = {
 
   // Delete notepad file
   deleteFile: (filePath: string) => ipcRenderer.invoke('notepad:deleteFile', filePath),
+
+  // Listen for window shown event (one-way IPC from main to renderer)
+  onWindowShown: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on('notepad:windowShown', listener);
+    // Return unsubscribe function
+    return () => ipcRenderer.removeListener('notepad:windowShown', listener);
+  },
 };

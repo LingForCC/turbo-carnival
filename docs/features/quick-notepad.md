@@ -10,6 +10,8 @@ The Quick Notepad provides a simple, distraction-free text editor that can be in
 - **Settings Integration**: Configure custom save location in App Settings
 - **State Persistence**: Notepad window preserves state when hidden/shown
 - **No Default Save**: Content won't persist if save location is not configured
+- **Dark Mode**: Theme synced with app settings (light/dark mode)
+- **Auto-refresh**: Files and theme reload when window is shown after being hidden
 
 ## Usage
 
@@ -43,8 +45,15 @@ Click any note in the sidebar to switch to it. The current note is auto-saved be
 - **`src/api/notepad-management.ts`**: Type-safe API wrapper
 
 ### UI Components
-- **`src/components/notepad-window.ts`**: Main notepad Web Component
+- **`src/components/notepad-window.ts`**: Main notepad Web Component with theme sync
 - **`src/components/settings-dialog.ts`**: Settings dialog with notepad configuration
+
+### Theme Integration
+The notepad window syncs with the app's theme settings:
+- Loads theme preference from `settings.json` on startup
+- Applies `dark` class to document element when dark mode is active
+- Uses the same Tailwind `dark:` prefixed utilities as the main app
+- Theme changes in main app don't affect open notepad window (requires reopen)
 
 ### IPC Channels
 - `notepad:getFiles` - Get list of notepad files
@@ -52,6 +61,16 @@ Click any note in the sidebar to switch to it. The current note is auto-saved be
 - `notepad:createFile` - Create new file
 - `notepad:saveContent` - Save file content
 - `notepad:deleteFile` - Delete file
+- `notepad:windowShown` - One-way IPC event sent when window is shown (triggers file/theme refresh)
+
+## Window Refresh Behavior
+- **Trigger**: BrowserWindow `show` event fires when window becomes visible
+- **Main Process**: Sends `notepad:windowShown` IPC message to renderer
+- **Renderer**: Listens for event and reloads:
+  - Theme preference (syncs with main app settings)
+  - File list (reflects external changes)
+  - Current file content
+- **Benefit**: Changes made outside the notepad (new files, theme changes) are visible on reopen
 
 ## File Storage
 - Default behavior: No save location configured by default
@@ -141,6 +160,8 @@ Click any note in the sidebar to switch to it. The current note is auto-saved be
 8. ✅ Create note in new location - file saved there
 9. ✅ Clear save location - shows "configure save location" message
 10. ✅ Auto-save works - type, wait, check file content
+11. ✅ Dark mode sync - toggle theme in main app, reopen notepad to see dark mode applied
+12. ✅ Auto-refresh on show - create file externally, close/reopen notepad to see new file
 
 ### Automated Testing
 - Main process tests: File operations, IPC handlers

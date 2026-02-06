@@ -61,4 +61,11 @@ export interface NotepadManagementAPI {
    * @returns Promise that resolves when deletion is complete
    */
   deleteFile(filePath: string): Promise<void>;
+
+  /**
+   * Register callback for when notepad window is shown
+   * @param callback - Function to call when window is shown
+   * @returns Unsubscribe function to remove the listener
+   */
+  onWindowShown(callback: () => void): () => void;
 }

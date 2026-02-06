@@ -111,6 +111,7 @@ When adding dark mode to a component:
 - ✅ `model-config-dialog` - Model configuration management dialog (src/components/model-config-dialog.ts)
 - ✅ `tools-dialog` - Custom tools management dialog (src/components/tools-dialog.ts)
 - ✅ `tool-test-dialog` - Tool execution testing dialog (src/components/tool-test-dialog.ts)
+- ✅ `notepad-window` - Quick notepad with theme sync (src/components/notepad-window.ts)
 
 ## Implementation Details
 
@@ -225,6 +226,7 @@ Project panel dark mode tests (`src/__tests__/components/project-panel/project-p
 - `src/components/app-container.ts` - Theme toggle button and state management
 - `src/components/project-panel.ts` - Left sidebar with dark mode
 - `src/components/project-agent-dashboard.ts` - Agent list with dark mode
+- `src/components/notepad-window.ts` - Quick notepad with theme sync
 - `src/styles.css` - Tailwind dark mode configuration
 - `src/types/settings-management.d.ts` - AppSettings type definition
 - `src/preload.ts` - Settings API exposure

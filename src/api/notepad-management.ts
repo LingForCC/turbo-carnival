@@ -53,6 +53,13 @@ const apiInstance: NotepadManagementAPI = {
   deleteFile: (filePath: string): Promise<void> => {
     return getElectronAPI().deleteFile(filePath);
   },
+
+  /**
+   * Register callback for when notepad window is shown
+   */
+  onWindowShown: (callback: () => void): (() => void) => {
+    return getElectronAPI().onWindowShown(callback);
+  },
 };
 
 /**
