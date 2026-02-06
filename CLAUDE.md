@@ -15,7 +15,7 @@ Turbo Carnival is an Electron desktop application built with TypeScript, using W
 - Model configuration management for reusing model settings across agents
 - Custom tool execution in Node.js or Browser environments
 - App agent type for generating interactive JavaScript + HTML applications
-- Quick notepad with global shortcut (Option+A), auto-save, and file management
+- Quick notepad with global shortcut (Option+A), auto-save, file management, and delete capabilities
 
 ## Build and Development Commands
 

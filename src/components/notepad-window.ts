@@ -156,6 +156,9 @@ export class NotepadWindow extends HTMLElement {
               <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide m-0">
                 Notes
               </h2>
+              <button id="delete-all-btn" class="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 disabled:text-gray-400 dark:disabled:text-gray-600 disabled:cursor-not-allowed" ${this.noLocationConfigured || this.files.length === 0 ? 'disabled' : ''} title="Delete all notes">
+                Delete All
+              </button>
             </div>
             <button id="add-note-btn" class="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded text-sm font-medium cursor-pointer border-0" ${this.noLocationConfigured ? 'disabled' : ''}>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -211,16 +214,27 @@ export class NotepadWindow extends HTMLElement {
    */
   private renderFileListItems(): string {
     return this.files.map(file => `
-      <div
-        class="file-item p-2 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${this.currentFile?.path === file.path ? 'bg-blue-50 dark:bg-blue-900/20' : ''}"
-        data-file-path="${this.escapeHtml(file.path)}"
-      >
-        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
-          ${this.escapeHtml(file.name)}
+      <div class="file-item-container group flex items-center gap-1 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${this.currentFile?.path === file.path ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
+        <div
+          class="file-item flex-1 p-2 rounded cursor-pointer"
+          data-file-path="${this.escapeHtml(file.path)}"
+        >
+          <div class="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+            ${this.escapeHtml(file.name)}
+          </div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            ${new Date(file.modifiedAt).toLocaleString()}
+          </div>
         </div>
-        <div class="text-xs text-gray-500 dark:text-gray-400">
-          ${new Date(file.modifiedAt).toLocaleString()}
-        </div>
+        <button
+          class="delete-note-btn opacity-0 group-hover:opacity-100 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-opacity"
+          data-file-path="${this.escapeHtml(file.path)}"
+          title="Delete note"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+        </button>
       </div>
     `).join('');
   }
@@ -269,13 +283,21 @@ export class NotepadWindow extends HTMLElement {
       (newAddBtn as HTMLElement).addEventListener('click', () => this.createNewFile());
     }
 
+    // Delete All button - use clone-and-replace pattern
+    const deleteAllBtn = this.querySelector('#delete-all-btn');
+    if (deleteAllBtn && !this.noLocationConfigured && this.files.length > 0) {
+      const newDeleteAllBtn = deleteAllBtn.cloneNode(true);
+      deleteAllBtn.replaceWith(newDeleteAllBtn);
+      (newDeleteAllBtn as HTMLElement).addEventListener('click', () => this.deleteAllNotes());
+    }
+
     // Textarea input - with debounced auto-save
     const textarea = this.querySelector('#notepad-textarea');
     if (textarea) {
       textarea.addEventListener('input', () => this.handleTextareaInput());
     }
 
-    // File list items
+    // File list items and delete buttons
     this.attachFileListListeners();
   }
 
@@ -291,6 +313,21 @@ export class NotepadWindow extends HTMLElement {
       const filePath = (newItem as Element).getAttribute('data-file-path');
       if (filePath) {
         (newItem as HTMLElement).addEventListener('click', () => this.switchFile(filePath));
+      }
+    });
+
+    // Delete note buttons
+    const deleteBtns = this.querySelectorAll('.delete-note-btn');
+    deleteBtns.forEach(btn => {
+      const newBtn = btn.cloneNode(true);
+      btn.replaceWith(newBtn);
+
+      const filePath = (newBtn as Element).getAttribute('data-file-path');
+      if (filePath) {
+        (newBtn as HTMLElement).addEventListener('click', (e) => {
+          e.stopPropagation(); // Prevent triggering file item click
+          this.deleteNote(filePath);
+        });
       }
     });
   }
@@ -397,6 +434,89 @@ export class NotepadWindow extends HTMLElement {
     setTimeout(() => {
       toast.remove();
     }, 3000);
+  }
+
+  /**
+   * Delete a single note with confirmation
+   */
+  private async deleteNote(filePath: string): Promise<void> {
+    const file = this.files.find(f => f.path === filePath);
+    if (!file) return;
+
+    // Confirm deletion
+    const confirmed = confirm(`Are you sure you want to delete "${file.name}"?`);
+    if (!confirmed) return;
+
+    try {
+      await this.api.deleteFile(filePath);
+
+      // Remove from local files array
+      this.files = this.files.filter(f => f.path !== filePath);
+
+      // If deleted file was current file, handle that
+      if (this.currentFile?.path === filePath) {
+        if (this.files.length > 0) {
+          // Switch to most recent file
+          this.currentFile = this.files[0];
+          this.content = await this.api.readFile(this.currentFile.path);
+        } else {
+          // No files left, create new one
+          await this.createNewFile();
+          return; // createNewFile already handles rendering
+        }
+      }
+
+      // Re-render
+      this.renderFileList();
+      this.renderContent();
+      this.updateDeleteAllButton();
+    } catch (error) {
+      console.error('Failed to delete note:', error);
+      this.showErrorMessage('Failed to delete note');
+    }
+  }
+
+  /**
+   * Delete all notes with confirmation
+   */
+  private async deleteAllNotes(): Promise<void> {
+    if (this.files.length === 0) return;
+
+    // Confirm deletion
+    const confirmed = confirm(
+      `Are you sure you want to delete all ${this.files.length} note${this.files.length > 1 ? 's' : ''}? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      // Delete all files
+      await Promise.all(this.files.map(file => this.api.deleteFile(file.path)));
+
+      // Clear local files array
+      this.files = [];
+      this.currentFile = null;
+      this.content = '';
+
+      // Create a new file
+      await this.createNewFile();
+    } catch (error) {
+      console.error('Failed to delete all notes:', error);
+      this.showErrorMessage('Failed to delete some notes');
+    }
+  }
+
+  /**
+   * Update the Delete All button state
+   */
+  private updateDeleteAllButton(): void {
+    const deleteAllBtn = this.querySelector('#delete-all-btn');
+    if (deleteAllBtn) {
+      if (this.noLocationConfigured || this.files.length === 0) {
+        (deleteAllBtn as HTMLButtonElement).disabled = true;
+      } else {
+        (deleteAllBtn as HTMLButtonElement).disabled = false;
+      }
+    }
   }
 
   /**

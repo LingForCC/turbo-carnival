@@ -6,7 +6,8 @@ The Quick Notepad provides a simple, distraction-free text editor that can be in
 ## Features
 - **Global Shortcut**: Press Option+A (macOS) or Alt+A (Windows/Linux) to open/hide the notepad
 - **Auto-save**: Content automatically saves 2 seconds after you stop typing
-- **File Management**: Create multiple notes, switch between them via sidebar
+- **File Management**: Create, delete, and switch between notes via sidebar
+- **Delete Notes**: Delete individual notes or all notes at once with confirmation dialogs
 - **Settings Integration**: Configure custom save location in App Settings
 - **State Persistence**: Notepad window preserves state when hidden/shown
 - **No Default Save**: Content won't persist if save location is not configured
@@ -25,6 +26,11 @@ Press Option+A (macOS) or Alt+A (Windows/Linux) to toggle the notepad window.
 
 ### Switching Between Notes
 Click any note in the sidebar to switch to it. The current note is auto-saved before switching.
+
+### Deleting Notes
+- **Delete a single note**: Hover over a note in the sidebar and click the trash icon that appears. Confirm the deletion in the dialog.
+- **Delete all notes**: Click the "Delete All" button in the sidebar header. Confirm the deletion in the dialog.
+- After deleting the current note, the app automatically switches to the most recent note or creates a new one if no notes remain.
 
 ### Setting Save Location
 1. Open App Settings (click "Settings" button in header)
@@ -60,7 +66,7 @@ The notepad window syncs with the app's theme settings:
 - `notepad:readFile` - Read file content
 - `notepad:createFile` - Create new file
 - `notepad:saveContent` - Save file content
-- `notepad:deleteFile` - Delete file
+- `notepad:deleteFile` - Delete file (supports single file deletion)
 - `notepad:windowShown` - One-way IPC event sent when window is shown (triggers file/theme refresh)
 
 ## Window Refresh Behavior
@@ -162,6 +168,9 @@ The notepad window syncs with the app's theme settings:
 10. ✅ Auto-save works - type, wait, check file content
 11. ✅ Dark mode sync - toggle theme in main app, reopen notepad to see dark mode applied
 12. ✅ Auto-refresh on show - create file externally, close/reopen notepad to see new file
+13. ✅ Delete single note - hover and click trash icon, confirms deletion, switches to another note
+14. ✅ Delete current note - deletes current file, switches to most recent or creates new one
+15. ✅ Delete all notes - click "Delete All", confirms, all files deleted, new file created
 
 ### Automated Testing
 - Main process tests: File operations, IPC handlers
@@ -171,7 +180,6 @@ The notepad window syncs with the app's theme settings:
 ## Future Enhancements
 - Virtual scrolling for large file lists
 - File rename functionality
-- File delete functionality (UI button)
 - Search within notes
 - Path validation for security
 - Character count indicator
