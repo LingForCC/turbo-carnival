@@ -7,11 +7,8 @@ import type { AppSettings } from '../types/settings-management';
  */
 export class SettingsDialog extends HTMLElement {
   private settings: AppSettings | null = null;
+  private currentTheme: 'light' | 'dark' = 'light';
   private api = getSettingsManagementAPI();
-
-  constructor() {
-    super();
-  }
 
   async connectedCallback(): Promise<void> {
     await this.loadSettings();
@@ -21,9 +18,11 @@ export class SettingsDialog extends HTMLElement {
   private async loadSettings(): Promise<void> {
     try {
       this.settings = await this.api.getSettings();
+      this.currentTheme = this.settings.theme === 'dark' ? 'dark' : 'light';
     } catch (error) {
       console.error('Failed to load settings:', error);
       this.settings = { theme: 'light', notepadSaveLocation: '' };
+      this.currentTheme = 'light';
     }
   }
 
@@ -57,6 +56,35 @@ export class SettingsDialog extends HTMLElement {
 
           <!-- Content -->
           <div class="p-6 space-y-6">
+            <!-- Theme Selection -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Theme
+              </label>
+              <div class="flex gap-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="theme"
+                    value="light"
+                    ${this.currentTheme === 'light' ? 'checked' : ''}
+                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  >
+                  <span class="text-sm text-gray-700 dark:text-gray-300">Light</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="theme"
+                    value="dark"
+                    ${this.currentTheme === 'dark' ? 'checked' : ''}
+                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  >
+                  <span class="text-sm text-gray-700 dark:text-gray-300">Dark</span>
+                </label>
+              </div>
+            </div>
+
             <!-- Notepad Save Location -->
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="notepad-location">
@@ -117,12 +145,59 @@ export class SettingsDialog extends HTMLElement {
       (newBtn as HTMLElement).addEventListener('click', () => this.close());
     }
 
+    // Theme radio buttons
+    const themeRadios = this.querySelectorAll('input[name="theme"]');
+    themeRadios.forEach(radio => {
+      const newRadio = radio.cloneNode(true);
+      radio.replaceWith(newRadio);
+      (newRadio as HTMLElement).addEventListener('change', (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.checked) {
+          this.handleThemeChange(target.value);
+        }
+      });
+    });
+
     // Browse button for notepad location
     const browseBtn = this.querySelector('#browse-notepad-btn');
     if (browseBtn) {
       const newBtn = browseBtn.cloneNode(true);
       browseBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.browseNotepadLocation());
+    }
+  }
+
+  private async handleThemeChange(newTheme: string): Promise<void> {
+    const theme = newTheme === 'dark' ? 'dark' : 'light';
+
+    if (theme === this.currentTheme) {
+      return; // No change
+    }
+
+    try {
+      // Update settings
+      await this.api.updateSettings({ theme });
+      this.currentTheme = theme;
+
+      // Apply theme immediately to DOM
+      this.applyTheme();
+    } catch (error) {
+      console.error('Failed to update theme:', error);
+      // Revert the radio selection if update failed
+      const radio = this.querySelector(`input[name="theme"][value="${this.currentTheme}"]`) as HTMLInputElement;
+      if (radio) {
+        radio.checked = true;
+      }
+    }
+  }
+
+  private applyTheme(): void {
+    const htmlElement = document.documentElement;
+
+    if (this.currentTheme === 'dark') {
+      htmlElement.classList.add('dark');
+    } else {
+      htmlElement.classList.remove('dark');
     }
   }
 

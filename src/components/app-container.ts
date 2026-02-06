@@ -46,10 +46,6 @@ export class AppContainer extends HTMLElement {
       <header class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between flex-shrink-0">
         <h1 class="text-lg font-semibold text-gray-800 dark:text-gray-200 m-0">Turbo Carnival</h1>
         <div class="flex items-center gap-2">
-          <!-- Theme Toggle Button -->
-          <button id="theme-toggle-btn" class="flex items-center justify-center p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent" title="Toggle theme">
-            ${this.getThemeIcon()}
-          </button>
           <button id="tools-btn" class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent">
             <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -165,14 +161,6 @@ export class AppContainer extends HTMLElement {
       const newBtn = settingsBtn.cloneNode(true);
       settingsBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.openSettingsDialog());
-    }
-
-    // Theme toggle button
-    const themeToggleBtn = this.querySelector('#theme-toggle-btn');
-    if (themeToggleBtn) {
-      const newBtn = themeToggleBtn.cloneNode(true);
-      themeToggleBtn.replaceWith(newBtn);
-      (newBtn as HTMLElement).addEventListener('click', () => this.toggleTheme());
     }
 
     // Listen for panel toggle events from child components
@@ -330,33 +318,6 @@ export class AppContainer extends HTMLElement {
     }
   }
 
-  private async toggleTheme(): Promise<void> {
-    const newTheme = this.currentTheme === 'light' ? 'dark' : 'light';
-
-    // Update the theme state and apply it immediately
-    this.currentTheme = newTheme;
-    this.applyTheme();
-
-    // Update the theme toggle button icon immediately
-    const themeToggleBtn = this.querySelector('#theme-toggle-btn');
-    if (themeToggleBtn) {
-      themeToggleBtn.innerHTML = this.getThemeIcon();
-    }
-
-    // Save the preference asynchronously
-    try {
-      await this.settingsAPI.updateSettings({ theme: newTheme });
-    } catch (error) {
-      console.error('Failed to update theme:', error);
-      // Revert the change if it failed to save
-      this.currentTheme = newTheme === 'dark' ? 'light' : 'dark';
-      this.applyTheme();
-      if (themeToggleBtn) {
-        themeToggleBtn.innerHTML = this.getThemeIcon();
-      }
-    }
-  }
-
   private applyTheme(): void {
     const htmlElement = document.documentElement;
 
@@ -366,16 +327,6 @@ export class AppContainer extends HTMLElement {
       htmlElement.classList.remove('dark');
     }
 
-  }
-
-  private getThemeIcon(): string {
-    return this.currentTheme === 'light'
-      ? `<svg class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-        </svg>`
-      : `<svg class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-        </svg>`;
   }
 
   private openToolsDialog(): void {

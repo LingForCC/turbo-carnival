@@ -2,7 +2,7 @@
 
 ## Overview
 
-Turbo Carnival supports dark mode theming using Tailwind CSS v4 with class-based dark mode. Users can toggle between light and dark themes via a button in the app header. The theme preference persists across app restarts.
+Turbo Carnival supports dark mode theming using Tailwind CSS v4 with class-based dark mode. Users can toggle between light and dark themes via the Settings dialog. The theme preference persists across app restarts.
 
 ## Architecture
 
@@ -35,10 +35,11 @@ The configuration is in `src/styles.css`:
 
 ### Theme Toggle
 
-Located in `src/components/app-container.ts` header:
-- Button icon changes based on current theme (moon for light, sun for dark)
-- Toggles persist to `settings.json`
-- Applies `dark` class to document element via `applyTheme()`
+Located in the Settings dialog (`src/components/settings-dialog.ts`):
+- Radio buttons for Light/Dark theme selection
+- Theme changes are applied immediately to the DOM
+- Changes persist to `settings.json`
+- On app startup, `app-container` loads and applies the saved theme via `loadTheme()`
 
 ## Color Palette
 
@@ -100,7 +101,8 @@ When adding dark mode to a component:
 ## Currently Implemented Components
 
 - ✅ `project-panel` - Left sidebar with project list (src/components/project-panel.ts)
-- ✅ `app-container` - Header with theme toggle (src/components/app-container.ts)
+- ✅ `app-container` - Root layout with theme loading on startup (src/components/app-container.ts)
+- ✅ `settings-dialog` - Theme selection UI and theme application (src/components/settings-dialog.ts)
 - ✅ `project-agent-dashboard` - Center area with agent list (src/components/project-agent-dashboard.ts)
 - ✅ `chat-panel` - Right sidebar chat interface (src/components/chat-panel.ts)
 - ✅ `conversation-panel` - Reusable chat interface (src/components/conversation-panel.ts)
@@ -142,32 +144,61 @@ export function updateSettingsFields(updates: Partial<AppSettings>): AppSettings
 }
 ```
 
-### Renderer Process (src/components/app-container.ts)
+### Renderer Process
+
+#### App Container (src/components/app-container.ts)
+
+Loads and applies the theme on app startup:
 
 ```typescript
 // Load theme on mount
 private async loadTheme(): Promise<void> {
-  if (window.electronAPI) {
-    try {
-      const settings = await window.electronAPI.getSettings();
-      this.currentTheme = settings.theme === 'dark' ? 'dark' : 'light';
-      this.applyTheme();
-    } catch (error) {
-      console.error('Failed to load theme:', error);
-    }
+  try {
+    const settings = await this.settingsAPI.getSettings();
+    this.currentTheme = settings.theme === 'dark' ? 'dark' : 'light';
+    this.applyTheme();
+  } catch (error) {
+    console.error('Failed to load theme:', error);
   }
 }
 
-// Toggle theme and save
-private async toggleTheme(): Promise<void> {
-  const newTheme = this.currentTheme === 'light' ? 'dark' : 'light';
-  if (window.electronAPI) {
-    try {
-      await window.electronAPI.updateSettings({ theme: newTheme });
-      this.currentTheme = newTheme;
-      this.applyTheme();
-    } catch (error) {
-      console.error('Failed to update theme:', error);
+// Apply theme to DOM
+private applyTheme(): void {
+  const htmlElement = document.documentElement;
+  if (this.currentTheme === 'dark') {
+    htmlElement.classList.add('dark');
+  } else {
+    htmlElement.classList.remove('dark');
+  }
+}
+```
+
+#### Settings Dialog (src/components/settings-dialog.ts)
+
+Provides theme selection UI and applies theme changes:
+
+```typescript
+// Handle theme change from user interaction
+private async handleThemeChange(newTheme: string): Promise<void> {
+  const theme = newTheme === 'dark' ? 'dark' : 'light';
+
+  if (theme === this.currentTheme) {
+    return; // No change
+  }
+
+  try {
+    // Update settings
+    await this.api.updateSettings({ theme });
+    this.currentTheme = theme;
+
+    // Apply theme immediately to DOM
+    this.applyTheme();
+  } catch (error) {
+    console.error('Failed to update theme:', error);
+    // Revert the radio selection if update failed
+    const radio = this.querySelector(`input[name="theme"][value="${this.currentTheme}"]`) as HTMLInputElement;
+    if (radio) {
+      radio.checked = true;
     }
   }
 }
@@ -204,14 +235,20 @@ Project panel dark mode tests (`src/__tests__/components/project-panel/project-p
 - Remove button dark mode styling
 - Add button dark mode styling
 
+Settings dialog theme tests (`src/__tests__/components/settings-dialog/settings-dialog.test.ts`):
+- Render with correct theme radio button selected
+- Update theme when radio button is changed
+- Apply theme directly to DOM when theme is updated
+
 ### Manual Testing
 
 1. Run `npm run dev` to start the app
-2. Click the theme toggle button (moon/sun icon) in the header
-3. Verify project panel colors change immediately
-4. Close and restart the app
-5. Verify theme preference persists
-6. Check `settings.json` file in userData directory
+2. Click the **Settings** button in the header
+3. Select Light or Dark theme radio button
+4. Verify the entire app colors change immediately
+5. Close the dialog and restart the app
+6. Verify theme preference persists
+7. Check `settings.json` file in userData directory
 
 ## Future Enhancements
 
@@ -223,10 +260,13 @@ Project panel dark mode tests (`src/__tests__/components/project-panel/project-p
 ## Related Files
 
 - `src/main/settings-management.ts` - Settings storage and IPC handlers
-- `src/components/app-container.ts` - Theme toggle button and state management
+- `src/components/app-container.ts` - Theme loading on app startup
+- `src/components/settings-dialog.ts` - Theme selection UI and application
 - `src/components/project-panel.ts` - Left sidebar with dark mode
 - `src/components/project-agent-dashboard.ts` - Agent list with dark mode
 - `src/components/notepad-window.ts` - Quick notepad with theme sync
 - `src/styles.css` - Tailwind dark mode configuration
 - `src/types/settings-management.d.ts` - AppSettings type definition
 - `src/preload.ts` - Settings API exposure
+- `src/api/settings-management.ts` - Renderer-safe settings API
+- `src/__tests__/components/settings-dialog/settings-dialog.test.ts` - Settings dialog tests including theme selection

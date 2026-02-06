@@ -160,7 +160,7 @@ The documentation has been split into focused modules for better performance:
 - `model-config-dialog` - Model configuration management with extra properties support (uses `getProviderManagementAPI()`)
 - `tools-dialog` - Tool management with testing (uses `getToolManagementAPI()`)
 - `tool-test-dialog` - Tool execution testing (uses `getToolManagementAPI()`)
-- `settings-dialog` - App settings management with notepad save location (uses `getSettingsManagementAPI()`)
+- `settings-dialog` - App settings management with theme selection and notepad save location (uses `getSettingsManagementAPI()`)
 - `notepad-window` - Standalone notepad window with file list and auto-save (uses `getNotepadManagementAPI()`)
 
 ### Transformers
