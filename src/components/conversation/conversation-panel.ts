@@ -43,6 +43,10 @@ export class ConversationPanel extends HTMLElement {
   private currentStreamedContent: string = '';
   private currentStreamedReasoning: string = '';
   private activeToolCalls: Map<string, ToolCallData> = new Map();
+  private activeToolCallMessageIndices: Map<string, number> = new Map();
+  private reserveResponsePreview: boolean = false;
+  private readonly baseMessagesPaddingPx: number = 16;
+  private readonly responsePreviewPaddingPx: number = 96;
   private providerAPI = getProviderManagementAPI();
 
   // Configuration from attributes
@@ -143,6 +147,9 @@ export class ConversationPanel extends HTMLElement {
   public async setAgent(agent: Agent, project: Project): Promise<void> {
     this.currentAgent = agent;
     this.currentProject = project;
+    this.activeToolCalls.clear();
+    this.activeToolCallMessageIndices.clear();
+    this.reserveResponsePreview = false;
 
     // Clear tagged files when switching agents
     this.taggedFiles = [];
@@ -181,6 +188,8 @@ export class ConversationPanel extends HTMLElement {
   public clearChat(): void {
     this.chatHistory = [];
     this.activeToolCalls.clear();
+    this.activeToolCallMessageIndices.clear();
+    this.reserveResponsePreview = false;
     this.render();
 
     // Dispatch event to clear agent history in parent component
@@ -204,6 +213,15 @@ export class ConversationPanel extends HTMLElement {
   }
 
   /**
+   * Skip auto-scroll while streaming to avoid pulling the viewport.
+   */
+  private scrollIfNotStreaming(): void {
+    if (!this.isStreaming) {
+      this.scrollToBottom();
+    }
+  }
+
+  /**
    * Handle stream chunk from parent component
    * Called by parent (chat-panel/app-panel) during streaming
    */
@@ -212,9 +230,11 @@ export class ConversationPanel extends HTMLElement {
     this.ensureStreamingMessage();
 
     this.currentStreamedContent += chunk;
-    this.chatHistory[this.chatHistory.length - 1].content = this.currentStreamedContent;
-    this.render();
-    this.scrollToBottom();
+    const lastIndex = this.chatHistory.length - 1;
+    this.ensureMessageDOMInSync();
+    this.chatHistory[lastIndex].content = this.currentStreamedContent;
+    this.renderOrUpdateMessage(lastIndex);
+    this.scrollIfNotStreaming();
   }
 
   /**
@@ -225,7 +245,9 @@ export class ConversationPanel extends HTMLElement {
     this.isStreaming = false;
     this.currentStreamedContent = '';
     this.currentStreamedReasoning = '';
-    this.render();
+    this.reserveResponsePreview = false;
+    this.updateStreamingControls();
+    this.updateMessagesViewportPadding();
 
     // Emit stream-complete event for consistency
     this.dispatchEvent(new CustomEvent('stream-complete', {
@@ -244,10 +266,11 @@ export class ConversationPanel extends HTMLElement {
     this.ensureStreamingMessage();
 
     this.currentStreamedReasoning += reasoning;
-    this.chatHistory[this.chatHistory.length - 1].reasoning = this.currentStreamedReasoning;
-
-    this.render();
-    this.scrollToBottom();
+    const lastIndex = this.chatHistory.length - 1;
+    this.ensureMessageDOMInSync();
+    this.chatHistory[lastIndex].reasoning = this.currentStreamedReasoning;
+    this.renderOrUpdateMessage(lastIndex);
+    this.scrollIfNotStreaming();
   }
 
   /**
@@ -258,6 +281,7 @@ export class ConversationPanel extends HTMLElement {
     this.isStreaming = false;
     this.currentStreamedContent = '';
     this.currentStreamedReasoning = '';
+    this.reserveResponsePreview = false;
     this.chatHistory.pop(); // Remove user message
     this.showError(error);
     this.render();
@@ -299,6 +323,8 @@ export class ConversationPanel extends HTMLElement {
         });
       }
     }
+
+    this.updateStreamingControls();
   }
 
   /**
@@ -322,9 +348,11 @@ export class ConversationPanel extends HTMLElement {
     // Track as active
     const key = `${toolName}|${JSON.stringify(parameters)}`;
     this.activeToolCalls.set(key, toolCallData);
+    this.activeToolCallMessageIndices.set(key, this.chatHistory.length - 1);
 
-    this.render();
-    this.scrollToBottom();
+    this.ensureMessageDOMInSync();
+    this.renderOrUpdateMessage(this.chatHistory.length - 1);
+    this.scrollIfNotStreaming();
   }
 
   /**
@@ -348,11 +376,17 @@ export class ConversationPanel extends HTMLElement {
       toolCallData.status = 'completed';
     }
 
+    const messageIndex = this.activeToolCallMessageIndices.get(key);
+
     // Remove from active tracking
     this.activeToolCalls.delete(key);
+    this.activeToolCallMessageIndices.delete(key);
 
-    this.render();
-    this.scrollToBottom();
+    if (typeof messageIndex === 'number') {
+      this.ensureMessageDOMInSync();
+      this.renderOrUpdateMessage(messageIndex);
+    }
+    this.scrollIfNotStreaming();
   }
 
   /**
@@ -374,11 +408,17 @@ export class ConversationPanel extends HTMLElement {
       toolCallData.status = 'failed';
     }
 
+    const messageIndex = this.activeToolCallMessageIndices.get(key);
+
     // Remove from active tracking
     this.activeToolCalls.delete(key);
+    this.activeToolCallMessageIndices.delete(key);
 
-    this.render();
-    this.scrollToBottom();
+    if (typeof messageIndex === 'number') {
+      this.ensureMessageDOMInSync();
+      this.renderOrUpdateMessage(messageIndex);
+    }
+    this.scrollIfNotStreaming();
   }
 
   // ========== RENDERING ==========
@@ -387,7 +427,7 @@ export class ConversationPanel extends HTMLElement {
     this.innerHTML = `
       <div class="flex flex-col h-full">
         <!-- Chat Messages Area -->
-        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-gray-900">
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-gray-900" style="padding-bottom: ${this.getMessagesBottomPaddingPx()}px;">
           <!-- Messages will be rendered here by renderChatMessages() -->
         </div>
 
@@ -477,7 +517,7 @@ export class ConversationPanel extends HTMLElement {
     // Check for empty states
     if (!this.currentAgent) {
       messagesContainer.innerHTML = `
-        <div class="flex flex-col items-center justify-center h-full text-center">
+        <div data-empty-state="true" class="flex flex-col items-center justify-center h-full text-center">
           <svg class="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
           </svg>
@@ -491,7 +531,7 @@ export class ConversationPanel extends HTMLElement {
 
     if (this.chatHistory.length === 0 && !this.isStreaming) {
       messagesContainer.innerHTML = `
-        <div class="flex flex-col items-center justify-center h-full text-center">
+        <div data-empty-state="true" class="flex flex-col items-center justify-center h-full text-center">
           <svg class="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
           </svg>
@@ -504,14 +544,71 @@ export class ConversationPanel extends HTMLElement {
     }
 
     // Render each message
-    this.chatHistory.forEach(msg => {
-      const rendered = this.renderMessageElement(msg.role, msg.content, msg.toolCall, msg.reasoning);
-      if (typeof rendered === 'string') {
-        messagesContainer.insertAdjacentHTML('beforeend', rendered);
-      } else {
-        messagesContainer.appendChild(rendered);
-      }
+    this.chatHistory.forEach((_, index) => {
+      this.renderOrUpdateMessage(index);
     });
+  }
+
+  /**
+   * Render or update a single message node without re-rendering the whole panel.
+   */
+  private renderOrUpdateMessage(index: number): void {
+    const messagesContainer = this.querySelector('#chat-messages');
+    const message = this.chatHistory[index];
+    if (!messagesContainer || !message) return;
+
+    // Remove empty states when the first real message is rendered.
+    if (messagesContainer.querySelector('[data-empty-state="true"]')) {
+      messagesContainer.innerHTML = '';
+    }
+
+    const existingWrapper = messagesContainer.querySelector(`[data-message-index="${index}"]`);
+    const rendered = this.renderMessageElement(message.role, message.content, message.toolCall, message.reasoning);
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute('data-message-index', index.toString());
+
+    if (typeof rendered === 'string') {
+      wrapper.insertAdjacentHTML('beforeend', rendered);
+    } else {
+      wrapper.appendChild(rendered);
+    }
+
+    if (existingWrapper) {
+      existingWrapper.replaceWith(wrapper);
+    } else {
+      messagesContainer.appendChild(wrapper);
+    }
+  }
+
+  /**
+   * Ensure message container and in-memory chat history have the same number of message nodes.
+   * Falls back to full message list rendering when they diverge.
+   */
+  private ensureMessageDOMInSync(): void {
+    const messagesContainer = this.querySelector('#chat-messages');
+    if (!messagesContainer) return;
+
+    const renderedMessageCount = messagesContainer.querySelectorAll('[data-message-index]').length;
+    if (renderedMessageCount !== this.chatHistory.length) {
+      this.renderChatMessages();
+    }
+  }
+
+  /**
+   * Keep a temporary viewport reserve below messages so early streamed lines are visible.
+   */
+  private getMessagesBottomPaddingPx(): number {
+    return this.baseMessagesPaddingPx + (this.reserveResponsePreview ? this.responsePreviewPaddingPx : 0);
+  }
+
+  /**
+   * Update message viewport bottom padding without full panel render.
+   */
+  private updateMessagesViewportPadding(): void {
+    const messagesContainer = this.querySelector('#chat-messages') as HTMLElement | null;
+    if (messagesContainer) {
+      messagesContainer.style.paddingBottom = `${this.getMessagesBottomPaddingPx()}px`;
+    }
   }
 
   /**
@@ -663,6 +760,23 @@ export class ConversationPanel extends HTMLElement {
     });
   }
 
+  /**
+   * Update input/button disabled state and send icon without rebuilding the panel.
+   */
+  private updateStreamingControls(): void {
+    const chatInput = this.querySelector('#chat-input') as HTMLTextAreaElement | null;
+    const sendBtn = this.querySelector('#send-btn') as HTMLButtonElement | null;
+    if (chatInput) {
+      chatInput.disabled = this.isStreaming;
+    }
+    if (sendBtn) {
+      sendBtn.disabled = this.isStreaming;
+      sendBtn.innerHTML = this.isStreaming
+        ? '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>'
+        : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>';
+    }
+  }
+
   private async sendMessage(): Promise<void> {
     if (!this.currentAgent || !this.currentProject || this.isStreaming) return;
 
@@ -676,6 +790,7 @@ export class ConversationPanel extends HTMLElement {
 
     // Add user message to UI immediately
     this.chatHistory.push({ role: 'user', content: message || '' });
+    this.reserveResponsePreview = true;
     this.render();
     this.scrollToBottom();
 

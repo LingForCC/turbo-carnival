@@ -21,6 +21,8 @@ interface ConversationPanel extends HTMLElement {
   handleStreamChunk(chunk: string): void;
   handleStreamComplete(content: string): void;
   handleStreamError(error: string): void;
+  handleToolCallStarted(toolName: string, parameters: Record<string, any>): void;
+  handleToolCallCompleted(toolName: string, parameters: Record<string, any>, result: any, executionTime: number): void;
   setUserMessageFactory(factory: (content: string) => UserMessage): void;
   setAssistantMessageFactory(factory: (content: string, reasoning: string) => AssistantMessage): void;
   setToolCallMessageFactory(factory: (content: string, toolCall: ToolCallData, reasoning?: string) => ToolCallMessage): void;
@@ -305,6 +307,32 @@ describe('ConversationPanel Web Component', () => {
 
       cleanup();
     });
+
+    it('should reserve viewport space for first response lines after sending', async () => {
+      const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
+
+      await waitForAsync();
+      setupMessageFactories(element);
+
+      const mockAgent = createMockAgent();
+      const mockProject = createMockProject();
+      element.setAgent(mockAgent, mockProject);
+      await waitForAsync();
+
+      const input = element.querySelector('#chat-input') as HTMLTextAreaElement;
+      const sendBtn = element.querySelector('#send-btn') as HTMLElement;
+
+      if (input && sendBtn) {
+        input.value = 'Show me something';
+        sendBtn.click();
+        await waitForAsync();
+      }
+
+      const messagesContainer = element.querySelector('#chat-messages') as HTMLElement;
+      expect(messagesContainer?.style.paddingBottom).toBe('112px');
+
+      cleanup();
+    });
   });
 
   describe('Stream Handler Methods', () => {
@@ -333,6 +361,60 @@ describe('ConversationPanel Web Component', () => {
 
       expect(element.currentStreamedContent).toBe('Hi there!');
       expect(element.chatHistory?.[1].content).toBe('Hi there!');
+
+      cleanup();
+    });
+
+    it('should update streaming message without full panel re-render', async () => {
+      const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
+
+      await waitForAsync();
+      setupMessageFactories(element);
+
+      const mockAgent = createMockAgent();
+      const mockProject = createMockProject();
+      element.setAgent(mockAgent, mockProject);
+      await waitForAsync();
+
+      (element as any).chatHistory = [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: '' }
+      ];
+      (element as any).render();
+      await waitForAsync();
+
+      const renderSpy = jest.spyOn(element as any, 'render');
+      element.handleStreamChunk('Hi');
+
+      expect(renderSpy).not.toHaveBeenCalled();
+      expect(element.querySelector('assistant-message')?.getAttribute('content')).toBe('Hi');
+
+      cleanup();
+    });
+
+    it('should not auto scroll during streaming chunks', async () => {
+      const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
+
+      await waitForAsync();
+      setupMessageFactories(element);
+
+      const mockAgent = createMockAgent();
+      const mockProject = createMockProject();
+      element.setAgent(mockAgent, mockProject);
+      await waitForAsync();
+
+      (element as any).chatHistory = [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: '' }
+      ];
+      (element as any).render();
+      await waitForAsync();
+
+      const scrollSpy = jest.spyOn(element, 'scrollToBottom');
+      element.handleStreamChunk('Hi');
+      element.handleStreamChunk(' there');
+
+      expect(scrollSpy).not.toHaveBeenCalled();
 
       cleanup();
     });
@@ -579,6 +661,29 @@ describe('ConversationPanel Web Component', () => {
   });
 
   describe('Tool Call Rendering', () => {
+    it('should update tool call message without full panel re-render', async () => {
+      const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
+
+      await waitForAsync();
+      setupMessageFactories(element);
+
+      const mockAgent = createMockAgent();
+      const mockProject = createMockProject();
+      element.setAgent(mockAgent, mockProject);
+      await waitForAsync();
+
+      const renderSpy = jest.spyOn(element as any, 'render');
+      element.handleToolCallStarted('test_tool', { arg1: 'value1' });
+      element.handleToolCallCompleted('test_tool', { arg1: 'value1' }, { output: 'ok' }, 50);
+
+      expect(renderSpy).not.toHaveBeenCalled();
+      const toolCallData = element.querySelector('tool-call-message')?.getAttribute('tool-call-data') || '';
+      expect(toolCallData).toContain('"status":"completed"');
+      expect(toolCallData).toContain('"executionTime":50');
+
+      cleanup();
+    });
+
     it('should render tool call message collapsed by default', async () => {
       const { element, cleanup } = mountComponent<ConversationPanel>('conversation-panel');
 
