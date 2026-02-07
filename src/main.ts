@@ -13,6 +13,8 @@ import { registerSettingsIPCHandlers } from './main/settings-management';
 import { registerNotepadIPCHandlers } from './main/notepad-management';
 import { registerAgentTemplateIPCHandlers } from './main/agent-template-management';
 import { registerGlobalShortcut, unregisterGlobalShortcut, closeNotepadWindow } from './main/notepad-window';
+import { registerQuickAIPCHandlers } from './main/quick-ai-management';
+import { registerQuickAIGlobalShortcut, unregisterQuickAIGlobalShortcut, closeQuickAIWindow } from './main/quick-ai-window';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -58,6 +60,9 @@ app.whenReady().then(() => {
   // Register global shortcut for notepad
   registerGlobalShortcut();
 
+  // Register global shortcut for Quick AI
+  registerQuickAIGlobalShortcut();
+
   app.on('activate', () => {
     // On macOS, re-create the main window when the dock icon is clicked
     if (mainWindow === null) {
@@ -97,6 +102,9 @@ function registerIPCHandlers(): void {
 
   // ============ AGENT TEMPLATE IPC HANDLERS ============
   registerAgentTemplateIPCHandlers();
+
+  // ============ QUICK AI IPC HANDLERS ============
+  registerQuickAIPCHandlers();
 }
 
 // Quit when all windows are closed, except on macOS
@@ -110,10 +118,13 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   // Close notepad window first
   closeNotepadWindow();
+  // Close Quick AI window
+  closeQuickAIWindow();
 });
 
 // Clean up shortcuts before app quits
 app.on('will-quit', () => {
-  // Unregister global shortcut
+  // Unregister global shortcuts
   unregisterGlobalShortcut();
+  unregisterQuickAIGlobalShortcut();
 });

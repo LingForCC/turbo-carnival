@@ -6,6 +6,7 @@ import { toolManagement } from './preload/tool-management';
 import { settingsManagement } from './preload/settings-management';
 import { notepadManagement } from './preload/notepad-management';
 import { agentTemplateManagement } from './preload/agent-template-management';
+import { quickAIManagement } from './preload/quick-ai-management';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -26,4 +27,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ...notepadManagement,
 
   ...agentTemplateManagement,
+
+  // Quick AI management
+  getQuickAIAgent: quickAIManagement.getAgent,
+  streamQuickAIMessage: quickAIManagement.streamMessage,
+  clearQuickAIHistory: quickAIManagement.clearHistory,
+  validateQuickAISettings: quickAIManagement.validateSettings,
+  onQuickAIWindowShown: quickAIManagement.onWindowShown,
 });

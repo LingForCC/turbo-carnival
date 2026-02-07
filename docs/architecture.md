@@ -83,6 +83,19 @@ The main process is organized into dedicated modules:
 - Window management: `createNotepadWindow`, `showNotepadWindow`, `toggleNotepadWindow`
 - Show/hide pattern (preserves state between activations)
 
+**`src/main/quick-ai-management.ts`**
+- Quick AI conversation management
+- Settings validation: `validateQuickAISettings()` (checks provider and model configured)
+- In-memory agent management (no persistence)
+- IPC handlers: `quick-ai:streamMessage`, `quick-ai:clearHistory`, `quick-ai:validateSettings`
+- LLM handlers manage conversation history (in-memory only)
+
+**`src/main/quick-ai-window.ts`**
+- Quick AI window lifecycle management
+- Global shortcut registration: `registerQuickAIGlobalShortcut`, `unregisterQuickAIGlobalShortcut`
+- Window management: `createQuickAIWindow`, `showQuickAIWindow`, `toggleQuickAIWindow`
+- Show/hide pattern (preserves state between activations)
+
 **`src/renderer/browser-tool-executor.ts`**
 - Browser tool execution module
 - Runs tools in renderer context with access to browser APIs
@@ -94,7 +107,8 @@ The main process is organized into dedicated modules:
 - `chat-agent-management.ts` imports from: `llm/index.ts` (streamLLM), `agent-management.ts`, `provider-management.ts`, `model-config-management.ts`, `tool-management.ts`
 - `app-agent-management.ts` imports from: `llm/index.ts` (streamLLM), `agent-management.ts`, `provider-management.ts`, `model-config-management.ts`
 - `notepad-management.ts` imports from: `settings-management.ts` (loadSettings)
-- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `model-config-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`, `settings-management.ts`, `notepad-management.ts`, `notepad-window.ts`
+- `quick-ai-management.ts` imports from: `llm/index.ts` (streamLLM), `settings-management.ts`, `provider-management.ts`, `model-config-management.ts`
+- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `model-config-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`, `settings-management.ts`, `notepad-management.ts`, `notepad-window.ts`, `quick-ai-management.ts`, `quick-ai-window.ts`
 
 ### Pattern for Creating New Modules
 1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)
@@ -316,11 +330,17 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - `app-agent:streamMessage` - Initiates streaming message with file context only
 - `app-agent:clearHistory` - Clears conversation history for an app agent
 
+**Quick AI (no tools, no files):**
+- `quick-ai:streamMessage` - Initiates streaming message with default model/provider
+- `quick-ai:clearHistory` - Clears Quick AI conversation history (in-memory)
+- `quick-ai:validateSettings` - Validates Quick AI settings (provider and model configured)
+- `quick-ai:windowShown` - Signals Quick AI window was shown (one-way IPC from main to renderer)
+
 **Streaming Events (one-way IPC from main to renderer):**
-- `chat-chunk` - Content chunk during streaming (sent by both chat-agent and app-agent)
-- `chat-reasoning` - Reasoning/thinking chunk during streaming (GLM only, sent by both chat-agent and app-agent)
-- `chat-complete` - Signals streaming completion
-- `chat-error` - Signals streaming error with error message
+- `chat-chunk` - Content chunk during streaming (sent by chat-agent, app-agent, and quick-ai)
+- `chat-reasoning` - Reasoning/thinking chunk during streaming (GLM only, sent by chat-agent, app-agent, and quick-ai)
+- `chat-complete` - Signals streaming completion (sent by chat-agent, app-agent, and quick-ai)
+- `chat-error` - Signals streaming error with error message (sent by chat-agent, app-agent, and quick-ai)
 
 **Note:** The old `chat:sendMessage` and `chat:streamMessage` channels have been removed in favor of the more specific `chat-agent:*` and `app-agent:*` channels.
 
@@ -404,8 +424,14 @@ Provider and model config types organized in a dedicated module:
 ### Settings Management Types (`src/types/settings-management.d.ts`)
 Settings-related types organized in a dedicated module:
 
-- `AppSettings` - Application settings (theme preference)
+- `AppSettings` - Application settings (theme preference, notepad save location, Quick AI defaults)
 - `SettingsManagementAPI` - Interface for settings management operations
+
+### Quick AI Management Types (`src/types/quick-ai-management.d.ts`)
+Quick AI-related types organized in a dedicated module:
+
+- `QuickAISettingsValidation` - Settings validation result (valid flag and optional error message)
+- `QuickAIManagementAPI` - Interface for Quick AI operations (stream message, clear history, validate settings)
 
 ### Component-Specific Types
 

@@ -17,6 +17,7 @@ Turbo Carnival is an Electron desktop application built with TypeScript, using W
 - Custom tool execution in Node.js or Browser environments
 - App agent type for generating interactive JavaScript + HTML applications
 - Quick notepad with global shortcut (Option+A), auto-save, file management, and delete capabilities
+- Quick AI conversation with global shortcut (Option+Q)
 
 ## Build and Development Commands
 
@@ -96,6 +97,7 @@ The documentation has been split into focused modules for better performance:
 - **[docs/features/tool-management.md](docs/features/tool-management.md)** - Custom tools with Node.js/Browser execution
 - **[docs/features/app-agents.md](docs/features/app-agents.md)** - App agent type for generating interactive applications
 - **[docs/features/quick-notepad.md](docs/features/quick-notepad.md)** - Quick notepad with global shortcut, auto-save, and file management
+- **[docs/features/quick-ai.md](docs/features/quick-ai.md)** - Quick AI conversation with global shortcut
 
 ### Development
 - **[docs/development.md](docs/development.md)** - Development notes, security, styling, common tasks, debugging tips
@@ -122,6 +124,8 @@ The documentation has been split into focused modules for better performance:
 - `src/main/tool-management.ts` - Tool CRUD, JSON Schema validation, execution routing
 - `src/main/notepad-management.ts` - Notepad file operations, IPC handlers
 - `src/main/notepad-window.ts` - Notepad window lifecycle, global shortcut registration
+- `src/main/quick-ai-management.ts` - Quick AI conversation management, IPC handlers
+- `src/main/quick-ai-window.ts` - Quick AI window lifecycle, global shortcut registration
 
 ### Preload Modules
 - `src/preload.ts` - Main preload script, exposes `window.electronAPI` via contextBridge
@@ -132,6 +136,7 @@ The documentation has been split into focused modules for better performance:
 - `src/preload/tool-management.ts` - Tool management functions for preload (uses ipcRenderer)
 - `src/preload/settings-management.ts` - Settings management functions for preload (uses ipcRenderer)
 - `src/preload/notepad-management.ts` - Notepad management functions for preload (uses ipcRenderer)
+- `src/preload/quick-ai-management.ts` - Quick AI management functions for preload (uses ipcRenderer)
 
 ### Renderer API Layer
 - `src/api/project-management.ts` - Renderer-safe project management API (wraps window.electronAPI)
@@ -148,6 +153,8 @@ The documentation has been split into focused modules for better performance:
 - `src/types/settings-management.d.ts` - Settings management type definitions (AppSettings, SettingsManagementAPI)
 - `src/api/notepad-management.ts` - Renderer-safe notepad management API (wraps window.electronAPI)
 - `src/types/notepad-management.d.ts` - Notepad management type definitions (NotepadFile, NotepadManagementAPI)
+- `src/api/quick-ai-management.ts` - Renderer-safe Quick AI management API (wraps window.electronAPI)
+- `src/types/quick-ai-management.d.ts` - Quick AI management type definitions (QuickAIManagementAPI, QuickAISettingsValidation)
 
 ### UI Components (Web Components)
 - `app-container` - Root layout, event forwarding (uses `getSettingsManagementAPI()`)
@@ -167,8 +174,9 @@ The documentation has been split into focused modules for better performance:
 - `model-config-dialog` - Model configuration management with extra properties support (uses `getProviderManagementAPI()`)
 - `tools-dialog` - Tool management with testing (uses `getToolManagementAPI()`)
 - `tool-test-dialog` - Tool execution testing (uses `getToolManagementAPI()`)
-- `settings-dialog` - App settings management with theme selection and notepad save location (uses `getSettingsManagementAPI()`)
+- `settings-dialog` - App settings management with theme selection, notepad save location, and Quick AI defaults (uses `getSettingsManagementAPI()` and `getProviderManagementAPI()`)
 - `notepad-window` - Standalone notepad window with file list and auto-save (uses `getNotepadManagementAPI()`)
+- `quick-ai-window` - Standalone Quick AI conversation window with error handling and dark mode support (uses `getQuickAIManagementAPI()` and `getSettingsManagementAPI()`)
 
 ### Transformers
 - `src/components/transformers/openai-transformer.ts` - Transforms OpenAI native message format to ChatMessage format for UI display
@@ -196,13 +204,17 @@ The documentation has been split into focused modules for better performance:
 - `notepad:createFile` - Create new notepad file
 - `notepad:saveContent` - Save notepad content (auto-save)
 - `notepad:deleteFile` - Delete notepad file
+- `quick-ai:streamMessage` - Quick AI streaming (no tools, no files)
+- `quick-ai:clearHistory` - Clear Quick AI conversation history
+- `quick-ai:validateSettings` - Validate Quick AI settings (provider and model configured)
+- `quick-ai:windowShown` - Quick AI window shown event (one-way IPC from main to renderer)
 
 ### Storage Locations
 - `app.getPath('userData')/projects.json` - Project list
 - `app.getPath('userData')/agent-templates.json` - Agent templates
 - `app.getPath('userData')/providers.json` - LLM providers
 - `app.getPath('userData')/model-configs.json` - Model configurations
-- `app.getPath('userData')/settings.json` - App settings (theme preference, notepad save location)
+- `app.getPath('userData')/settings.json` - App settings (theme preference, notepad save location, Quick AI defaults)
 - `app.getPath('userData')/tools.json` - Custom tools
 - `{notepadSaveLocation}/` - Notepad files (.txt format, timestamp naming) - user-configured location
 - `{projectFolder}/agent-{name}.json` - Agent files (stored in project folders)

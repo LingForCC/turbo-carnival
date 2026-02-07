@@ -1,5 +1,7 @@
 import { getSettingsManagementAPI } from '../api/settings-management';
+import { getProviderManagementAPI } from '../api/provider-management';
 import type { AppSettings } from '../types/settings-management';
+import type { LLMProvider, ModelConfig } from '../types/provider-management';
 
 /**
  * SettingsDialog Web Component
@@ -9,9 +11,13 @@ export class SettingsDialog extends HTMLElement {
   private settings: AppSettings | null = null;
   private currentTheme: 'light' | 'dark' = 'light';
   private api = getSettingsManagementAPI();
+  private providerApi = getProviderManagementAPI();
+  private providers: LLMProvider[] = [];
+  private modelConfigs: ModelConfig[] = [];
 
   async connectedCallback(): Promise<void> {
     await this.loadSettings();
+    await this.loadProviders();
     this.render();
   }
 
@@ -26,6 +32,17 @@ export class SettingsDialog extends HTMLElement {
     }
   }
 
+  private async loadProviders(): Promise<void> {
+    try {
+      this.providers = await this.providerApi.getProviders();
+      this.modelConfigs = await this.providerApi.getModelConfigs();
+    } catch (error) {
+      console.error('Failed to load providers:', error);
+      this.providers = [];
+      this.modelConfigs = [];
+    }
+  }
+
   private render(): void {
     if (!this.settings) {
       this.innerHTML = '<div>Loading...</div>';
@@ -33,6 +50,8 @@ export class SettingsDialog extends HTMLElement {
     }
 
     const notepadLocation = this.settings.notepadSaveLocation || '';
+    const defaultProviderId = this.settings.defaultProviderId || '';
+    const defaultModelConfigId = this.settings.defaultModelConfigId || '';
 
     this.innerHTML = `
       <!-- Backdrop -->
@@ -110,6 +129,44 @@ export class SettingsDialog extends HTMLElement {
                 If not configured, notepad content will not be saved.
               </p>
             </div>
+
+            <!-- Quick AI Default Provider -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="default-provider">
+                Quick AI Default Provider
+              </label>
+              <select
+                id="default-provider-select"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
+              >
+                <option value="">-- Select Provider --</option>
+                ${this.providers.map(provider =>
+                  `<option value="${this.escapeHtml(provider.id)}" ${defaultProviderId === provider.id ? 'selected' : ''}>${this.escapeHtml(provider.name)}</option>`
+                ).join('')}
+              </select>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Default LLM provider for Quick AI conversations (Option+Q).
+              </p>
+            </div>
+
+            <!-- Quick AI Default Model Config -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="default-model">
+                Quick AI Default Model
+              </label>
+              <select
+                id="default-model-select"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
+              >
+                <option value="">-- Select Model --</option>
+                ${this.modelConfigs.map(model =>
+                  `<option value="${this.escapeHtml(model.id)}" ${defaultModelConfigId === model.id ? 'selected' : ''}>${this.escapeHtml(model.name)}</option>`
+                ).join('')}
+              </select>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Default model configuration for Quick AI conversations.
+              </p>
+            </div>
           </div>
 
           <!-- Footer -->
@@ -165,6 +222,28 @@ export class SettingsDialog extends HTMLElement {
       browseBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.browseNotepadLocation());
     }
+
+    // Default provider dropdown
+    const providerSelect = this.querySelector('#default-provider-select');
+    if (providerSelect) {
+      const newSelect = providerSelect.cloneNode(true);
+      providerSelect.replaceWith(newSelect);
+      (newSelect as HTMLSelectElement).addEventListener('change', (e) => {
+        const target = e.target as HTMLSelectElement;
+        this.handleProviderChange(target.value);
+      });
+    }
+
+    // Default model config dropdown
+    const modelSelect = this.querySelector('#default-model-select');
+    if (modelSelect) {
+      const newSelect = modelSelect.cloneNode(true);
+      modelSelect.replaceWith(newSelect);
+      (newSelect as HTMLSelectElement).addEventListener('change', (e) => {
+        const target = e.target as HTMLSelectElement;
+        this.handleModelConfigChange(target.value);
+      });
+    }
   }
 
   private async handleThemeChange(newTheme: string): Promise<void> {
@@ -218,6 +297,43 @@ export class SettingsDialog extends HTMLElement {
       }
     } catch (error) {
       console.error('Failed to browse folder:', error);
+    }
+  }
+
+  private async handleProviderChange(providerId: string): Promise<void> {
+    try {
+      // Clear model config selection if provider changes
+      await this.api.updateSettings({
+        defaultProviderId: providerId || undefined,
+        defaultModelConfigId: undefined
+      });
+      this.settings = {
+        ...this.settings!,
+        defaultProviderId: providerId || undefined,
+        defaultModelConfigId: undefined
+      };
+
+      // Reset model config dropdown
+      const modelSelect = this.querySelector('#default-model-select') as HTMLSelectElement;
+      if (modelSelect) {
+        modelSelect.value = '';
+      }
+    } catch (error) {
+      console.error('Failed to update provider:', error);
+    }
+  }
+
+  private async handleModelConfigChange(modelConfigId: string): Promise<void> {
+    try {
+      await this.api.updateSettings({
+        defaultModelConfigId: modelConfigId || undefined
+      });
+      this.settings = {
+        ...this.settings!,
+        defaultModelConfigId: modelConfigId || undefined
+      };
+    } catch (error) {
+      console.error('Failed to update model config:', error);
     }
   }
 

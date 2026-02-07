@@ -28,6 +28,9 @@ import type { NotepadFile } from './notepad-management';
 // Import agent template types for use in ElectronAPI interface
 import type { AgentTemplate } from './agent-template';
 
+// Import Quick AI types for use in ElectronAPI interface
+import type { QuickAISettingsValidation } from './quick-ai-management';
+
 interface ElectronAPI {
   platform: string;
   openFolderDialog: () => Promise<string | null>;
@@ -182,6 +185,29 @@ interface ElectronAPI {
 
   // Tool call events for chat-agent streaming
   onToolCallEvent: (callback: (event: ToolCallEvent) => void) => void;
+
+  // ============ QUICK AI METHODS ============
+
+  // Get the in-memory Quick AI agent
+  getQuickAIAgent: () => Promise<Agent>;
+
+  // Stream Quick AI message
+  streamQuickAIMessage: (
+    message: string,
+    onChunk: (chunk: string) => void,
+    onReasoning: (reasoning: string) => void,
+    onComplete: (content: string) => void,
+    onError: (error: string) => void
+  ) => Promise<string>;
+
+  // Clear Quick AI history
+  clearQuickAIHistory: () => Promise<{ success: boolean }>;
+
+  // Validate Quick AI settings
+  validateQuickAISettings: () => Promise<QuickAISettingsValidation>;
+
+  // Listen for Quick AI window shown event
+  onQuickAIWindowShown: (callback: () => void) => (() => void);
 }
 
 declare global {
