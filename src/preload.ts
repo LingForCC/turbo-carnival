@@ -5,6 +5,7 @@ import { providerManagement } from './preload/provider-management';
 import { toolManagement } from './preload/tool-management';
 import { settingsManagement } from './preload/settings-management';
 import { notepadManagement } from './preload/notepad-management';
+import { agentTemplateManagement } from './preload/agent-template-management';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -23,4 +24,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ...settingsManagement,
 
   ...notepadManagement,
+
+  ...agentTemplateManagement,
 });

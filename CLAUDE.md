@@ -9,6 +9,7 @@ Turbo Carnival is an Electron desktop application built with TypeScript, using W
 **Key Features:**
 - Local folder project management with add/remove/select
 - AI agent system with OpenAI-compatible API integration
+- Agent template system for saving and reusing agent configurations
 - Conversational AI interface with streaming, tool calling, and visual tool call indicators
 - File tagging for including project files as context
 - LLM provider management (OpenAI, GLM, and extensible for other providers)
@@ -85,6 +86,7 @@ The documentation has been split into focused modules for better performance:
 - **[docs/architecture.md](docs/architecture.md)** - Electron process structure, module organization, IPC channels, storage, and type definitions
 
 ### Features
+- **[docs/features/agent-templates.md](docs/features/agent-templates.md)** - Agent template system for saving and reusing agent configurations
 - **[docs/features/chat-system.md](docs/features/chat-system.md)** - Conversational AI interface, streaming, tool calling, provider integration
 - **[docs/features/dark-mode.md](docs/features/dark-mode.md)** - Dark mode theming with toggle support
 - **[docs/features/file-tagging.md](docs/features/file-tagging.md)** - File @mention system for including project context
@@ -107,6 +109,7 @@ The documentation has been split into focused modules for better performance:
 - `src/main.ts` - Core app setup, window creation, IPC coordination
 - `src/main/project-management.ts` - Project CRUD, file tree, file listing
 - `src/main/agent-management.ts` - Agent CRUD operations
+- `src/main/agent-template-management.ts` - Agent template CRUD, validation, storage
 - `src/main/provider-management.ts` - LLM provider CRUD, validation, default URLs
 - `src/main/model-config-management.ts` - Model configuration CRUD, validation, storage
 - `src/main/settings-management.ts` - App settings CRUD, theme preference storage, validation
@@ -124,6 +127,7 @@ The documentation has been split into focused modules for better performance:
 - `src/preload.ts` - Main preload script, exposes `window.electronAPI` via contextBridge
 - `src/preload/project-management.ts` - Project management functions for preload (uses ipcRenderer)
 - `src/preload/agent-management.ts` - Agent management functions for preload (uses ipcRenderer)
+- `src/preload/agent-template-management.ts` - Agent template functions for preload (uses ipcRenderer)
 - `src/preload/provider-management.ts` - Provider and model config functions for preload (uses ipcRenderer)
 - `src/preload/tool-management.ts` - Tool management functions for preload (uses ipcRenderer)
 - `src/preload/settings-management.ts` - Settings management functions for preload (uses ipcRenderer)
@@ -134,6 +138,8 @@ The documentation has been split into focused modules for better performance:
 - `src/types/project-management.d.ts` - Project management type definitions (Project, FileTreeNode, etc.)
 - `src/api/agent-management.ts` - Renderer-safe agent management API (wraps window.electronAPI)
 - `src/types/agent-management.d.ts` - Agent management type definitions (Agent, etc.)
+- `src/api/agent-template-management.ts` - Renderer-safe agent template management API (wraps window.electronAPI)
+- `src/types/agent-template.d.ts` - Agent template type definitions (AgentTemplate, AgentTemplateManagementAPI)
 - `src/api/provider-management.ts` - Renderer-safe provider management API (wraps window.electronAPI)
 - `src/types/provider-management.d.ts` - Provider and model config type definitions (LLMProvider, ModelConfig, LLMProviderType)
 - `src/api/tool-management.ts` - Renderer-safe tool management API (wraps window.electronAPI)
@@ -155,7 +161,8 @@ The documentation has been split into focused modules for better performance:
 - `chat-panel` - Right sidebar chat interface (uses conversation-panel, provides message factories for user, assistant, and tool call messages, handles chat-agent IPC)
 - `app-panel` - Conditional layout for App-type agents: default conversation view (full-width) or preview view (full-width app preview with close button), uses conversation-panel, provides AppCodeMessage factory for app-specific rendering, handles app-agent IPC
 - `project-detail-panel` - Right sidebar, file tree (uses `getProjectManagementAPI()`)
-- `agent-form-dialog` - Agent creation/editing with model config and provider selection (uses `getAgentManagementAPI()` and `getProviderManagementAPI()`)
+- `agent-form-dialog` - Agent creation/editing with model config and provider selection (uses `getAgentManagementAPI()`, `getProviderManagementAPI()`, and `getAgentTemplateManagementAPI()`)
+- `agent-template-dialog` - Agent template management with list and form views (uses `getAgentTemplateManagementAPI()` and `getProviderManagementAPI()`)
 - `provider-dialog` - LLM provider management (uses `getProviderManagementAPI()`)
 - `model-config-dialog` - Model configuration management with extra properties support (uses `getProviderManagementAPI()`)
 - `tools-dialog` - Tool management with testing (uses `getToolManagementAPI()`)
@@ -171,6 +178,7 @@ The documentation has been split into focused modules for better performance:
 ### Key IPC Channels
 - `projects:*` - Project CRUD operations
 - `agents:*` - Agent CRUD operations
+- `agent-templates:*` - Agent template CRUD operations (get, add, update, remove, getById)
 - `providers:*` - LLM provider CRUD operations (get, add, update, remove, getById)
 - `model-configs:*` - Model configuration CRUD operations (get, add, update, remove, getById)
 - `settings:*` - Settings CRUD operations (get, update)
@@ -191,6 +199,7 @@ The documentation has been split into focused modules for better performance:
 
 ### Storage Locations
 - `app.getPath('userData')/projects.json` - Project list
+- `app.getPath('userData')/agent-templates.json` - Agent templates
 - `app.getPath('userData')/providers.json` - LLM providers
 - `app.getPath('userData')/model-configs.json` - Model configurations
 - `app.getPath('userData')/settings.json` - App settings (theme preference, notepad save location)

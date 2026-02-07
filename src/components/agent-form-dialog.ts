@@ -1,6 +1,8 @@
 import type { Agent } from '../types/agent-management';
 import type { ModelConfig } from '../types/provider-management';
+import type { AgentTemplate } from '../types/agent-template';
 import { getProviderManagementAPI } from '../api/provider-management';
+import { getAgentTemplateManagementAPI } from '../api/agent-template-management';
 
 /**
  * AgentFormDialog Web Component
@@ -11,7 +13,9 @@ export class AgentFormDialog extends HTMLElement {
   private agent: Agent | null = null;
   private form: HTMLFormElement | null = null;
   private modelConfigs: ModelConfig[] = [];
+  private templates: AgentTemplate[] = [];
   private api = getProviderManagementAPI();
+  private templateAPI = getAgentTemplateManagementAPI();
   private selectedModelConfig?: ModelConfig;
 
   constructor() {
@@ -36,6 +40,7 @@ export class AgentFormDialog extends HTMLElement {
     this.attachEventListeners();
     this.loadProviders();
     this.loadModelConfigs();
+    this.loadTemplates();
   }
 
   private render(): void {
@@ -66,6 +71,20 @@ export class AgentFormDialog extends HTMLElement {
 
           <!-- Form -->
           <form id="agent-form" class="p-6 space-y-6">
+            <!-- Template Selection -->
+            <div class="pb-4 border-b border-gray-200 dark:border-gray-700">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="template-select">
+                Load from Template (Optional)
+              </label>
+              <select id="template-select" name="templateId"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">-- Select a template --</option>
+              </select>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-0">
+                Choose a template to pre-fill the form fields
+              </p>
+            </div>
+
             <!-- Basic Info -->
             <div class="space-y-4">
               <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
@@ -263,6 +282,17 @@ export class AgentFormDialog extends HTMLElement {
         this.openModelConfigDialog();
       });
     }
+
+    // Template dropdown change listener
+    const templateSelect = this.querySelector('#template-select');
+    if (templateSelect) {
+      const newSelect = templateSelect.cloneNode(true);
+      templateSelect.replaceWith(newSelect);
+      (newSelect as HTMLSelectElement).addEventListener('change', (e) => {
+        const select = e.target as HTMLSelectElement;
+        this.handleTemplateChange(select.value);
+      });
+    }
   }
 
   private handleSubmit(event: Event): void {
@@ -412,6 +442,80 @@ export class AgentFormDialog extends HTMLElement {
       // Reload model configs when dialog closes
       await this.loadModelConfigs();
     });
+  }
+
+  private async loadTemplates(): Promise<void> {
+    try {
+      this.templates = await this.templateAPI.getTemplates();
+      const select = this.querySelector('#template-select') as HTMLSelectElement;
+      if (!select) return;
+
+      // Populate options
+      select.innerHTML = `
+        <option value="">-- Select a template --</option>
+        ${this.templates.map(template => `
+          <option value="${this.escapeHtml(template.id)}" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+            ${this.escapeHtml(template.name)} (${this.escapeHtml(template.type)})
+          </option>
+        `).join('')}
+      `;
+    } catch (error) {
+      console.error('Failed to load templates:', error);
+    }
+  }
+
+  private async handleTemplateChange(templateId: string): Promise<void> {
+    if (!templateId) return;
+
+    try {
+      const template = await this.templateAPI.getTemplateById(templateId);
+      if (!template) return;
+
+      // Get form elements
+      const typeSelect = this.querySelector('#agent-type') as HTMLSelectElement;
+      const descriptionTextarea = this.querySelector('#agent-description') as HTMLTextAreaElement;
+      const modelConfigSelect = this.querySelector('#model-config-ref') as HTMLSelectElement;
+      const providerSelect = this.querySelector('#provider-ref') as HTMLSelectElement;
+      const systemPromptTextarea = this.querySelector('#agent-system-prompt') as HTMLTextAreaElement;
+      const userPromptTextarea = this.querySelector('#agent-user-prompt') as HTMLTextAreaElement;
+
+      // Fill form fields from template
+      if (typeSelect) typeSelect.value = template.type;
+      if (descriptionTextarea) descriptionTextarea.value = template.description || '';
+      if (systemPromptTextarea) systemPromptTextarea.value = template.prompts.system || '';
+      if (userPromptTextarea) userPromptTextarea.value = template.prompts.user || '';
+
+      // Handle model config
+      if (template.config.modelId) {
+        const modelExists = this.modelConfigs.some(m => m.id === template.config.modelId);
+        if (modelConfigSelect) {
+          if (modelExists) {
+            modelConfigSelect.value = template.config.modelId;
+            this.onModelConfigChange(template.config.modelId);
+          } else {
+            alert(`Model config "${template.config.modelId}" from template not found. Please select a different model.`);
+            modelConfigSelect.value = '';
+          }
+        }
+      }
+
+      // Handle provider
+      if (template.config.providerId && providerSelect) {
+        const providers = await this.api.getProviders();
+        const providerExists = providers.some(p => p.id === template.config.providerId);
+        if (providerExists) {
+          providerSelect.value = template.config.providerId;
+        } else {
+          alert(`Provider "${template.config.providerId}" from template not found. Please select a different provider.`);
+          providerSelect.value = '';
+        }
+      }
+
+      // Note: We intentionally leave agent name empty - user must enter a unique name
+    } catch (error: any) {
+      console.error('Failed to load template:', error);
+      alert(`Failed to load template: ${error.message}`);
+    }
   }
 }
 

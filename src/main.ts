@@ -11,6 +11,7 @@ import { registerChatAgentIPCHandlers } from './main/chat-agent-management';
 import { registerAppAgentIPCHandlers } from './main/app-agent-management';
 import { registerSettingsIPCHandlers } from './main/settings-management';
 import { registerNotepadIPCHandlers } from './main/notepad-management';
+import { registerAgentTemplateIPCHandlers } from './main/agent-template-management';
 import { registerGlobalShortcut, unregisterGlobalShortcut, closeNotepadWindow } from './main/notepad-window';
 
 
@@ -93,6 +94,9 @@ function registerIPCHandlers(): void {
 
   // ============ NOTEPAD IPC HANDLERS ============
   registerNotepadIPCHandlers();
+
+  // ============ AGENT TEMPLATE IPC HANDLERS ============
+  registerAgentTemplateIPCHandlers();
 }
 
 // Quit when all windows are closed, except on macOS

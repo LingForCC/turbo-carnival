@@ -3,6 +3,7 @@ import './tools-dialog';
 import './tool-test-dialog';
 import './provider-dialog';
 import './model-config-dialog';
+import './agent-template-dialog';
 import './settings-dialog';
 import './app-panel';
 import { getSettingsManagementAPI } from '../api/settings-management';
@@ -71,6 +72,12 @@ export class AppContainer extends HTMLElement {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Settings</span>
+          </button>
+          <button id="templates-btn" class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent">
+            <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Templates</span>
           </button>
         </div>
       </header>
@@ -161,6 +168,14 @@ export class AppContainer extends HTMLElement {
       const newBtn = settingsBtn.cloneNode(true);
       settingsBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.openSettingsDialog());
+    }
+
+    // Templates button
+    const templatesBtn = this.querySelector('#templates-btn');
+    if (templatesBtn) {
+      const newBtn = templatesBtn.cloneNode(true);
+      templatesBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.openTemplatesDialog());
     }
 
     // Listen for panel toggle events from child components
@@ -361,6 +376,15 @@ export class AppContainer extends HTMLElement {
     document.body.appendChild(dialog);
 
     dialog.addEventListener('settings-dialog-close', () => {
+      dialog.remove();
+    });
+  }
+
+  private openTemplatesDialog(): void {
+    const dialog = document.createElement('agent-template-dialog');
+    document.body.appendChild(dialog);
+
+    dialog.addEventListener('agent-template-dialog-close', () => {
       dialog.remove();
     });
   }
