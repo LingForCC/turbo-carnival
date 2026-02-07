@@ -58,8 +58,8 @@ app.whenReady().then(() => {
   registerGlobalShortcut();
 
   app.on('activate', () => {
-    // On macOS, re-create a window when the dock icon is clicked
-    if (BrowserWindow.getAllWindows().length === 0) {
+    // On macOS, re-create the main window when the dock icon is clicked
+    if (mainWindow === null) {
       createWindow();
     }
   });
