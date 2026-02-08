@@ -154,7 +154,8 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
     enableTools = true,
     timeout = 60000,
     agent,
-    maxIterations = 10
+    maxIterations = 10,
+    toolCallChannel = 'chat-agent:toolCall'
   } = options;
 
   // Save user message to agent history
@@ -239,7 +240,7 @@ export async function streamGLM(options: StreamLLMOptions): Promise<StreamResult
     });
 
     // Execute tools and add results to messages
-    const toolResults = await executeToolCalls(toolCalls, agent, webContents);
+    const toolResults = await executeToolCalls(toolCalls, agent, webContents, toolCallChannel);
 
     // Add tool results to messages for next iteration (GLM native format)
     for (const result of toolResults) {
@@ -473,13 +474,14 @@ async function streamGLMSingle(
 async function executeToolCalls(
   toolCalls: InternalGLMToolCall[],
   agent: Agent,
-  webContents: Electron.WebContents
+  webContents: Electron.WebContents,
+  toolCallChannel: string
 ): Promise<Array<{ toolCallId: string; content: string }>> {
   const toolResults: Array<{ toolCallId: string; content: string }> = [];
 
   // Send started events to UI
   for (const toolCall of toolCalls) {
-    webContents.send('chat-agent:toolCall', {
+    webContents.send(toolCallChannel, {
       toolName: toolCall.toolName,
       parameters: toolCall.parameters,
       status: 'started'
@@ -488,26 +490,30 @@ async function executeToolCalls(
 
   // Execute tools
   for (const toolCall of toolCalls) {
+    const startTime = Date.now();
     try {
       const tool = getToolByName(toolCall.toolName);
       if (!tool) {
+        const executionTime = Date.now() - startTime;
         const errorMsg = `Tool "${toolCall.toolName}" not found`;
         toolResults.push({ toolCallId: toolCall.toolCallId!, content: `Error: ${errorMsg}` });
-        handleToolError(webContents, agent, toolCall, errorMsg);
+        handleToolError(webContents, agent, toolCall, errorMsg, toolCallChannel, executionTime);
         continue;
       }
 
       if (!tool.enabled) {
+        const executionTime = Date.now() - startTime;
         const errorMsg = `Tool "${toolCall.toolName}" is disabled`;
         toolResults.push({ toolCallId: toolCall.toolCallId!, content: `Error: ${errorMsg}` });
-        handleToolError(webContents, agent, toolCall, errorMsg);
+        handleToolError(webContents, agent, toolCall, errorMsg, toolCallChannel, executionTime);
         continue;
       }
 
       const validationError = validateJSONSchema(toolCall.parameters, tool.parameters);
       if (validationError) {
+        const executionTime = Date.now() - startTime;
         toolResults.push({ toolCallId: toolCall.toolCallId!, content: `Error: ${validationError}` });
-        handleToolError(webContents, agent, toolCall, validationError);
+        handleToolError(webContents, agent, toolCall, validationError, toolCallChannel, executionTime);
         continue;
       }
 
@@ -517,11 +523,12 @@ async function executeToolCalls(
         content: `Tool "${toolCall.toolName}" executed successfully:\n${JSON.stringify(result.result, null, 2)}\n(Execution time: ${result.executionTime}ms)`
       });
 
-      handleToolSuccess(webContents, agent, toolCall, result);
+      handleToolSuccess(webContents, agent, toolCall, result, toolCallChannel);
     } catch (error: any) {
+      const executionTime = Date.now() - startTime;
       const errorMsg = error.message;
       toolResults.push({ toolCallId: toolCall.toolCallId!, content: `Tool "${toolCall.toolName}" failed: ${errorMsg}` });
-      handleToolError(webContents, agent, toolCall, errorMsg);
+      handleToolError(webContents, agent, toolCall, errorMsg, toolCallChannel, executionTime);
     }
   }
 
@@ -532,9 +539,10 @@ function handleToolSuccess(
   webContents: Electron.WebContents,
   agent: Agent,
   toolCall: InternalGLMToolCall,
-  result: any
+  result: any,
+  toolCallChannel: string
 ): void {
-  webContents.send('chat-agent:toolCall', {
+  webContents.send(toolCallChannel, {
     toolName: toolCall.toolName,
     parameters: toolCall.parameters,
     status: 'completed',
@@ -555,13 +563,16 @@ function handleToolError(
   webContents: Electron.WebContents,
   agent: Agent,
   toolCall: InternalGLMToolCall,
-  errorMsg: string
+  errorMsg: string,
+  toolCallChannel: string,
+  executionTime: number
 ): void {
-  webContents.send('chat-agent:toolCall', {
+  webContents.send(toolCallChannel, {
     toolName: toolCall.toolName,
     parameters: toolCall.parameters,
     status: 'failed',
-    error: errorMsg
+    error: errorMsg,
+    executionTime
   });
 
   // Push tool result in OpenAI native format

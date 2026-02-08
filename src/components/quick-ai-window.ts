@@ -2,8 +2,10 @@ import { getQuickAIManagementAPI } from '../api/quick-ai-management';
 import { getSettingsManagementAPI } from '../api/settings-management';
 import { UserMessage } from './conversation/user-message';
 import { AssistantMessage } from './conversation/assistant-message';
+import { ToolCallMessage } from './conversation/tool-call-message';
 import type { QuickAIManagementAPI } from '../types/quick-ai-management';
 import type { SettingsManagementAPI } from '../types/settings-management';
+import type { ToolCallEvent, ToolCallData } from '../types/tool-management';
 
 /**
  * QuickAIWindow - Quick AI Conversation Web Component
@@ -23,6 +25,7 @@ export class QuickAIWindow extends HTMLElement {
   private settingsError: string = '';
   private isStreaming: boolean = false;
   private unsubscribeWindowShown: (() => void) | null = null;
+  private toolCallListenerSetup = false;
 
   constructor() {
     super();
@@ -38,6 +41,7 @@ export class QuickAIWindow extends HTMLElement {
     this.attachEventListeners();
     await this.attachConversationListeners();
     this.setupWindowShownListener();
+    this.setupToolCallListener();
   }
 
   disconnectedCallback(): void {
@@ -108,6 +112,40 @@ export class QuickAIWindow extends HTMLElement {
   }
 
   /**
+   * Set up tool call event listener
+   * Follows the same pattern as chat-panel.ts
+   */
+  private setupToolCallListener(): void {
+    // Only set up the listener once
+    if (this.toolCallListenerSetup) {
+      return;
+    }
+    this.toolCallListenerSetup = true;
+
+    this.api.onToolCallEvent((toolEvent: ToolCallEvent) => {
+      // Query for fresh reference on each event
+      const conversation = this.querySelector('#conversation-panel') as any;
+      if (!conversation) {
+        console.warn('[QuickAIWindow] Conversation element not found for tool event:', toolEvent.status);
+        return;
+      }
+
+      if (toolEvent.status === 'started') {
+        conversation.handleToolCallStarted(toolEvent.toolName, toolEvent.parameters);
+      } else if (toolEvent.status === 'completed') {
+        conversation.handleToolCallCompleted(
+          toolEvent.toolName,
+          toolEvent.parameters,
+          toolEvent.result,
+          toolEvent.executionTime!
+        );
+      } else if (toolEvent.status === 'failed') {
+        conversation.handleToolCallFailed(toolEvent.toolName, toolEvent.parameters, toolEvent.error!);
+      }
+    });
+  }
+
+  /**
    * Attach conversation listeners to the conversation panel
    * Follows the same pattern as chat-panel.ts
    */
@@ -139,6 +177,12 @@ export class QuickAIWindow extends HTMLElement {
       );
     };
     conversation.setAssistantMessageFactory(createAssistantMessage);
+
+    // Create and inject the tool call message factory
+    const createToolCallMessage = (content: string, toolCall: ToolCallData, reasoning?: string): HTMLElement => {
+      return ToolCallMessage.createWithHandlers(content, toolCall, reasoning);
+    };
+    conversation.setToolCallMessageFactory(createToolCallMessage);
 
     // Listen for message-sent events from conversation-panel
     conversation.addEventListener('message-sent', async (e: Event) => {

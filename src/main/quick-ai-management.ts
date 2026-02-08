@@ -3,6 +3,7 @@ import type { Agent } from '../types/agent-management';
 import { loadSettings } from './settings-management';
 import { getProviderById } from './provider-management';
 import { getModelConfigById } from './model-config-management';
+import { loadTools } from './tool-management';
 import { streamLLM } from './llm';
 
 // In-memory agent for Quick AI (conversation history is not persisted)
@@ -128,18 +129,19 @@ export function registerQuickAIPCHandlers(): void {
       modelId: modelConfigId
     };
 
-    // 4. Stream LLM response (no tools, no files)
+    // 4. Stream LLM response (with tools enabled, no files)
     const { content: fullResponse } = await streamLLM({
       systemPrompt: '', // Empty system prompt for Quick AI
       filePaths: [],
       userMessage: message,
       provider,
       modelConfig,
-      tools: [], // No tools for Quick AI
+      tools: loadTools(), // Load all enabled tools
       webContents: event.sender,
-      enableTools: false,
+      enableTools: true,
       agent,
-      maxIterations: 1 // No tool iteration needed
+      maxIterations: 10, // Allow multiple tool calls
+      toolCallChannel: 'quick-ai:toolCall' // Use Quick AI specific tool call channel
     });
 
     // 5. Send completion event

@@ -176,7 +176,7 @@ The documentation has been split into focused modules for better performance:
 - `tool-test-dialog` - Tool execution testing (uses `getToolManagementAPI()`)
 - `settings-dialog` - App settings management with theme selection, notepad save location, and Quick AI defaults (uses `getSettingsManagementAPI()` and `getProviderManagementAPI()`)
 - `notepad-window` - Standalone notepad window with file list and auto-save (uses `getNotepadManagementAPI()`)
-- `quick-ai-window` - Standalone Quick AI conversation window with error handling and dark mode support (uses `getQuickAIManagementAPI()` and `getSettingsManagementAPI()`)
+- `quick-ai-window` - Standalone Quick AI conversation window with tool support, error handling, and dark mode support (uses `getQuickAIManagementAPI()` and `getSettingsManagementAPI()`)
 
 ### Transformers
 - `src/components/transformers/openai-transformer.ts` - Transforms OpenAI native message format to ChatMessage format for UI display
@@ -204,10 +204,11 @@ The documentation has been split into focused modules for better performance:
 - `notepad:createFile` - Create new notepad file
 - `notepad:saveContent` - Save notepad content (auto-save)
 - `notepad:deleteFile` - Delete notepad file
-- `quick-ai:streamMessage` - Quick AI streaming (no tools, no files)
+- `quick-ai:streamMessage` - Quick AI streaming (with tools, no files)
 - `quick-ai:clearHistory` - Clear Quick AI conversation history
 - `quick-ai:validateSettings` - Validate Quick AI settings (provider and model configured)
 - `quick-ai:windowShown` - Quick AI window shown event (one-way IPC from main to renderer)
+- `quick-ai:toolCall` - Tool call events during Quick AI streaming (one-way IPC from main to renderer)
 
 ### Storage Locations
 - `app.getPath('userData')/projects.json` - Project list

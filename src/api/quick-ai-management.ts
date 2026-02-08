@@ -65,6 +65,13 @@ const apiInstance: QuickAIManagementAPI = {
   onWindowShown: (callback: () => void) => {
     return getElectronAPI().onQuickAIWindowShown(callback);
   },
+
+  /**
+   * Register callback for tool call events during Quick AI streaming
+   */
+  onToolCallEvent: (callback: (event: any) => void) => {
+    getElectronAPI().onQuickAIToolCallEvent(callback);
+  },
 };
 
 /**

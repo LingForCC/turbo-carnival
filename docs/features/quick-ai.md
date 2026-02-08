@@ -9,6 +9,7 @@ Quick AI is a standalone conversation window that allows users to have quick AI 
 - **Global Shortcut**: Press `Option+Q` (macOS) or `Alt+Q` (Windows/Linux) to open/close the Quick AI window
 - **No Agent Pre-creation**: Uses default model/provider from settings - no need to create agents first
 - **Clean Conversation UI**: Simplified chat interface similar to conversation-panel
+- **Tool Support**: All custom tools are available for use during conversations
 - **Error Handling**: Shows helpful error banner if default model/provider not configured
 - **No Persistence**: Conversation data is lost when window closes (lightweight)
 - **Dark Mode Support**: Syncs with app theme settings
@@ -56,8 +57,9 @@ Handles IPC communication and conversation logic:
    - Parameters: `message: string`
    - Returns: `Promise<string>` (full response)
    - Sends streaming events: `chat-chunk`, `chat-reasoning`, `chat-complete`, `chat-error`
+   - Sends tool call events: `quick-ai:toolCall` (started, completed, failed)
    - Uses in-memory Agent for conversation history
-   - Calls `streamLLM()` with `enableTools: false`
+   - Calls `streamLLM()` with `enableTools: true` and loaded tools
 
 4. **`quick-ai:clearHistory`** (invoke)
    - Returns: `{ success: boolean }`
@@ -71,6 +73,7 @@ Handles IPC communication and conversation logic:
 - History: In-memory only, not persisted
 - Config: Loaded from settings (providerId, modelId)
 - Settings: Empty object
+- Tools: All enabled tools from tools.json are available
 
 ### Preload Layer
 
@@ -152,6 +155,7 @@ Main UI component for Quick AI feature.
 **Message Factories:**
 - User message: Uses `UserMessage.create(content)`
 - Assistant message: Uses `AssistantMessage.createWithHandlers(content, reasoning, copyHandler)`
+- Tool call message: Uses `ToolCallMessage.createWithHandlers(content, toolCall, reasoning)`
 
 **Agent Management:**
 - Calls `api.getAgent()` to retrieve or create in-memory Quick AI agent
@@ -210,19 +214,20 @@ export interface AppSettings {
 | Channel | Type | Parameters | Returns | Events |
 |---------|------|------------|---------|--------|
 | `quick-ai:getAgent` | invoke | - | `Promise<Agent>` | - |
-| `quick-ai:streamMessage` | invoke | `message: string` | `Promise<string>` | `chat-chunk`, `chat-reasoning`, `chat-complete`, `chat-error` |
+| `quick-ai:streamMessage` | invoke | `message: string` | `Promise<string>` | `chat-chunk`, `chat-reasoning`, `chat-complete`, `chat-error`, `quick-ai:toolCall` |
 | `quick-ai:clearHistory` | invoke | - | `{ success: boolean }` | - |
 | `quick-ai:validateSettings` | invoke | - | `{ valid: boolean, error?: string }` | - |
 | `quick-ai:windowShown` | send | - | - | - (one-way from main to renderer) |
 
 ### Streaming Events
 
-Quick AI reuses existing chat streaming events:
+Quick AI reuses existing chat streaming events and tool call events:
 
 - **`chat-chunk`**: Text chunk from AI response
 - **`chat-reasoning`**: Reasoning/thinking content (if model supports it)
 - **`chat-complete`**: Full response content (sent when streaming completes)
 - **`chat-error`**: Error message (if streaming fails)
+- **`quick-ai:toolCall`**: Tool call event with status (started, completed, failed)
 
 ## Usage Flow
 
@@ -303,6 +308,7 @@ Quick AI reuses existing chat streaming events:
 - `./main/settings-management` (loadSettings)
 - `./main/provider-management` (getProviderById)
 - `./main/model-config-management` (getModelConfigById)
+- `./main/tool-management` (loadTools)
 - `./main/llm` (streamLLM)
 
 ### Renderer
@@ -312,3 +318,4 @@ Quick AI reuses existing chat streaming events:
 - `./components/conversation/conversation-panel` (ConversationPanel)
 - `./components/conversation/user-message` (UserMessage)
 - `./components/conversation/assistant-message` (AssistantMessage)
+- `./components/conversation/tool-call-message` (ToolCallMessage)

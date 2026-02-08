@@ -208,6 +208,9 @@ interface ElectronAPI {
 
   // Listen for Quick AI window shown event
   onQuickAIWindowShown: (callback: () => void) => (() => void);
+
+  // Listen for tool call events during Quick AI streaming
+  onQuickAIToolCallEvent: (callback: (event: ToolCallEvent) => void) => void;
 }
 
 declare global {

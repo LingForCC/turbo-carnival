@@ -19,6 +19,7 @@ export interface StreamLLMOptions {
   timeout?: number;
   agent: Agent;  // Agent instance for conversation history and tool call history
   maxIterations?: number;  // Max tool call rounds (default: 10)
+  toolCallChannel?: string;  // IPC channel for tool call events (default: 'chat-agent:toolCall')
 }
 
 export interface StreamResult {

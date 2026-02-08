@@ -1,4 +1,5 @@
 import { ipcRenderer } from 'electron';
+import type { ToolCallEvent } from '../types/tool-management';
 
 /**
  * Preload module - uses ipcRenderer directly
@@ -77,5 +78,10 @@ export const quickAIManagement = {
     ipcRenderer.on('quick-ai:windowShown', listener);
     // Return unsubscribe function
     return () => ipcRenderer.removeListener('quick-ai:windowShown', listener);
+  },
+
+  // Listen for tool call events from main process during Quick AI streaming
+  onToolCallEvent: (callback: (event: ToolCallEvent) => void) => {
+    ipcRenderer.on('quick-ai:toolCall', (_event, toolEvent) => callback(toolEvent));
   },
 };

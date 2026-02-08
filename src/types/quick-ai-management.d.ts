@@ -5,6 +5,7 @@
 
 // Import Agent type from agent-management
 import type { Agent } from './agent-management';
+import type { ToolCallEvent } from './tool-management';
 
 /**
  * Settings validation result
@@ -62,4 +63,10 @@ export interface QuickAIManagementAPI {
    * @returns Unsubscribe function to remove the listener
    */
   onWindowShown(callback: () => void): () => void;
+
+  /**
+   * Register callback for tool call events during Quick AI streaming
+   * @param callback - Function to call when tool call events occur
+   */
+  onToolCallEvent(callback: (event: ToolCallEvent) => void): void;
 }

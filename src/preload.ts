@@ -34,4 +34,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearQuickAIHistory: quickAIManagement.clearHistory,
   validateQuickAISettings: quickAIManagement.validateSettings,
   onQuickAIWindowShown: quickAIManagement.onWindowShown,
+  onQuickAIToolCallEvent: quickAIManagement.onToolCallEvent,
 });

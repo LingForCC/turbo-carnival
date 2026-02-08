@@ -66,7 +66,8 @@ export function registerChatAgentIPCHandlers(): void {
       webContents: event.sender,
       enableTools: true,
       agent,  // Pass agent for conversation history and tool call history
-      maxIterations: 10
+      maxIterations: 10,
+      toolCallChannel: 'chat-agent:toolCall' // Use chat-agent specific tool call channel
     });
 
     // 4. Send completion event
