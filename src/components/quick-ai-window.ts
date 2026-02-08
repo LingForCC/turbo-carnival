@@ -134,15 +134,8 @@ export class QuickAIWindow extends HTMLElement {
       return AssistantMessage.createWithHandlers(
         content,
         reasoning,
-        // Copy handler
-        async (content: string) => {
-          try {
-            await navigator.clipboard.writeText(content);
-          } catch (error: any) {
-            console.error('[QuickAIWindow] Failed to copy message:', error);
-            throw error;
-          }
-        }
+        // No save handler needed for Quick AI (copy uses default behavior)
+        null
       );
     };
     conversation.setAssistantMessageFactory(createAssistantMessage);

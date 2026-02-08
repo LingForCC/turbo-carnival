@@ -70,17 +70,21 @@ export class AssistantMessage extends HTMLElement {
     // Apply markdown parsing
     const renderedContent = renderMarkdown(this.content);
 
-    // Action buttons (save and copy)
+    // Action buttons (save and copy) - only show save button if handler is provided
+    const saveButton = this.saveHandler ? `
+      <button
+        class="save-msg-btn p-1.5 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-0"
+        title="Save to file"
+      >
+        <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+      </button>
+    ` : '';
+
     const actionButtons = `
       <div class="flex justify-end gap-2 mt-2">
-        <button
-          class="save-msg-btn p-1.5 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-0"
-          title="Save to file"
-        >
-          <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-          </svg>
-        </button>
+        ${saveButton}
         <button
           class="copy-msg-btn p-1.5 bg-white/80 dark:bg-gray-700/80 hover:bg-white dark:hover:bg-gray-700 rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border-0"
           title="Copy message"
