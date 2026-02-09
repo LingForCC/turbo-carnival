@@ -18,6 +18,7 @@ Turbo Carnival is an Electron desktop application built with TypeScript, using W
 - App agent type for generating interactive JavaScript + HTML applications
 - Quick notepad with global shortcut (Option+A), auto-save, file management, and delete capabilities
 - Quick AI conversation with global shortcut (Option+Q)
+- Snippets manager with global shortcut (Option+S), inline name editing, and keyboard navigation
 
 ## Build and Development Commands
 
@@ -98,6 +99,7 @@ The documentation has been split into focused modules for better performance:
 - **[docs/features/app-agents.md](docs/features/app-agents.md)** - App agent type for generating interactive applications
 - **[docs/features/quick-notepad.md](docs/features/quick-notepad.md)** - Quick notepad with global shortcut, auto-save, and file management
 - **[docs/features/quick-ai.md](docs/features/quick-ai.md)** - Quick AI conversation with global shortcut
+- **[docs/features/snippets.md](docs/features/snippets.md)** - Snippets manager with global shortcut, inline name editing, and keyboard navigation
 
 ### Development
 - **[docs/development.md](docs/development.md)** - Development notes, security, styling, common tasks, debugging tips
@@ -126,6 +128,8 @@ The documentation has been split into focused modules for better performance:
 - `src/main/notepad-window.ts` - Notepad window lifecycle, global shortcut registration
 - `src/main/quick-ai-management.ts` - Quick AI conversation management, IPC handlers
 - `src/main/quick-ai-window.ts` - Quick AI window lifecycle, global shortcut registration
+- `src/main/snippet-management.ts` - Snippet file operations, IPC handlers, name sanitization, conflict handling
+- `src/main/snippet-window.ts` - Snippet window lifecycle, global shortcut registration
 
 ### Preload Modules
 - `src/preload.ts` - Main preload script, exposes `window.electronAPI` via contextBridge
@@ -137,6 +141,7 @@ The documentation has been split into focused modules for better performance:
 - `src/preload/settings-management.ts` - Settings management functions for preload (uses ipcRenderer)
 - `src/preload/notepad-management.ts` - Notepad management functions for preload (uses ipcRenderer)
 - `src/preload/quick-ai-management.ts` - Quick AI management functions for preload (uses ipcRenderer)
+- `src/preload/snippet-management.ts` - Snippet management functions for preload (uses ipcRenderer)
 
 ### Renderer API Layer
 - `src/api/project-management.ts` - Renderer-safe project management API (wraps window.electronAPI)
@@ -155,6 +160,8 @@ The documentation has been split into focused modules for better performance:
 - `src/types/notepad-management.d.ts` - Notepad management type definitions (NotepadFile, NotepadManagementAPI)
 - `src/api/quick-ai-management.ts` - Renderer-safe Quick AI management API (wraps window.electronAPI)
 - `src/types/quick-ai-management.d.ts` - Quick AI management type definitions (QuickAIManagementAPI, QuickAISettingsValidation)
+- `src/api/snippet-management.ts` - Renderer-safe snippet management API (wraps window.electronAPI)
+- `src/types/snippet-management.d.ts` - Snippet management type definitions (SnippetFile, SnippetManagementAPI)
 
 ### UI Components (Web Components)
 - `app-container` - Root layout, event forwarding (uses `getSettingsManagementAPI()`)
@@ -174,9 +181,10 @@ The documentation has been split into focused modules for better performance:
 - `model-config-dialog` - Model configuration management with extra properties support (uses `getProviderManagementAPI()`)
 - `tools-dialog` - Tool management with testing (uses `getToolManagementAPI()`)
 - `tool-test-dialog` - Tool execution testing (uses `getToolManagementAPI()`)
-- `settings-dialog` - App settings management with theme selection, notepad save location, and Quick AI defaults (uses `getSettingsManagementAPI()` and `getProviderManagementAPI()`)
+- `settings-dialog` - App settings management with theme selection, notepad save location, snippet save location, and Quick AI defaults (uses `getSettingsManagementAPI()` and `getProviderManagementAPI()`)
 - `notepad-window` - Standalone notepad window with file list and auto-save (uses `getNotepadManagementAPI()`)
 - `quick-ai-window` - Standalone Quick AI conversation window with tool support, error handling, and dark mode support (uses `getQuickAIManagementAPI()` and `getSettingsManagementAPI()`)
+- `snippet-window` - Standalone snippet window with inline name editing, keyboard navigation, and clipboard integration (uses `getSnippetManagementAPI()`)
 
 ### Transformers
 - `src/components/transformers/openai-transformer.ts` - Transforms OpenAI native message format to ChatMessage format for UI display
@@ -209,15 +217,23 @@ The documentation has been split into focused modules for better performance:
 - `quick-ai:validateSettings` - Validate Quick AI settings (provider and model configured)
 - `quick-ai:windowShown` - Quick AI window shown event (one-way IPC from main to renderer)
 - `quick-ai:toolCall` - Tool call events during Quick AI streaming (one-way IPC from main to renderer)
+- `snippets:getFiles` - Get list of snippet files
+- `snippets:readFile` - Read snippet file content
+- `snippets:createFile` - Create new snippet file
+- `snippets:saveContent` - Save snippet content (auto-save)
+- `snippets:renameFile` - Rename snippet file
+- `snippets:deleteFile` - Delete snippet file
+- `snippets:closeWindow` - Close snippet window
 
 ### Storage Locations
 - `app.getPath('userData')/projects.json` - Project list
 - `app.getPath('userData')/agent-templates.json` - Agent templates
 - `app.getPath('userData')/providers.json` - LLM providers
 - `app.getPath('userData')/model-configs.json` - Model configurations
-- `app.getPath('userData')/settings.json` - App settings (theme preference, notepad save location, Quick AI defaults)
+- `app.getPath('userData')/settings.json` - App settings (theme preference, notepad save location, snippet save location, Quick AI defaults)
 - `app.getPath('userData')/tools.json` - Custom tools
 - `{notepadSaveLocation}/` - Notepad files (.txt format, timestamp naming) - user-configured location
+- `{snippetSaveLocation}/` - Snippet files (.txt format, user-provided names) - user-configured location
 - `{projectFolder}/agent-{name}.json` - Agent files (stored in project folders)
 
 ## TypeScript Configuration

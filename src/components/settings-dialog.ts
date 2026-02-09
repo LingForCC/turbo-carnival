@@ -50,6 +50,7 @@ export class SettingsDialog extends HTMLElement {
     }
 
     const notepadLocation = this.settings.notepadSaveLocation || '';
+    const snippetLocation = this.settings.snippetSaveLocation || '';
     const defaultProviderId = this.settings.defaultProviderId || '';
     const defaultModelConfigId = this.settings.defaultModelConfigId || '';
 
@@ -127,6 +128,32 @@ export class SettingsDialog extends HTMLElement {
               </div>
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
                 If not configured, notepad content will not be saved.
+              </p>
+            </div>
+
+            <!-- Snippet Save Location -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="snippet-location">
+                Snippet Save Location
+              </label>
+              <div class="flex gap-2">
+                <input
+                  type="text"
+                  id="snippet-location-input"
+                  readonly
+                  class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
+                  placeholder="Not configured"
+                  value="${this.escapeHtml(snippetLocation)}"
+                >
+                <button
+                  id="browse-snippet-btn"
+                  class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer border-0"
+                >
+                  Browse...
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                If not configured, snippets will not be available (Option+S).
               </p>
             </div>
 
@@ -223,6 +250,14 @@ export class SettingsDialog extends HTMLElement {
       (newBtn as HTMLElement).addEventListener('click', () => this.browseNotepadLocation());
     }
 
+    // Browse button for snippet location
+    const browseSnippetBtn = this.querySelector('#browse-snippet-btn');
+    if (browseSnippetBtn) {
+      const newBtn = browseSnippetBtn.cloneNode(true);
+      browseSnippetBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.browseSnippetLocation());
+    }
+
     // Default provider dropdown
     const providerSelect = this.querySelector('#default-provider-select');
     if (providerSelect) {
@@ -291,6 +326,26 @@ export class SettingsDialog extends HTMLElement {
 
         // Update input field
         const input = this.querySelector('#notepad-location-input') as HTMLInputElement;
+        if (input) {
+          input.value = location;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to browse folder:', error);
+    }
+  }
+
+  private async browseSnippetLocation(): Promise<void> {
+    try {
+      // Use the settings API to open folder dialog
+      const location = await this.api.openFolderDialog();
+      if (location) {
+        // Update settings
+        await this.api.updateSettings({ snippetSaveLocation: location });
+        this.settings = { ...this.settings!, snippetSaveLocation: location };
+
+        // Update input field
+        const input = this.querySelector('#snippet-location-input') as HTMLInputElement;
         if (input) {
           input.value = location;
         }

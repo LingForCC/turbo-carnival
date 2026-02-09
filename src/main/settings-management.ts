@@ -21,14 +21,14 @@ export function loadSettings(): AppSettings {
   if (fs.existsSync(settingsPath)) {
     try {
       const data = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-      return data.settings || { theme: 'light' };
+      return data.settings || { theme: 'light', snippetSaveLocation: null };
     } catch (error) {
       console.error('Failed to load settings:', error);
-      return { theme: 'light' };
+      return { theme: 'light', snippetSaveLocation: null };
     }
   }
   // Return default settings
-  return { theme: 'light' };
+  return { theme: 'light', snippetSaveLocation: null };
 }
 
 /**

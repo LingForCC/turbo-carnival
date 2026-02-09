@@ -9,6 +9,7 @@
 export interface AppSettings {
   theme: 'light' | 'dark';  // Theme preference
   notepadSaveLocation?: string;  // Quick notepad save location (optional)
+  snippetSaveLocation?: string | null;  // Snippet save location (optional)
   defaultModelConfigId?: string;  // Default model config for Quick AI
   defaultProviderId?: string;  // Default provider for Quick AI
 }

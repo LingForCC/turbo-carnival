@@ -31,6 +31,9 @@ import type { AgentTemplate } from './agent-template';
 // Import Quick AI types for use in ElectronAPI interface
 import type { QuickAISettingsValidation } from './quick-ai-management';
 
+// Import snippet types for use in ElectronAPI interface
+import type { SnippetFile } from './snippet-management';
+
 interface ElectronAPI {
   platform: string;
   openFolderDialog: () => Promise<string | null>;
@@ -211,6 +214,29 @@ interface ElectronAPI {
 
   // Listen for tool call events during Quick AI streaming
   onQuickAIToolCallEvent: (callback: (event: ToolCallEvent) => void) => void;
+
+  // ============ SNIPPET METHODS ============
+
+  // Get list of snippet files
+  getSnippetFiles: () => Promise<SnippetFile[]>;
+
+  // Read snippet file content
+  readSnippetFile: (fileName: string) => Promise<string>;
+
+  // Create new snippet file
+  createSnippetFile: (name: string, content: string) => Promise<SnippetFile>;
+
+  // Save snippet content
+  saveSnippetContent: (fileName: string, content: string) => Promise<void>;
+
+  // Rename snippet file
+  renameSnippetFile: (oldName: string, newName: string) => Promise<void>;
+
+  // Delete snippet file
+  deleteSnippetFile: (fileName: string) => Promise<void>;
+
+  // Close snippet window
+  closeSnippetWindow: () => void;
 }
 
 declare global {

@@ -68,7 +68,8 @@ export default defineConfig({
       input: {
         index: './index.html',
         notepad: './notepad.html',
-        'quick-ai': './quick-ai.html'
+        'quick-ai': './quick-ai.html',
+        snippet: './snippet.html'
       }
     }
   },
