@@ -12,6 +12,9 @@
  */
 
 import type { ToolExecutionResult } from './types/tool-management';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as childProcess from 'child_process';
 
 interface WorkerMessage {
   type: 'execute';
@@ -60,7 +63,8 @@ process.on('message', (message: WorkerMessage) => {
     try {
       // Create a function from the code string
       // The code should export a function named "tool" or "run"
-      const toolFunction = new Function('params', `
+      // Pass in Node.js modules as parameters for tools to use
+      const toolFunction = new Function('params', 'require', 'module', 'exports', '__filename', '__dirname', `
         "use strict";
         ${code}
 
@@ -85,7 +89,28 @@ process.on('message', (message: WorkerMessage) => {
       }, timeout);
 
       // Execute the function (may return a Promise for async functions)
-      let result = toolFunction(parameters);
+      // Pass in Node.js CommonJS globals to make require() available in tool code
+      const toolRequire = (id: string) => {
+        switch (id) {
+          case 'fs':
+            return fs;
+          case 'path':
+            return path;
+          case 'child_process':
+            return childProcess;
+          default:
+            throw new Error(`Module '${id}' is not available in tool execution context. Available modules: fs, path, child_process`);
+        }
+      };
+
+      let result = toolFunction(
+        parameters,
+        toolRequire,
+        {},  // module
+        {},  // exports
+        __filename,
+        __dirname
+      );
 
       // If the function returned a Promise, await it
       if (result instanceof Promise) {
