@@ -9,7 +9,7 @@ import type { SettingsManagementAPI } from '../types/settings-management';
  * Features:
  * - File list sidebar with user-provided names
  * - Plain text textarea with auto-save (500ms debounce)
- * - Inline name editing with double-click
+ * - Rename dialog for editing snippet names
  * - Keyboard navigation (arrow keys + Enter)
  * - Enter copies content to clipboard and closes window
  * - Delete confirmation
@@ -27,8 +27,7 @@ export class SnippetWindow extends HTMLElement {
   private saveStatus: 'saved' | 'saving' | 'unsaved' | 'error' = 'saved';
   private noLocationConfigured: boolean = false;
   private currentTheme: 'light' | 'dark' = 'light';
-  private editingSnippetIndex: number = -1;
-  private nameEditTimeouts: Map<number, number> = new Map();
+  private renamingSnippetIndex: number = -1;
   private contentTextarea: HTMLTextAreaElement | null = null;
   private handleKeyDownBound: (e: KeyboardEvent) => void = () => {};
 
@@ -191,6 +190,34 @@ export class SnippetWindow extends HTMLElement {
           </div>
         </div>
       </div>
+
+      <!-- Rename Dialog -->
+      <div id="rename-dialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${this.renamingSnippetIndex >= 0 ? '' : 'hidden'}">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-96">
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Rename Snippet</h3>
+          <input
+            type="text"
+            id="rename-input"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
+            placeholder="Enter new name"
+            value="${this.renamingSnippetIndex >= 0 ? this.escapeHtml(this.snippetFiles[this.renamingSnippetIndex]?.name || '') : ''}"
+          />
+          <div class="flex justify-end gap-3 mt-6">
+            <button
+              id="rename-cancel-btn"
+              class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md border-0 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              id="rename-save-btn"
+              class="px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-md border-0 cursor-pointer"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
     `;
 
     this.contentTextarea = this.querySelector('#snippet-textarea');
@@ -203,23 +230,23 @@ export class SnippetWindow extends HTMLElement {
   private renderSnippetListItems(): string {
     return this.snippetFiles.map((snippet, index) => `
       <div class="snippet-item-container group flex items-center gap-1 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${this.selectedIndex === index ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
-        ${this.editingSnippetIndex === index
-          ? `<input
-              type="text"
-              class="name-edit-input flex-1 px-2 py-2 text-sm border border-blue-500 rounded outline-none bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
-              value="${this.escapeHtml(snippet.name)}"
-              data-index="${index}"
-            >`
-          : `<div
-              class="snippet-item flex-1 p-2 rounded cursor-pointer"
-              data-index="${index}"
-            >
-              <div class="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
-                ${this.escapeHtml(snippet.name)}
-              </div>
-            </div>`
-        }
-        ${this.editingSnippetIndex !== index ? `
+        <div
+          class="snippet-item flex-1 p-2 rounded cursor-pointer"
+          data-index="${index}"
+        >
+          <div class="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+            ${this.escapeHtml(snippet.name)}
+          </div>
+        </div>
+        <button
+          class="edit-snippet-btn opacity-0 group-hover:opacity-100 p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-opacity"
+          data-index="${index}"
+          title="Rename snippet"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+        </button>
         <button
           class="delete-snippet-btn opacity-0 group-hover:opacity-100 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-opacity"
           data-index="${index}"
@@ -229,7 +256,6 @@ export class SnippetWindow extends HTMLElement {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
           </svg>
         </button>
-        ` : ''}
       </div>
     `).join('');
   }
@@ -323,7 +349,21 @@ export class SnippetWindow extends HTMLElement {
       const index = parseInt((newItem as Element).getAttribute('data-index') || '-1');
       if (index >= 0) {
         (newItem as HTMLElement).addEventListener('click', () => this.selectSnippet(index));
-        (newItem as HTMLElement).addEventListener('dblclick', () => this.startEditingName(index));
+      }
+    });
+
+    // Edit snippet buttons
+    const editBtns = this.querySelectorAll('.edit-snippet-btn');
+    editBtns.forEach(btn => {
+      const newBtn = btn.cloneNode(true);
+      btn.replaceWith(newBtn);
+
+      const index = parseInt((newBtn as Element).getAttribute('data-index') || '-1');
+      if (index >= 0) {
+        (newBtn as HTMLElement).addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.openRenameDialog(index);
+        });
       }
     });
 
@@ -342,26 +382,52 @@ export class SnippetWindow extends HTMLElement {
       }
     });
 
-    // Name edit inputs
-    const editInputs = this.querySelectorAll('.name-edit-input');
-    editInputs.forEach(input => {
-      const newInput = input.cloneNode(true);
-      input.replaceWith(newInput);
+    // Rename dialog listeners
+    this.attachRenameDialogListeners();
+  }
 
-      const index = parseInt((newInput as Element).getAttribute('data-index') || '-1');
-      if (index >= 0) {
-        (newInput as HTMLElement).addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            this.saveNameEdit(index, (newInput as HTMLInputElement).value);
-          } else if (e.key === 'Escape') {
-            this.cancelNameEdit();
-          }
-        });
+  /**
+   * Attach listeners to rename dialog
+   */
+  private attachRenameDialogListeners(): void {
+    const renameDialog = this.querySelector('#rename-dialog');
+    if (!renameDialog) return;
 
-        (newInput as HTMLElement).addEventListener('blur', () => {
-          this.saveNameEdit(index, (newInput as HTMLInputElement).value);
-        });
+    // Cancel button
+    const cancelBtn = this.querySelector('#rename-cancel-btn');
+    if (cancelBtn) {
+      const newCancelBtn = cancelBtn.cloneNode(true);
+      cancelBtn.replaceWith(newCancelBtn);
+      (newCancelBtn as HTMLElement).addEventListener('click', () => this.closeRenameDialog());
+    }
+
+    // Save button
+    const saveBtn = this.querySelector('#rename-save-btn');
+    if (saveBtn) {
+      const newSaveBtn = saveBtn.cloneNode(true);
+      saveBtn.replaceWith(newSaveBtn);
+      (newSaveBtn as HTMLElement).addEventListener('click', () => this.saveRename());
+    }
+
+    // Input Enter and Escape keys
+    const renameInput = this.querySelector('#rename-input');
+    if (renameInput) {
+      const newInput = renameInput.cloneNode(true);
+      renameInput.replaceWith(newInput);
+      (newInput as HTMLElement).addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.saveRename();
+        } else if (e.key === 'Escape') {
+          this.closeRenameDialog();
+        }
+      });
+    }
+
+    // Click outside to close
+    (renameDialog as HTMLElement).addEventListener('click', (e) => {
+      if (e.target === renameDialog) {
+        this.closeRenameDialog();
       }
     });
   }
@@ -370,11 +436,14 @@ export class SnippetWindow extends HTMLElement {
    * Handle keyboard navigation
    */
   private handleKeyDown(event: KeyboardEvent): void {
-    // Don't intercept if editing textarea or name input
+    // Don't intercept if editing textarea or rename dialog is open
     if (document.activeElement === this.contentTextarea) {
       return;
     }
-    if ((document.activeElement as HTMLInputElement).classList.contains('name-edit-input')) {
+    if ((document.activeElement as HTMLInputElement).id === 'rename-input') {
+      return;
+    }
+    if (this.renamingSnippetIndex >= 0) {
       return;
     }
 
@@ -443,81 +512,71 @@ export class SnippetWindow extends HTMLElement {
   }
 
   /**
-   * Start inline name editing
+   * Open rename dialog
    */
-  private startEditingName(index: number): void {
+  private openRenameDialog(index: number): void {
     if (index < 0 || index >= this.snippetFiles.length) {
       return;
     }
 
-    this.editingSnippetIndex = index;
-    this.renderFileList();
-  }
+    this.renamingSnippetIndex = index;
+    this.render();
 
-  /**
-   * Save name edit with debounce
-   */
-  private saveNameEdit(index: number, newName: string): Promise<void> {
-    return new Promise((resolve) => {
-      // Clear any existing timeout for this specific snippet
-      const existingTimeout = this.nameEditTimeouts.get(index);
-      if (existingTimeout) {
-        clearTimeout(existingTimeout);
-      }
-
-      // Create new timeout for this snippet
-      const timeoutId = window.setTimeout(async () => {
-        const snippet = this.snippetFiles[index];
-        if (!snippet) {
-          this.editingSnippetIndex = -1;
-          this.nameEditTimeouts.delete(index);
-          this.renderFileList();
-          resolve();
-          return;
-        }
-
-        const trimmedName = newName.trim();
-        if (trimmedName && trimmedName !== snippet.name) {
-          try {
-            await this.api.renameSnippetFile(snippet.fileName, trimmedName);
-            // Reload snippets to get updated list
-            await this.loadSnippets();
-            // Find the renamed snippet
-            const newSnippet = this.snippetFiles.find(s => s.name === trimmedName);
-            if (newSnippet) {
-              this.selectedIndex = this.snippetFiles.indexOf(newSnippet);
-              this.selectedSnippet = newSnippet;
-            }
-          } catch (error) {
-            console.error('Failed to rename snippet:', error);
-            this.showErrorMessage('Failed to rename snippet');
-          }
-        }
-
-        this.editingSnippetIndex = -1;
-        this.nameEditTimeouts.delete(index);
-        this.renderFileList();
-        resolve();
-      }, 500);
-
-      this.nameEditTimeouts.set(index, timeoutId);
-    });
-  }
-
-  /**
-   * Cancel name editing
-   */
-  private cancelNameEdit(): void {
-    // Clear any pending save for the snippet being edited
-    if (this.editingSnippetIndex !== -1) {
-      const timeout = this.nameEditTimeouts.get(this.editingSnippetIndex);
-      if (timeout) {
-        clearTimeout(timeout);
-        this.nameEditTimeouts.delete(this.editingSnippetIndex);
-      }
+    // Select and focus the input
+    const input = this.querySelector('#rename-input') as HTMLInputElement;
+    if (input) {
+      input.focus();
+      input.select();
     }
-    this.editingSnippetIndex = -1;
-    this.renderFileList();
+
+    // Attach dialog listeners
+    this.attachRenameDialogListeners();
+  }
+
+  /**
+   * Close rename dialog
+   */
+  private closeRenameDialog(): void {
+    this.renamingSnippetIndex = -1;
+    this.render();
+  }
+
+  /**
+   * Save rename
+   */
+  private async saveRename(): Promise<void> {
+    if (this.renamingSnippetIndex < 0 || this.renamingSnippetIndex >= this.snippetFiles.length) {
+      return;
+    }
+
+    const input = this.querySelector('#rename-input') as HTMLInputElement;
+    if (!input) return;
+
+    const newName = input.value.trim();
+    const snippet = this.snippetFiles[this.renamingSnippetIndex];
+
+    if (!newName || newName === snippet.name) {
+      this.closeRenameDialog();
+      return;
+    }
+
+    try {
+      await this.api.renameSnippetFile(snippet.fileName, newName);
+      // Reload snippets to get updated list
+      await this.loadSnippets();
+      // Find the renamed snippet
+      const newSnippet = this.snippetFiles.find(s => s.name === newName);
+      if (newSnippet) {
+        this.selectedIndex = this.snippetFiles.indexOf(newSnippet);
+        this.selectedSnippet = newSnippet;
+      }
+      this.renamingSnippetIndex = -1;
+      this.render();
+    } catch (error) {
+      console.error('Failed to rename snippet:', error);
+      this.showErrorMessage('Failed to rename snippet');
+      this.closeRenameDialog();
+    }
   }
 
   /**
