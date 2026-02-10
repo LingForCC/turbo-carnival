@@ -493,6 +493,98 @@ export class SnippetWindow extends HTMLElement {
   }
 
   /**
+   * Format date using native JavaScript Date methods
+   * Supports comprehensive format patterns using native Intl for localization
+   */
+  private formatDateWithPattern(date: Date, format: string): string {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+
+    // Helper for 12-hour format
+    const hours12 = hours % 12 || 12;
+    const ampm = hours < 12 ? 'AM' : 'PM';
+
+    // Get localized strings using native Intl
+    const monthNamesLong = new Intl.DateTimeFormat('default', { month: 'long' }).format(date);
+    const monthNamesShort = new Intl.DateTimeFormat('default', { month: 'short' }).format(date);
+    const weekdayLong = new Intl.DateTimeFormat('default', { weekday: 'long' }).format(date);
+    const weekdayShort = new Intl.DateTimeFormat('default', { weekday: 'short' }).format(date);
+
+    // Build replacement map
+    const tokens: Record<string, string> = {
+      // Year
+      'yyyy': String(year),
+      'yy': String(year).slice(-2),
+
+      // Month
+      'MMMM': monthNamesLong,
+      'MMM': monthNamesShort,
+      'MM': String(month + 1).padStart(2, '0'),
+      'M': String(month + 1),
+
+      // Day
+      'dddd': weekdayLong,
+      'ddd': weekdayShort,
+      'dd': String(day).padStart(2, '0'),
+      'd': String(day),
+
+      // Hour (24-hour)
+      'HH': String(hours).padStart(2, '0'),
+      'H': String(hours),
+
+      // Hour (12-hour)
+      'hh': String(hours12).padStart(2, '0'),
+      'h': String(hours12),
+
+      // Minute
+      'mm': String(minutes).padStart(2, '0'),
+      'm': String(minutes),
+
+      // Second
+      'ss': String(seconds).padStart(2, '0'),
+      's': String(seconds),
+
+      // AM/PM
+      'tt': ampm,
+      't': ampm[0],
+    };
+
+    // Replace longer patterns first to avoid partial replacements
+    let result = format;
+    const sortedKeys = Object.keys(tokens).sort((a, b) => b.length - a.length);
+
+    for (const token of sortedKeys) {
+      result = result.replaceAll(token, tokens[token]);
+    }
+
+    return result;
+  }
+
+  /**
+   * Replace date placeholders in content with formatted dates
+   * Supports: {date} and {date "format"}
+   * Uses native JavaScript Date methods and Intl for comprehensive formatting
+   */
+  private replaceDatePlaceholders(content: string): string {
+    const now = new Date();
+    const dateRegex = /\{date(?:\s+"([^"]+)")?\}/g;
+
+    return content.replace(dateRegex, (match, format) => {
+      if (!format) {
+        // Default format: yyyy-MM-dd (ISO date)
+        return now.toISOString().split('T')[0];
+      }
+
+      // Format with custom pattern using native JS methods
+      return this.formatDateWithPattern(now, format);
+    });
+  }
+
+  /**
    * Copy snippet content to clipboard and close window
    */
   private async copyAndClose(): Promise<void> {
@@ -501,7 +593,9 @@ export class SnippetWindow extends HTMLElement {
     }
 
     try {
-      await navigator.clipboard.writeText(this.selectedSnippet.content);
+      // Process date placeholders before copying
+      const contentToCopy = this.replaceDatePlaceholders(this.selectedSnippet.content);
+      await navigator.clipboard.writeText(contentToCopy);
       if (window.electronAPI) {
         window.electronAPI.closeSnippetWindow();
       }
