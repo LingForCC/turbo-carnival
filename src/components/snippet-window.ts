@@ -231,10 +231,10 @@ export class SnippetWindow extends HTMLElement {
     return this.snippetFiles.map((snippet, index) => `
       <div class="snippet-item-container group flex items-center gap-1 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${this.selectedIndex === index ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
         <div
-          class="snippet-item flex-1 p-2 rounded cursor-pointer"
+          class="snippet-item flex-1 min-w-0 p-2 rounded cursor-pointer"
           data-index="${index}"
         >
-          <div class="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+          <div class="text-sm font-medium text-gray-700 dark:text-gray-300 truncate" title="${this.escapeHtml(snippet.name)}">
             ${this.escapeHtml(snippet.name)}
           </div>
         </div>
