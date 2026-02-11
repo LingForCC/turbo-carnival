@@ -15,6 +15,7 @@ Turbo Carnival is an Electron desktop application built with TypeScript, using W
 - LLM provider management (OpenAI, GLM, and extensible for other providers)
 - Model configuration management for reusing model settings across agents
 - Custom tool execution in Node.js or Browser environments
+- MCP (Model Context Protocol) tools support for integrating external AI servers
 - App agent type for generating interactive JavaScript + HTML applications
 - Quick notepad with global shortcut (Option+A), auto-save, file management, and delete capabilities
 - Quick AI conversation with global shortcut (Option+Q)
@@ -96,6 +97,7 @@ The documentation has been split into focused modules for better performance:
 - **[docs/features/model-configs.md](docs/features/model-configs.md)** - Model configuration management for reusing model settings
 - **[docs/features/project-panel.md](docs/features/project-panel.md)** - Project sidebar and file tree panel
 - **[docs/features/tool-management.md](docs/features/tool-management.md)** - Custom tools with Node.js/Browser execution
+- **[docs/features/mcp-tools.md](docs/features/mcp-tools.md)** - MCP tools support for external AI servers
 - **[docs/features/app-agents.md](docs/features/app-agents.md)** - App agent type for generating interactive applications
 - **[docs/features/quick-notepad.md](docs/features/quick-notepad.md)** - Quick notepad with global shortcut, auto-save, and file management
 - **[docs/features/quick-ai.md](docs/features/quick-ai.md)** - Quick AI conversation with global shortcut
@@ -123,7 +125,9 @@ The documentation has been split into focused modules for better performance:
   - `glm.ts` - GLM streaming with conversation history management and native tool calling
 - `src/main/chat-agent-management.ts` - Chat agent system prompt generation, IPC handlers
 - `src/main/app-agent-management.ts` - App agent system prompt generation, IPC handlers
-- `src/main/tool-management.ts` - Tool CRUD, JSON Schema validation, execution routing
+- `src/main/tool-management.ts` - Tool CRUD, JSON Schema validation, execution routing, MCP tools integration
+- `src/main/mcp-client.ts` - MCP client implementation for server connections
+- `src/main/mcp-storage.ts` - MCP server configuration storage and management
 - `src/main/notepad-management.ts` - Notepad file operations, IPC handlers
 - `src/main/notepad-window.ts` - Notepad window lifecycle, global shortcut registration
 - `src/main/quick-ai-management.ts` - Quick AI conversation management, IPC handlers
@@ -138,6 +142,7 @@ The documentation has been split into focused modules for better performance:
 - `src/preload/agent-template-management.ts` - Agent template functions for preload (uses ipcRenderer)
 - `src/preload/provider-management.ts` - Provider and model config functions for preload (uses ipcRenderer)
 - `src/preload/tool-management.ts` - Tool management functions for preload (uses ipcRenderer)
+- `src/preload/mcp-management.ts` - MCP server management functions for preload (uses ipcRenderer)
 - `src/preload/settings-management.ts` - Settings management functions for preload (uses ipcRenderer)
 - `src/preload/notepad-management.ts` - Notepad management functions for preload (uses ipcRenderer)
 - `src/preload/quick-ai-management.ts` - Quick AI management functions for preload (uses ipcRenderer)
@@ -153,7 +158,9 @@ The documentation has been split into focused modules for better performance:
 - `src/api/provider-management.ts` - Renderer-safe provider management API (wraps window.electronAPI)
 - `src/types/provider-management.d.ts` - Provider and model config type definitions (LLMProvider, ModelConfig, LLMProviderType)
 - `src/api/tool-management.ts` - Renderer-safe tool management API (wraps window.electronAPI)
-- `src/types/tool-management.d.ts` - Tool management type definitions (Tool, ToolExecutionRequest, ToolExecutionResult, JSONSchema)
+- `src/types/tool-management.d.ts` - Tool management type definitions (Tool, ToolExecutionRequest, ToolExecutionResult, JSONSchema, MCPServer, MCPTool)
+- `src/api/mcp-management.ts` - Renderer-safe MCP server management API (wraps window.electronAPI)
+- `src/types/mcp-management.d.ts` - MCP management type definitions (MCPServer, MCPTool, MCPManagementAPI)
 - `src/api/settings-management.ts` - Renderer-safe settings management API (wraps window.electronAPI)
 - `src/types/settings-management.d.ts` - Settings management type definitions (AppSettings, SettingsManagementAPI)
 - `src/api/notepad-management.ts` - Renderer-safe notepad management API (wraps window.electronAPI)
@@ -179,7 +186,7 @@ The documentation has been split into focused modules for better performance:
 - `agent-template-dialog` - Agent template management with list and form views (uses `getAgentTemplateManagementAPI()` and `getProviderManagementAPI()`)
 - `provider-dialog` - LLM provider management (uses `getProviderManagementAPI()`)
 - `model-config-dialog` - Model configuration management with extra properties support (uses `getProviderManagementAPI()`)
-- `tools-dialog` - Tool management with testing (uses `getToolManagementAPI()`)
+- `tools-dialog` - Tool management with testing, MCP server configuration (uses `getToolManagementAPI()`)
 - `tool-test-dialog` - Tool execution testing (uses `getToolManagementAPI()`)
 - `settings-dialog` - App settings management with theme selection, notepad save location, snippet save location, and Quick AI defaults (uses `getSettingsManagementAPI()` and `getProviderManagementAPI()`)
 - `notepad-window` - Standalone notepad window with file list and auto-save (uses `getNotepadManagementAPI()`)
@@ -199,6 +206,7 @@ The documentation has been split into focused modules for better performance:
 - `model-configs:*` - Model configuration CRUD operations (get, add, update, remove, getById)
 - `settings:*` - Settings CRUD operations (get, update)
 - `tools:*` - Tool CRUD and execution
+- `mcp:*` - MCP server and tool management
 - `project:getFileTree` - File tree structure
 - `files:list`, `files:readContents` - File operations for @mention
 - `files:saveMessageToFile` - Save message content to a file in the project folder
@@ -231,7 +239,7 @@ The documentation has been split into focused modules for better performance:
 - `app.getPath('userData')/providers.json` - LLM providers
 - `app.getPath('userData')/model-configs.json` - Model configurations
 - `app.getPath('userData')/settings.json` - App settings (theme preference, notepad save location, snippet save location, Quick AI defaults)
-- `app.getPath('userData')/tools.json` - Custom tools
+- `app.getPath('userData')/tools.json` - Custom tools and MCP servers
 - `{notepadSaveLocation}/` - Notepad files (.txt format, timestamp naming) - user-configured location
 - `{snippetSaveLocation}/` - Snippet files (.txt format, user-provided names) - user-configured location
 - `{projectFolder}/agent-{name}.json` - Agent files (stored in project folders)

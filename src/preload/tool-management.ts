@@ -31,4 +31,30 @@ export const toolManagement = {
   sendBrowserToolResult: (result: { success: boolean; result?: any; error?: string; executionTime: number }) => {
     ipcRenderer.send('tools:browserResult', result);
   },
+
+  // ============ MCP METHODS ============
+
+  // Get all MCP server configurations
+  getMCPServers: () => ipcRenderer.invoke('mcp:getServers'),
+
+  // Add a new MCP server configuration
+  addMCPServer: (config: any) => ipcRenderer.invoke('mcp:addServer', config),
+
+  // Update an existing MCP server configuration
+  updateMCPServer: (name: string, config: any) =>
+    ipcRenderer.invoke('mcp:updateServer', name, config),
+
+  // Remove an MCP server configuration
+  removeMCPServer: (name: string) => ipcRenderer.invoke('mcp:removeServer', name),
+
+  // Test connection to an MCP server (without saving)
+  testMCPServer: (config: any) => ipcRenderer.invoke('mcp:testServer', config),
+
+  // Reconnect to an MCP server
+  reconnectMCPServer: (name: string) => ipcRenderer.invoke('mcp:reconnectServer', name),
+
+  // Listen for streaming tool execution chunks
+  onToolStreamChunk: (callback: (chunk: { toolName: string; chunk: string }) => void) => {
+    ipcRenderer.on('tools:streamChunk', (_event, chunk) => callback(chunk));
+  },
 };

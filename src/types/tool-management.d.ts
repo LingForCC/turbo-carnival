@@ -35,6 +35,10 @@ export interface Tool {
   environment?: 'node' | 'browser'; // Execution environment (default: 'node')
   createdAt: number;               // Timestamp when created
   updatedAt?: number;              // Timestamp when last updated
+  toolType?: 'custom' | 'mcp';     // Tool type (default: 'custom')
+  mcpServerName?: string;          // For MCP tools: server name
+  mcpToolName?: string;            // For MCP tools: original tool name from MCP server
+  isStreamable?: boolean;          // For MCP tools: whether tool supports streaming
 }
 
 /**
@@ -131,4 +135,75 @@ export interface ToolManagementAPI {
    * @param result - Browser tool execution result
    */
   sendBrowserToolResult(result: ToolExecutionResult): void;
+
+  /**
+   * Get all MCP server configurations
+   * @returns Promise resolving to array of MCP server configs
+   */
+  getMCPServers(): Promise<MCPServerConfig[]>;
+
+  /**
+   * Add a new MCP server configuration
+   * @param config - MCP server configuration
+   * @returns Promise resolving to updated array of MCP server configs
+   */
+  addMCPServer(config: MCPServerConfig): Promise<MCPServerConfig[]>;
+
+  /**
+   * Update an existing MCP server configuration
+   * @param name - Name of the MCP server to update
+   * @param config - Updated MCP server configuration
+   * @returns Promise resolving to updated array of MCP server configs
+   */
+  updateMCPServer(name: string, config: MCPServerConfig): Promise<MCPServerConfig[]>;
+
+  /**
+   * Remove an MCP server configuration
+   * @param name - Name of the MCP server to remove
+   * @returns Promise resolving to updated array of MCP server configs
+   */
+  removeMCPServer(name: string): Promise<MCPServerConfig[]>;
+
+  /**
+   * Test connection to an MCP server (without saving)
+   * @param config - MCP server configuration to test
+   * @returns Promise resolving to discovered tools
+   */
+  testMCPServer(config: MCPServerConfig): Promise<Tool[]>;
+
+  /**
+   * Reconnect to an MCP server
+   * @param name - Name of the MCP server to reconnect
+   * @returns Promise resolving to discovered tools
+   */
+  reconnectMCPServer(name: string): Promise<Tool[]>;
+
+  /**
+   * Listen for streaming tool execution chunks
+   * @param callback - Function to call when streaming chunk is received
+   */
+  onToolStreamChunk(callback: (chunk: { toolName: string; chunk: string }) => void): void;
+}
+
+/**
+ * MCP Server Configuration
+ */
+export interface MCPServerConfig {
+  name: string;                    // Unique server identifier
+  transport: 'stdio' | 'streamable-http';      // Transport type
+  command?: string;                // Command for stdio transport
+  args?: string[];                 // Arguments for stdio command
+  url?: string;                    // URL for streamable-http transport
+  env?: Record<string, string>;    // Environment variables for stdio
+  headers?: Record<string, string>; // HTTP headers for streamable-http transport
+  connected?: boolean;             // Connection status
+  toolCount?: number;              // Number of discovered tools
+  lastConnected?: number;          // Timestamp of last connection
+}
+
+/**
+ * MCP Storage format
+ */
+export interface MCPStorage {
+  mcpServers: MCPServerConfig[];
 }

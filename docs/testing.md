@@ -118,10 +118,19 @@ Tests are organized in `src/__tests__/` by feature:
 - `agents.test.ts` - Storage helper tests (loadAgents, saveAgent, deleteAgent, sanitizeAgentName)
 - `ipc-handlers.test.ts` - IPC handler tests (agents:get, agents:add, agents:remove, agents:update)
 
+### `src/__tests__/main/mcp-client/`
+- `mcp-client.test.ts` - MCP client unit tests (stdio and SSE connections, tool discovery)
+- `mcp-transport.test.ts` - Transport-specific tests (stdio vs SSE)
+
+### `src/__tests__/main/mcp-storage/`
+- `mcp-storage.test.ts` - MCP storage tests (CRUD operations, validation, connection testing)
+
 ### `src/__tests__/components/`
 - `conversation-panel/conversation-panel.test.ts` - Web Component UI tests (rendering, file tagging, message sending, streaming, tool calls, XSS prevention)
 - `project-panel/project-panel.test.ts` - Web Component UI tests (rendering, interactions, events, XSS prevention)
 - `app-panel/app-panel.test.ts` - Web Component UI tests for App-type agents (rendering, code view toggle, streaming, XSS prevention)
+- `tools-dialog/tools-dialog.test.ts` - Tools dialog UI tests with custom tools, MCP server management
+- `tool-test-dialog/tool-test-dialog.test.ts` - Tool testing UI tests for both custom and MCP tools
 
 ### `src/__tests__/helpers/`
 - Shared test utilities and mocks
@@ -190,7 +199,112 @@ describe('Project Management', () => {
 5. **Clean up** - Use `afterEach()` or `afterAll()` for cleanup
 6. **Run tests** - Use `npm run test:no-coverage` for fast feedback
 
-## Test First Approach
+## MCP Testing Patterns
+
+### MCP Client Testing
+
+When testing MCP client functionality, mock the underlying transport protocols:
+
+```typescript
+// Mock stdio transport
+jest.mock('child_process', () => ({
+  fork: jest.fn(() => mockChildProcess)
+}));
+
+// Mock SSE transport
+jest.mock('node-fetch', () => jest.fn(() => mockResponse));
+
+// Test server connection
+describe('MCP Client', () => {
+  it('should connect to stdio server', () => {
+    const mockProcess = {
+      on: jest.fn(),
+      send: jest.fn(),
+      kill: jest.fn()
+    };
+
+    (childProcess.fork as jest.Mock).mockReturnValue(mockProcess);
+
+    const client = new MCPClient('test-id', { command: 'npx mcp-server', transport: 'stdio' });
+    client.connect();
+
+    expect(childProcess.fork).toHaveBeenCalledWith('node', ['npx', 'mcp-server'], expect.any(Object));
+  });
+});
+```
+
+### MCP Storage Testing
+
+Test MCP server CRUD operations with mocked file system:
+
+```typescript
+describe('MCP Storage', () => {
+  it('should save and load MCP servers', () => {
+    const { cleanup } = setupMockFS({});
+
+    const server = createMockMCPServer({
+      id: 'test-1',
+      name: 'Test Server',
+      url: 'http://localhost:3001/sse',
+      transport: 'sse'
+    });
+
+    saveMCPServers([server]);
+    const servers = loadMCPServers();
+
+    expect(servers).toHaveLength(1);
+    expect(servers[0].name).toBe('Test Server');
+
+    cleanup();
+  });
+});
+```
+
+### MCP UI Component Testing
+
+Test MCP server management in tools dialog:
+
+```typescript
+describe('ToolsDialog MCP Integration', () => {
+  it('should display MCP servers in separate tab', async () => {
+    mockElectronAPI('getMCPServers', jest.fn().mockResolvedValue([
+      createMockMCPServer({ id: 'test-1', name: 'Test Server' })
+    ]));
+
+    const { element, cleanup } = mountComponent<ToolsDialog>('tools-dialog');
+    await waitForAsync();
+
+    // Switch to MCP tab
+    element.querySelector('[data-tab="mcp"]')?.click();
+
+    // Verify server list
+    const serverItem = element.querySelector('[data-server-id="test-1"]');
+    expect(serverItem).toBeTruthy();
+    expect(serverItem?.textContent).toContain('Test Server');
+
+    cleanup();
+  });
+
+  it('should escape HTML in MCP server names', async () => {
+    mockElectronAPI('getMCPServers', jest.fn().mockResolvedValue([
+      createMockMCPServer({ name: '<script>alert("xss")</script>' })
+    ]));
+
+    const { element, cleanup } = mountComponent<ToolsDialog>('tools-dialog');
+    await waitForAsync();
+
+    element.querySelector('[data-tab="mcp"]')?.click();
+    const serverItem = element.querySelector('[data-server-name]');
+
+    expect(serverItem?.innerHTML).not.toContain('<script>');
+    expect(serverItem?.innerHTML).toContain('&lt;script&gt;');
+
+    cleanup();
+  });
+});
+```
+
+### Test First Approach
 
 - When adding new features, write or update tests first
 - Ensure existing tests still pass after changes
@@ -236,6 +350,12 @@ mockElectronAPI('getProjects', jest.fn().mockResolvedValue([
 
 #### `createMockProject(overrides?)`
 Creates a mock Project object (also exported from `mocks.ts`).
+
+#### `createMockMCPServer(overrides?)`
+Creates a mock MCP server configuration object.
+
+#### `createMockMCPTool(overrides?)`
+Creates a mock MCP tool object with server metadata.
 
 #### `waitForAsync(ms?)`
 Waits for promises to resolve (useful for `connectedCallback` async operations).

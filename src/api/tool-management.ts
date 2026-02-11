@@ -3,7 +3,8 @@ import type {
   Tool,
   ToolExecutionRequest,
   ToolExecutionResult,
-  BrowserToolExecutionRequest
+  BrowserToolExecutionRequest,
+  MCPServerConfig
 } from '../types/tool-management';
 
 /**
@@ -72,6 +73,55 @@ const apiInstance: ToolManagementAPI = {
    */
   sendBrowserToolResult: (result: ToolExecutionResult) => {
     return getElectronAPI().sendBrowserToolResult(result);
+  },
+
+  /**
+   * Get all MCP server configurations
+   */
+  getMCPServers: () => {
+    return getElectronAPI().getMCPServers();
+  },
+
+  /**
+   * Add a new MCP server configuration
+   */
+  addMCPServer: (config: MCPServerConfig) => {
+    return getElectronAPI().addMCPServer(config);
+  },
+
+  /**
+   * Update an existing MCP server configuration
+   */
+  updateMCPServer: (name: string, config: MCPServerConfig) => {
+    return getElectronAPI().updateMCPServer(name, config);
+  },
+
+  /**
+   * Remove an MCP server configuration
+   */
+  removeMCPServer: (name: string) => {
+    return getElectronAPI().removeMCPServer(name);
+  },
+
+  /**
+   * Test connection to an MCP server (without saving)
+   */
+  testMCPServer: (config: MCPServerConfig) => {
+    return getElectronAPI().testMCPServer(config);
+  },
+
+  /**
+   * Reconnect to an MCP server
+   */
+  reconnectMCPServer: (name: string) => {
+    return getElectronAPI().reconnectMCPServer(name);
+  },
+
+  /**
+   * Listen for streaming tool execution chunks
+   */
+  onToolStreamChunk: (callback: (chunk: { toolName: string; chunk: string }) => void) => {
+    return getElectronAPI().onToolStreamChunk(callback);
   },
 };
 

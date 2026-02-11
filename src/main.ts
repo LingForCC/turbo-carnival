@@ -123,13 +123,16 @@ app.on('window-all-closed', () => {
 });
 
 // Clean up before app quits (called before will-quit)
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
   // Close notepad window first
   closeNotepadWindow();
   // Close Quick AI window
   closeQuickAIWindow();
   // Close snippet window
   closeSnippetWindow();
+  // Disconnect all MCP servers
+  const { disconnectAllMCPServers } = await import('./main/mcp-client');
+  await disconnectAllMCPServers();
 });
 
 // Clean up shortcuts before app quits

@@ -65,6 +65,20 @@ The main process is organized into dedicated modules:
 - Storage helpers: `getToolsPath`, `loadTools`, `saveTools`, `getToolByName`
 - JSON Schema validator: `validateJSONSchema`
 - IPC handlers: CRUD operations, execution routing based on environment, validation
+- MCP tools integration: discovers tools from MCP servers
+
+**`src/main/mcp-client.ts`**
+- MCP client implementation for server connections
+- Transport implementations: stdio and SSE
+- Tool discovery from MCP servers
+- Tool execution through MCP protocol
+- Connection management and health checking
+
+**`src/main/mcp-storage.ts`**
+- MCP server configuration storage and management
+- CRUD operations for MCP servers
+- Server validation and connection testing
+- Integration with tool-management.ts for tool discovery
 
 **`src/main/settings-management.ts`**
 - Settings CRUD operations
@@ -108,7 +122,7 @@ The main process is organized into dedicated modules:
 - `app-agent-management.ts` imports from: `llm/index.ts` (streamLLM), `agent-management.ts`, `provider-management.ts`, `model-config-management.ts`
 - `notepad-management.ts` imports from: `settings-management.ts` (loadSettings)
 - `quick-ai-management.ts` imports from: `llm/index.ts` (streamLLM), `settings-management.ts`, `provider-management.ts`, `model-config-management.ts`
-- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `model-config-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`, `settings-management.ts`, `notepad-management.ts`, `notepad-window.ts`, `quick-ai-management.ts`, `quick-ai-window.ts`
+- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `model-config-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`, `mcp-client.ts`, `mcp-storage.ts`, `settings-management.ts`, `notepad-management.ts`, `notepad-window.ts`, `quick-ai-management.ts`, `quick-ai-window.ts`
 
 ### Pattern for Creating New Modules
 1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)
@@ -308,9 +322,16 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 - `tools:add` - Adds a new tool (validates name, description, code, and parameters; validates code syntax)
 - `tools:update` - Updates an existing tool (preserves createdAt, sets updatedAt)
 - `tools:remove` - Removes a tool by name
-- `tools:execute` - Executes a tool (routes to worker or renderer based on tool's environment setting)
+- `tools:execute` - Executes a tool (routes to worker, renderer, or MCP server based on tool type)
 - `tools:executeBrowser` - Event sent to renderer to execute browser-based tools
 - `tools:browserResult` - Event sent from renderer with browser tool execution result
+- `mcp:servers:get` - Returns all configured MCP servers
+- `mcp:servers:add` - Adds a new MCP server configuration
+- `mcp:servers:update` - Updates an existing MCP server configuration
+- `mcp:servers:remove` - Removes an MCP server by ID
+- `mcp:servers:test` - Tests connection to an MCP server
+- `mcp:tools:get` - Returns all MCP tools from all enabled servers
+- `mcp:tools:discover` - Forces discovery of tools from all enabled servers
 
 ### Project Detail IPC Channels
 - `project:getFileTree` - Gets file tree structure for a project folder (recursive, filters hidden files)
@@ -366,11 +387,20 @@ The app uses Electron's IPC (Inter-Process Communication) for secure communicati
 
 ### Tool Storage
 - Tools stored in `app.getPath('userData')/tools.json`
+- Contains both custom tools and MCP server configurations
 - Each tool contains: `name`, `description`, `code`, `parameters` (JSON Schema), `returns` (optional), `timeout` (default 30000ms), `environment` ('node' or 'browser', default 'node'), `enabled` (default true), `createdAt`, `updatedAt`
+- Each MCP server contains: `id`, `name`, `url` (or `command` for stdio), `transport` ('stdio' or 'sse'), `enabled` (default true), `createdAt`, `updatedAt`
 - Storage helpers, JSON Schema validator, and IPC handlers in `src/main/tool-management.ts`
 - Tools execute in different environments based on `environment` setting:
   - **Node.js tools**: Execute in isolated worker processes with access to Node.js APIs
   - **Browser tools**: Execute in renderer process with access to browser APIs
+  - **MCP tools**: Execute through connected MCP servers via MCP protocol
+
+### MCP Storage
+- MCP servers stored within `app.getPath('userData')/tools.json` under `mcpServers` key
+- Server discovery cache stored separately with tool lists and metadata
+- Connection health periodically updated and cached
+- Tool discovery performed when servers are enabled/disabled
 
 ## Type Definitions
 
@@ -385,12 +415,15 @@ Central type definition file for the ElectronAPI interface:
 Tool-related types organized in a dedicated module:
 
 - `Tool` - Custom tool definition (name, description, code, parameters, returns, timeout, environment, enabled, createdAt, updatedAt)
+- `MCPServer` - MCP server configuration (id, name, url/command, transport, enabled, createdAt, updatedAt)
+- `MCPTool` - MCP tool definition (serverId, name, description, inputSchema, outputSchema, enabled)
 - `ToolExecutionRequest` - Request for tool execution (toolName, parameters, optional tool)
 - `ToolExecutionResult` - Result from tool execution (success, result, error, executionTime)
 - `ToolCallEvent` - Tool call event for IPC communication (toolName, parameters, status, result, executionTime, error)
 - `JSONSchema` - JSON Schema definition for tool parameters and return values
 - `BrowserToolExecutionRequest` - Browser tool execution request from main to renderer
 - `ToolManagementAPI` - Interface for tool management operations
+- `MCPManagementAPI` - Interface for MCP server and tool management operations
 
 ### Project Management Types (`src/types/project-management.d.ts`)
 Project-related types organized in a dedicated module:

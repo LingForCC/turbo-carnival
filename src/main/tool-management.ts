@@ -2,12 +2,30 @@ import { ipcMain, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { executeToolInWorker } from './tool-worker-executor';
+import {
+  connectToMCPServer,
+  disconnectMCPServer,
+  executeMCPTool,
+  executeMCPToolStream,
+  testMCPServerConnection,
+  disconnectAllMCPServers
+} from './mcp-client';
+import {
+  loadMCPServers,
+  saveMCPServers,
+  addMCPServer,
+  updateMCPServer,
+  removeMCPServer,
+  getMCPServerByName,
+  validateMCPServerConfig
+} from './mcp-storage';
 import type {
   Tool,
   ToolExecutionRequest,
   ToolExecutionResult,
   JSONSchema,
-  BrowserToolExecutionRequest
+  BrowserToolExecutionRequest,
+  MCPServerConfig
 } from '../types/tool-management';
 
 // ============ TOOL STORAGE HELPERS ============
@@ -20,20 +38,77 @@ function getToolsPath(): string {
 }
 
 /**
- * Load all tools from storage
+ * Load all tools from storage (custom tools only)
  */
-export function loadTools(): Tool[] {
+function loadCustomTools(): Tool[] {
   const toolsPath = getToolsPath();
   if (fs.existsSync(toolsPath)) {
     try {
       const data = JSON.parse(fs.readFileSync(toolsPath, 'utf-8'));
-      return data.tools || [];
+      return (data.tools || []).map((t: Tool) => ({
+        ...t,
+        toolType: t.toolType || 'custom'
+      }));
     } catch (error) {
       console.error('Failed to load tools:', error);
       return [];
     }
   }
   return [];
+}
+
+/**
+ * Discover MCP tools from connected servers
+ */
+async function discoverMCPTools(): Promise<Tool[]> {
+  const servers = loadMCPServers();
+  console.log(`[MCP] Discovering tools from ${servers.length} MCP servers`);
+  console.log(`[MCP] Servers status:`, servers.map(s => ({ name: s.name, connected: s.connected })));
+
+  const allMCPTools: Tool[] = [];
+
+  for (const server of servers) {
+    console.log(`[MCP] Checking server "${server.name}": connected=${server.connected}`);
+    if (server.connected) {
+      try {
+        const tools = await connectToMCPServer(server);
+        allMCPTools.push(...tools);
+        console.log(`[MCP] Successfully discovered ${tools.length} tools from "${server.name}"`);
+      } catch (error) {
+        console.error(`Failed to discover tools from MCP server "${server.name}":`, error);
+        // Mark server as disconnected
+        server.connected = false;
+        server.lastConnected = undefined;
+        saveMCPServers(servers);
+      }
+    } else {
+      console.log(`[MCP] Skipping server "${server.name}" (not connected)`);
+    }
+  }
+
+  console.log(`[MCP] Total MCP tools discovered: ${allMCPTools.length}`);
+  return allMCPTools;
+}
+
+/**
+ * Load all tools (custom + MCP)
+ */
+export async function loadTools(): Promise<Tool[]> {
+  console.log(`[MCP] loadTools: Starting tool load...`);
+  const customTools = loadCustomTools();
+  console.log(`[MCP] loadTools: Loaded ${customTools.length} custom tools`);
+  const mcpTools = await discoverMCPTools();
+  const allTools = [...customTools, ...mcpTools];
+  console.log(`[MCP] loadTools: Total tools loaded: ${allTools.length} (${customTools.length} custom + ${mcpTools.length} MCP)`);
+
+  // Log all tool names and their enabled status
+  console.log(`[MCP] loadTools: All tools:`, allTools.map(t => ({
+    name: t.name,
+    enabled: t.enabled,
+    type: t.toolType || 'custom'
+  })));
+
+  return allTools;
 }
 
 /**
@@ -50,10 +125,10 @@ function saveTools(tools: Tool[]): void {
 }
 
 /**
- * Get a tool by name
+ * Get a tool by name (including MCP tools)
  */
-export function getToolByName(name: string): Tool | undefined {
-  const tools = loadTools();
+export async function getToolByName(name: string): Promise<Tool | undefined> {
+  const tools = await loadTools();
   return tools.find(t => t.name === name);
 }
 
@@ -120,7 +195,7 @@ export function registerToolIPCHandlers(): void {
     }
 
     // Check for duplicate tool names
-    const tools = loadTools();
+    const tools = loadCustomTools();  // Only need custom tools here
     if (tools.some((t: Tool) => t.name === tool.name)) {
       throw new Error(`Tool with name "${tool.name}" already exists`);
     }
@@ -153,7 +228,7 @@ export function registerToolIPCHandlers(): void {
 
   // Handler: Update an existing tool
   ipcMain.handle('tools:update', async (_event, toolName: string, updatedTool: Tool) => {
-    const tools = loadTools();
+    const tools = loadCustomTools();  // Only need custom tools here
     const existingTool = tools.find((t: Tool) => t.name === toolName);
 
     if (!existingTool) {
@@ -189,7 +264,7 @@ export function registerToolIPCHandlers(): void {
 
   // Handler: Remove a tool
   ipcMain.handle('tools:remove', async (_event, toolName: string) => {
-    const tools = loadTools();
+    const tools = loadCustomTools();  // Only need custom tools here
     const filtered = tools.filter((t: Tool) => t.name !== toolName);
     saveTools(filtered);
     return filtered;
@@ -197,24 +272,41 @@ export function registerToolIPCHandlers(): void {
 
   // Handler: Execute a tool
   ipcMain.handle('tools:execute', async (event, request: ToolExecutionRequest): Promise<ToolExecutionResult> => {
+    console.log(`[MCP] tools:execute called for tool "${request.toolName}"`);
+    console.log(`[MCP] Request parameters:`, request.parameters);
+
     let tool: Tool;
 
     // If full tool data provided, use it directly (for testing unsaved tools)
     if (request.tool) {
       tool = request.tool;
+      console.log(`[MCP] Using provided tool data directly`);
     } else {
       // Otherwise, load from storage by name (for normal tool execution)
-      const foundTool = getToolByName(request.toolName);
+      console.log(`[MCP] Looking up tool by name: "${request.toolName}"`);
+      const foundTool = await getToolByName(request.toolName);
       if (!foundTool) {
+        console.error(`[MCP] ERROR: Tool "${request.toolName}" not found`);
         throw new Error(`Tool "${request.toolName}" not found`);
       }
       tool = foundTool;
     }
 
+    console.log(`[MCP] Tool found:`, {
+      name: tool.name,
+      enabled: tool.enabled,
+      toolType: tool.toolType,
+      mcpServerName: tool.mcpServerName,
+      mcpToolName: tool.mcpToolName
+    });
+
     // Check if tool is enabled
     if (!tool.enabled) {
+      console.error(`[MCP] ERROR: Tool "${request.toolName}" is DISABLED`);
       throw new Error(`Tool "${request.toolName}" is disabled`);
     }
+
+    console.log(`[MCP] Tool is enabled, proceeding with execution`);
 
     // Validate parameters against JSON Schema
     const validationError = validateJSONSchema(request.parameters, tool.parameters);
@@ -222,7 +314,41 @@ export function registerToolIPCHandlers(): void {
       throw new Error(`Parameter validation failed: ${validationError}`);
     }
 
-    // Route execution based on environment
+    // Route execution based on tool type
+    const toolType = tool.toolType || 'custom';
+    console.log(`[MCP] Tool type: ${toolType}`);
+
+    if (toolType === 'mcp') {
+      console.log(`[MCP] Routing to MCP tool execution`);
+      // MCP tool execution
+      if (!tool.mcpServerName || !tool.mcpToolName) {
+        throw new Error(`MCP tool "${request.toolName}" is missing server or tool name`);
+      }
+
+      if (tool.isStreamable) {
+        console.log(`[MCP] Using streaming MCP tool execution`);
+        return await executeMCPToolStream(
+          tool.mcpServerName,
+          tool.mcpToolName,
+          request.parameters,
+          (chunk) => event.sender.send('tools:streamChunk', { toolName: request.toolName, chunk })
+        );
+      }
+
+      console.log(`[MCP] Using standard MCP tool execution`);
+      const result = await executeMCPTool(
+        tool.mcpServerName,
+        tool.mcpToolName,
+        request.parameters
+      );
+      return {
+        success: true,
+        result,
+        executionTime: 0
+      };
+    }
+
+    // Custom tool execution
     const environment = tool.environment || 'node';
 
     if (environment === 'browser') {
@@ -268,6 +394,120 @@ export function registerToolIPCHandlers(): void {
       // Node.js tools: Execute in worker process (existing behavior)
       const result = await executeToolInWorker(tool, request.parameters);
       return result;
+    }
+  });
+
+  // ============ MCP IPC HANDLERS ============
+
+  // Handler: Get all MCP server configurations
+  ipcMain.handle('mcp:getServers', () => {
+    return loadMCPServers();
+  });
+
+  // Handler: Add a new MCP server configuration
+  ipcMain.handle('mcp:addServer', async (_event, config: MCPServerConfig) => {
+    const servers = addMCPServer(config);
+
+    // Auto-connect to discover tools
+    try {
+      const tools = await connectToMCPServer(config);
+      // Update server with connection status
+      const updatedServers = loadMCPServers();
+      const serverIndex = updatedServers.findIndex(s => s.name === config.name);
+      if (serverIndex !== -1) {
+        updatedServers[serverIndex].connected = true;
+        updatedServers[serverIndex].toolCount = tools.length;
+        updatedServers[serverIndex].lastConnected = Date.now();
+        saveMCPServers(updatedServers);
+      }
+      return loadMCPServers();
+    } catch (error: any) {
+      throw new Error(`Failed to connect to MCP server: ${error.message}`);
+    }
+  });
+
+  // Handler: Update an existing MCP server configuration
+  ipcMain.handle('mcp:updateServer', async (_event, name: string, config: MCPServerConfig) => {
+    const oldServer = getMCPServerByName(name);
+    if (oldServer) {
+      // Disconnect from old server
+      await disconnectMCPServer(name);
+    }
+
+    const servers = updateMCPServer(name, config);
+
+    // Reconnect to discover tools
+    try {
+      const tools = await connectToMCPServer(config);
+      // Update server with connection status
+      const updatedServers = loadMCPServers();
+      const serverIndex = updatedServers.findIndex(s => s.name === config.name);
+      if (serverIndex !== -1) {
+        updatedServers[serverIndex].connected = true;
+        updatedServers[serverIndex].toolCount = tools.length;
+        updatedServers[serverIndex].lastConnected = Date.now();
+        saveMCPServers(updatedServers);
+      }
+      return loadMCPServers();
+    } catch (error: any) {
+      throw new Error(`Failed to connect to MCP server: ${error.message}`);
+    }
+  });
+
+  // Handler: Remove an MCP server configuration
+  ipcMain.handle('mcp:removeServer', async (_event, name: string) => {
+    // Disconnect from server first
+    await disconnectMCPServer(name);
+    return removeMCPServer(name);
+  });
+
+  // Handler: Test connection to an MCP server (without saving)
+  ipcMain.handle('mcp:testServer', async (_event, config: MCPServerConfig) => {
+    const validationError = validateMCPServerConfig(config);
+    if (validationError) {
+      throw new Error(validationError);
+    }
+
+    try {
+      const tools = await testMCPServerConnection(config);
+      return tools;
+    } catch (error: any) {
+      throw new Error(`Failed to connect to MCP server: ${error.message}`);
+    }
+  });
+
+  // Handler: Reconnect to an MCP server
+  ipcMain.handle('mcp:reconnectServer', async (_event, name: string) => {
+    const server = getMCPServerByName(name);
+    if (!server) {
+      throw new Error(`MCP server "${name}" not found`);
+    }
+
+    // Disconnect first
+    await disconnectMCPServer(name);
+
+    // Reconnect
+    try {
+      const tools = await connectToMCPServer(server);
+      // Update server with connection status
+      const servers = loadMCPServers();
+      const serverIndex = servers.findIndex(s => s.name === name);
+      if (serverIndex !== -1) {
+        servers[serverIndex].connected = true;
+        servers[serverIndex].toolCount = tools.length;
+        servers[serverIndex].lastConnected = Date.now();
+        saveMCPServers(servers);
+      }
+      return tools;
+    } catch (error: any) {
+      // Mark as disconnected
+      const servers = loadMCPServers();
+      const serverIndex = servers.findIndex(s => s.name === name);
+      if (serverIndex !== -1) {
+        servers[serverIndex].connected = false;
+        saveMCPServers(servers);
+      }
+      throw new Error(`Failed to reconnect to MCP server: ${error.message}`);
     }
   });
 }

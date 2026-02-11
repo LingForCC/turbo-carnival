@@ -181,3 +181,72 @@ export class MyComponent extends HTMLElement {
 - Easy to mock in tests (just create a mock object)
 - No direct dependency on `window.electronAPI`
 - Prevents bundling Electron APIs into renderer code
+
+## MCP Tools
+
+### Overview
+MCP (Model Context Protocol) tools allow Turbo Carnival to integrate with external AI servers and tools. MCP provides a standardized way for AI applications to discover and execute tools from various sources.
+
+### Configuration
+MCP servers are configured through the tools dialog with support for multiple transport protocols:
+
+```typescript
+interface MCPServer {
+  id: string;                    // Unique identifier
+  name: string;                  // Human-readable name
+  url: string;                   // Server URL or command
+  transport: 'stdio' | 'sse';    // Transport protocol
+  enabled: boolean;              // Whether server is enabled
+  createdAt: string;             // ISO timestamp
+  updatedAt: string;             // ISO timestamp
+}
+```
+
+#### Stdio Transport
+For local MCP servers:
+- Configuration: `command` field with command to execute
+- Example: `npx @modelcontextprotocol/server-filesystem /path/to/directory`
+- Communication: Process stdio pipes
+
+#### SSE Transport
+For remote MCP servers:
+- Configuration: `url` field with server endpoint
+- Example: `http://localhost:3001/sse`
+- Communication: Server-Sent Events over HTTP
+
+### Server Management
+- **Add server** - Configure new MCP server via tools dialog
+- **Edit server** - Modify existing server configuration
+- **Remove server** - Delete server and its discovered tools
+- **Enable/disable** - Toggle server availability
+- **Test connection** - Verify server accessibility and tool discovery
+
+### Tool Discovery
+When an MCP server is added/enabled:
+1. Connection established via configured transport
+2. Server sends list of available tools
+3. Tools stored with namespaced names (`server_name.tool_name`)
+4. Tool metadata cached for UI display
+
+### Tool Execution
+MCP tools execute through the server:
+- **Routing** - Tool execution forwarded to appropriate MCP server
+- **Streaming** - Supports streaming execution for long-running tools
+- **Parameters** - Parameters validated against server-provided schema
+- **Results** - Results returned from server and formatted for AI agents
+
+### UI Integration
+- **Tools dialog tabs** - Separate MCP tab for server management
+- **Tool badges** - MCP tools marked with "MCP" badge
+- **Connection status** - Visual indicators for server health
+- **Tool metadata** - Shows server origin and namespace
+
+## Related Files
+
+- `src/main/mcp-client.ts` - MCP client implementation
+- `src/main/mcp-storage.ts` - MCP server storage management
+- `src/main/tool-management.ts` - Tool CRUD and MCP integration
+- `src/preload/mcp-management.ts` - Preload module for MCP management
+- `src/api/mcp-management.ts` - Renderer-safe MCP API
+- `src/types/mcp-management.d.ts` - MCP type definitions
+- `src/components/tools-dialog.ts` - Tools dialog with MCP tab

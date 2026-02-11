@@ -17,7 +17,7 @@ import type { Agent } from './agent-management';
 import type { LLMProvider, ModelConfig } from './provider-management';
 
 // Import tool management types for use in ElectronAPI interface
-import type { Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent } from './tool-management';
+import type { Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent, MCPServerConfig } from './tool-management';
 
 // Import settings types for use in ElectronAPI interface
 import type { AppSettings } from './settings-management';
@@ -87,6 +87,29 @@ interface ElectronAPI {
     error?: string;
     executionTime: number
   }) => void;
+
+  // ============ MCP METHODS ============
+
+  // Get all MCP server configurations
+  getMCPServers: () => Promise<MCPServerConfig[]>;
+
+  // Add a new MCP server configuration
+  addMCPServer: (config: MCPServerConfig) => Promise<MCPServerConfig[]>;
+
+  // Update an existing MCP server configuration
+  updateMCPServer: (name: string, config: MCPServerConfig) => Promise<MCPServerConfig[]>;
+
+  // Remove an MCP server configuration
+  removeMCPServer: (name: string) => Promise<MCPServerConfig[]>;
+
+  // Test connection to an MCP server (without saving)
+  testMCPServer: (config: MCPServerConfig) => Promise<Tool[]>;
+
+  // Reconnect to an MCP server
+  reconnectMCPServer: (name: string) => Promise<Tool[]>;
+
+  // Listen for streaming tool execution chunks
+  onToolStreamChunk: (callback: (chunk: { toolName: string; chunk: string }) => void) => void;
 
   // ============ AGENT TEMPLATE METHODS ============
 

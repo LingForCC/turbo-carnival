@@ -62,7 +62,7 @@ export function registerChatAgentIPCHandlers(): void {
       userMessage: message,
       provider,
       modelConfig,
-      tools: loadTools(),
+      tools: await loadTools(),
       webContents: event.sender,
       enableTools: true,
       agent,  // Pass agent for conversation history and tool call history
