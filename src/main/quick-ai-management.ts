@@ -136,7 +136,7 @@ export function registerQuickAIPCHandlers(): void {
       userMessage: message,
       provider,
       modelConfig,
-      tools: await loadTools(), // Load all enabled tools
+      tools: loadTools(), // Load all enabled tools
       webContents: event.sender,
       enableTools: true,
       agent,

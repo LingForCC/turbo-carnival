@@ -63,7 +63,7 @@ function loadCustomTools(): Tool[] {
  * Discover MCP tools from in-memory cache
  * Tools are loaded at app startup and cached
  */
-async function discoverMCPTools(): Promise<Tool[]> {
+function discoverMCPTools(): Tool[] {
   console.log(`[MCP] Getting MCP tools from in-memory cache`);
   const cachedTools = getAllCachedMCPTools();
   console.log(`[MCP] Retrieved ${cachedTools.length} MCP tools from cache`);
@@ -95,11 +95,11 @@ export async function initializeMCPServers(): Promise<void> {
 /**
  * Load all tools (custom + MCP)
  */
-export async function loadTools(): Promise<Tool[]> {
+export function loadTools(): Tool[] {
   console.log(`[MCP] loadTools: Starting tool load...`);
   const customTools = loadCustomTools();
   console.log(`[MCP] loadTools: Loaded ${customTools.length} custom tools`);
-  const mcpTools = await discoverMCPTools();
+  const mcpTools = discoverMCPTools();
   const allTools = [...customTools, ...mcpTools];
   console.log(`[MCP] loadTools: Total tools loaded: ${allTools.length} (${customTools.length} custom + ${mcpTools.length} MCP)`);
 
@@ -129,8 +129,8 @@ function saveTools(tools: Tool[]): void {
 /**
  * Get a tool by name (including MCP tools)
  */
-export async function getToolByName(name: string): Promise<Tool | undefined> {
-  const tools = await loadTools();
+export function getToolByName(name: string): Tool | undefined {
+  const tools = loadTools();
   return tools.find(t => t.name === name);
 }
 
@@ -286,7 +286,7 @@ export function registerToolIPCHandlers(): void {
     } else {
       // Otherwise, load from storage by name (for normal tool execution)
       console.log(`[MCP] Looking up tool by name: "${request.toolName}"`);
-      const foundTool = await getToolByName(request.toolName);
+      const foundTool = getToolByName(request.toolName);
       if (!foundTool) {
         console.error(`[MCP] ERROR: Tool "${request.toolName}" not found`);
         throw new Error(`Tool "${request.toolName}" not found`);

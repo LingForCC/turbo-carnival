@@ -4,6 +4,7 @@ import type { Tool } from '../../types/tool-management';
 import type { Agent } from '../../types/agent-management';
 import { streamOpenAI } from './openai';
 import { streamGLM } from './glm';
+import { executeMCPTool, executeMCPToolStream } from '../mcp-client';
 
 // ============ TYPE DEFINITIONS ============
 
@@ -54,7 +55,7 @@ export async function streamLLM(options: StreamLLMOptions): Promise<StreamResult
 
 /**
  * Execute a tool with environment-aware routing
- * Routes to worker process for Node.js tools, or renderer for browser tools
+ * Routes to MCP server for MCP tools, worker process for Node.js tools, or renderer for browser tools
  *
  * Note: Parameter validation should be done by the caller before calling this function
  */
@@ -63,6 +64,43 @@ export async function executeToolWithRouting(
   parameters: Record<string, any>,
   webContents?: Electron.WebContents
 ): Promise<any> {
+  const toolType = tool.toolType || 'custom';
+
+  // MCP tool execution
+  if (toolType === 'mcp') {
+    if (!tool.mcpServerName || !tool.mcpToolName) {
+      throw new Error(`MCP tool "${tool.name}" is missing server or tool name`);
+    }
+
+    if (tool.isStreamable && webContents) {
+      // Streaming MCP tool execution
+      const result = await executeMCPToolStream(
+        tool.mcpServerName,
+        tool.mcpToolName,
+        parameters,
+        (chunk) => webContents.send('tools:streamChunk', { toolName: tool.name, chunk })
+      );
+      return {
+        success: true,
+        result,
+        executionTime: 0
+      };
+    }
+
+    // Standard MCP tool execution
+    const result = await executeMCPTool(
+      tool.mcpServerName,
+      tool.mcpToolName,
+      parameters
+    );
+    return {
+      success: true,
+      result,
+      executionTime: 0
+    };
+  }
+
+  // Custom tool execution
   const environment = tool.environment || 'node';
 
   if (environment === 'browser' && webContents) {
