@@ -179,6 +179,13 @@ export interface ToolManagementAPI {
   reconnectMCPServer(name: string): Promise<Tool[]>;
 
   /**
+   * Disconnect from an MCP server
+   * @param name - Name of the MCP server to disconnect
+   * @returns Promise that resolves when disconnection is complete
+   */
+  disconnectMCPServer(name: string): Promise<void>;
+
+  /**
    * Listen for streaming tool execution chunks
    * @param callback - Function to call when streaming chunk is received
    */

@@ -53,6 +53,9 @@ export const toolManagement = {
   // Reconnect to an MCP server
   reconnectMCPServer: (name: string) => ipcRenderer.invoke('mcp:reconnectServer', name),
 
+  // Disconnect from an MCP server
+  disconnectMCPServer: (name: string) => ipcRenderer.invoke('mcp:disconnectServer', name),
+
   // Listen for streaming tool execution chunks
   onToolStreamChunk: (callback: (chunk: { toolName: string; chunk: string }) => void) => {
     ipcRenderer.on('tools:streamChunk', (_event, chunk) => callback(chunk));

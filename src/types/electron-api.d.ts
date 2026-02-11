@@ -108,6 +108,9 @@ interface ElectronAPI {
   // Reconnect to an MCP server
   reconnectMCPServer: (name: string) => Promise<Tool[]>;
 
+  // Disconnect from an MCP server
+  disconnectMCPServer: (name: string) => Promise<void>;
+
   // Listen for streaming tool execution chunks
   onToolStreamChunk: (callback: (chunk: { toolName: string; chunk: string }) => void) => void;
 

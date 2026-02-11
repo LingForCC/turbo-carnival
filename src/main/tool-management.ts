@@ -510,4 +510,23 @@ export function registerToolIPCHandlers(): void {
       throw new Error(`Failed to reconnect to MCP server: ${error.message}`);
     }
   });
+
+  // Handler: Disconnect from an MCP server
+  ipcMain.handle('mcp:disconnectServer', async (_event, name: string) => {
+    const server = getMCPServerByName(name);
+    if (!server) {
+      throw new Error(`MCP server "${name}" not found`);
+    }
+
+    // Disconnect from MCP server
+    await disconnectMCPServer(name);
+
+    // Update server connection status
+    const servers = loadMCPServers();
+    const serverIndex = servers.findIndex(s => s.name === name);
+    if (serverIndex !== -1) {
+      servers[serverIndex].connected = false;
+      saveMCPServers(servers);
+    }
+  });
 }

@@ -310,10 +310,13 @@ export class ToolsDialog extends HTMLElement {
             </p>
           </div>
           <div class="flex gap-1">
-            <button class="reconnect-mcp-btn p-1.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded cursor-pointer border-0 bg-transparent"
-                    data-server-name="${this.escapeHtml(server.name)}" title="Reconnect">
-              <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-green-500 dark:hover:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            <button class="${server.connected ? 'disconnect-mcp-btn' : 'connect-mcp-btn'} p-1.5 ${server.connected ? 'hover:bg-orange-100 dark:hover:bg-orange-900/30' : 'hover:bg-green-100 dark:hover:bg-green-900/30'} rounded cursor-pointer border-0 bg-transparent"
+                    data-server-name="${this.escapeHtml(server.name)}" title="${server.connected ? 'Disconnect' : 'Connect'}">
+              <svg class="w-4 h-4 ${server.connected ? 'text-gray-400 dark:text-gray-500 hover:text-orange-500 dark:hover:text-orange-400' : 'text-gray-400 dark:text-gray-500 hover:text-green-500 dark:hover:text-green-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                ${server.connected
+                  ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>'
+                  : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>'
+                }
               </svg>
             </button>
             <button class="edit-mcp-btn p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded cursor-pointer border-0 bg-transparent"
@@ -539,11 +542,18 @@ export class ToolsDialog extends HTMLElement {
       btn.addEventListener('click', () => this.deleteMCPServer(serverName));
     });
 
-    // Reconnect MCP buttons
-    this.querySelectorAll('.reconnect-mcp-btn').forEach(btn => {
+    // Connect MCP buttons
+    this.querySelectorAll('.connect-mcp-btn').forEach(btn => {
       const serverName = btn.getAttribute('data-server-name');
       if (!serverName) return;
-      btn.addEventListener('click', () => this.reconnectMCPServer(serverName));
+      btn.addEventListener('click', () => this.toggleMCPServer(serverName, true));
+    });
+
+    // Disconnect MCP buttons
+    this.querySelectorAll('.disconnect-mcp-btn').forEach(btn => {
+      const serverName = btn.getAttribute('data-server-name');
+      if (!serverName) return;
+      btn.addEventListener('click', () => this.toggleMCPServer(serverName, false));
     });
   }
 
@@ -677,17 +687,30 @@ export class ToolsDialog extends HTMLElement {
     }
   }
 
-  private async reconnectMCPServer(serverName: string): Promise<void> {
-    try {
-      const discoveredTools = await this.api.reconnectMCPServer(serverName);
-      await this.loadMCPServers();
-      await this.loadTools();
-      this.render();
-      alert(`Reconnected successfully! Discovered ${discoveredTools.length} tools.`);
-    } catch (error: any) {
-      alert(`Reconnection failed: ${error.message}`);
-      await this.loadMCPServers(); // Update UI to show disconnected status
-      this.render();
+  private async toggleMCPServer(serverName: string, connect: boolean): Promise<void> {
+    if (connect) {
+      try {
+        const discoveredTools = await this.api.reconnectMCPServer(serverName);
+        await this.loadMCPServers();
+        await this.loadTools();
+        this.render();
+        alert(`Connected successfully! Discovered ${discoveredTools.length} tools.`);
+      } catch (error: any) {
+        alert(`Connection failed: ${error.message}`);
+        await this.loadMCPServers(); // Update UI to show disconnected status
+        this.render();
+      }
+    } else {
+      try {
+        await this.api.disconnectMCPServer(serverName);
+        await this.loadMCPServers();
+        await this.loadTools();
+        this.render();
+      } catch (error: any) {
+        alert(`Disconnection failed: ${error.message}`);
+        await this.loadMCPServers();
+        this.render();
+      }
     }
   }
 

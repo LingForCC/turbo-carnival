@@ -98,8 +98,10 @@ For example, if the "filesystem" MCP server exposes a "read_file" tool, it will 
 
 ### Managing MCP Servers
 
-- **Reconnect**: Reconnect to a disconnected server
-- **Edit**: Modify server configuration (automatically reconnects)
+- **Connect/Disconnect**: Toggle connection status for a server
+  - Click the **Connect** button (link icon) to connect to a disconnected server
+  - Click the **Disconnect** button (unlink icon) to disconnect from a connected server
+- **Edit**: Modify server configuration (automatically reconnects on save)
 - **Delete**: Remove server and its tools
 
 ### Using MCP Tools in Chat
@@ -124,7 +126,7 @@ When the app starts:
 
 - Tools are executed on-demand when invoked by LLM providers
 - Failed tool executions show error messages in the chat
-- Servers can be reconnected manually from the Tools dialog
+- Servers can be explicitly connected or disconnected from the Tools dialog using the toggle button
 
 ### Shutdown
 
@@ -185,6 +187,7 @@ export interface Tool {
 - `mcp:removeServer`: Remove a server and disconnect
 - `mcp:testServer`: Test connection without saving
 - `mcp:reconnectServer`: Reconnect to a server
+- `mcp:disconnectServer`: Disconnect from a server
 - `tools:streamChunk`: Streaming tool execution chunks (future)
 
 ### MCP Client Functions

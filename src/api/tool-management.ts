@@ -118,6 +118,13 @@ const apiInstance: ToolManagementAPI = {
   },
 
   /**
+   * Disconnect from an MCP server
+   */
+  disconnectMCPServer: (name: string) => {
+    return getElectronAPI().disconnectMCPServer(name);
+  },
+
+  /**
    * Listen for streaming tool execution chunks
    */
   onToolStreamChunk: (callback: (chunk: { toolName: string; chunk: string }) => void) => {

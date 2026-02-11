@@ -216,9 +216,9 @@ For remote MCP servers:
 
 ### Server Management
 - **Add server** - Configure new MCP server via tools dialog
-- **Edit server** - Modify existing server configuration
+- **Connect/Disconnect** - Toggle server connection status (connect/disconnect button in tools dialog)
+- **Edit server** - Modify existing server configuration (automatically reconnects on save)
 - **Remove server** - Delete server and its discovered tools
-- **Enable/disable** - Toggle server availability
 - **Test connection** - Verify server accessibility and tool discovery
 
 ### Tool Discovery
