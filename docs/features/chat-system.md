@@ -360,10 +360,27 @@ thinking: {
 
 ### Tool Execution Architecture
 - **Tool validation** - Checks if tool exists, is enabled, and parameters match schema
-- **Environment routing** - Routes to Node.js worker or browser renderer
+- **Type-based routing** - Routes to MCP server, Node.js worker, or browser renderer based on `toolType`
+  - MCP tools: Routes to `executeMCPTool()` or `executeMCPToolStream()` via MCP client
+  - Custom Node.js tools: Routes to worker process
+  - Custom Browser tools: Routes to renderer process
 - **IPC events** - Sends `chat-agent:toolCall` events (started, completed, failed)
 - **Agent history** - Updates agent.history with tool call metadata
 - **Error handling** - Graceful failure with error messages
+
+**Tool Execution Routing (`llm/index.ts`):**
+The `executeToolWithRouting()` function handles all tool execution for LLM providers:
+```typescript
+export async function executeToolWithRouting(
+  tool: any,
+  parameters: Record<string, any>,
+  webContents?: Electron.WebContents
+): Promise<any>
+```
+- Checks `tool.toolType` to determine execution path
+- For `toolType === 'mcp'`: Routes to MCP client with server/tool name
+- For custom tools: Routes based on `environment` ('node' or 'browser')
+- Returns standardized result: `{ success, result, executionTime }`
 
 ## Chat Agent Management Module
 
@@ -393,7 +410,11 @@ Located in `src/main/app-agent-management.ts`:
 
 ## Tool Calling (Chat Agents Only)
 
-AI agents can call custom tools during conversations using **native tool calling formats**.
+AI agents can call tools during conversations using **native tool calling formats**. Tools can be:
+- **Custom JavaScript tools** - Execute in Node.js (worker process) or Browser (renderer)
+- **MCP tools** - Execute on external MCP servers (stdio or streamable-http transport)
+
+All tool types are transparently handled through the same `executeToolWithRouting()` function in `llm/index.ts`.
 
 ### Native Tool Calling (OpenAI, GLM, Azure, Custom)
 
@@ -416,7 +437,10 @@ AI agents can call custom tools during conversations using **native tool calling
 5. Executes tools via `executeToolCalls()`:
    - Validates tool exists, is enabled, parameters match schema
    - Sends `chat-agent:toolCall` IPC event with `status: 'started'`
-   - Routes to Node.js worker or browser renderer
+   - Routes via `executeToolWithRouting()`:
+     - MCP tools: Routes to MCP client (`executeMCPTool()` or `executeMCPToolStream()`)
+     - Custom Node.js tools: Routes to worker process
+     - Custom Browser tools: Routes to renderer process
    - On success: Sends `chat-agent:toolCall` with `status: 'completed'`
    - On failure: Sends `chat-agent:toolCall` with `status: 'failed'`
 6. Adds tool results to messages in OpenAI format: `{role: 'tool', tool_call_id, content}`

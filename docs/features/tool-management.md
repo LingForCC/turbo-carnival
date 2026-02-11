@@ -66,10 +66,23 @@ Browser tools execute directly in the renderer process:
 
 ### Execution Routing
 
-When `tools:execute` is invoked, the main process checks the tool's `environment` field:
-- If `'browser'`: Routes to renderer process for browser execution
-- If `'node'` (or missing, defaults to `'node'`): Routes to worker process for Node.js execution
+When `tools:execute` is invoked, the main process routes based on tool type:
+
+**For MCP Tools (`toolType === 'mcp'`):**
+- Routes to MCP client via `executeMCPTool()` or `executeMCPToolStream()`
+- Uses `mcpServerName` and `mcpToolName` to identify the tool
+- For streamable tools, sends chunks via `tools:streamChunk` IPC events
+
+**For Custom Tools:**
+- If `environment === 'browser'`: Routes to renderer process for browser execution
+- If `environment === 'node'` (or missing, defaults to `'node'`): Routes to worker process for Node.js execution
 - Main process sets up Promise-based listener for result (for browser tools) or executes directly (for Node.js tools)
+
+**Routing Entry Point:**
+The `executeToolWithRouting()` function in `src/main/llm/index.ts` handles all tool execution routing for LLM providers (OpenAI, GLM, etc.) during tool calling:
+- Checks `toolType` to determine if tool is MCP or custom
+- Routes to appropriate execution path (MCP server, worker process, or renderer)
+- Returns standardized result format: `{ success: boolean, result?: any, executionTime: number }`
 
 ## Tool UI/UX
 
@@ -104,19 +117,21 @@ Located in `src/main/tool-management.ts`:
 
 ### Storage Helpers
 - `getToolsPath()` - Returns path to tools.json
-- `loadTools()` - Loads all tools from storage
-- `saveTools()` - Saves all tools to storage
-- `getToolByName()` - Gets a specific tool by name
+- `loadCustomTools()` - Loads custom tools from storage (synchronous)
+- `discoverMCPTools()` - Loads MCP tools from in-memory cache (synchronous)
+- `loadTools()` - Loads all tools (custom + MCP) from storage/cache (synchronous)
+- `saveTools()` - Saves custom tools to storage
+- `getToolByName()` - Gets a specific tool by name (synchronous)
 
 ### Validation
 - `validateJSONSchema()` - Validates JSON Schema syntax for tool parameters
 
 ### IPC Handlers
-- `tools:get` - Returns all stored tools
-- `tools:add` - Adds a new tool (validates name, description, code, and parameters; validates code syntax)
-- `tools:update` - Updates an existing tool (preserves createdAt, sets updatedAt)
-- `tools:remove` - Removes a tool by name
-- `tools:execute` - Executes a tool (routes to worker or renderer based on environment)
+- `tools:get` - Returns all stored tools (custom + MCP)
+- `tools:add` - Adds a new custom tool (validates name, description, code, and parameters; validates code syntax)
+- `tools:update` - Updates an existing custom tool (preserves createdAt, sets updatedAt)
+- `tools:remove` - Removes a custom tool by name
+- `tools:execute` - Executes a tool (routes to MCP server, worker, or renderer based on tool type)
 
 ## Tool Calling in Chat
 

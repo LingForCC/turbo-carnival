@@ -120,7 +120,7 @@ The documentation has been split into focused modules for better performance:
 - `src/main/model-config-management.ts` - Model configuration CRUD, validation, storage
 - `src/main/settings-management.ts` - App settings CRUD, theme preference storage, validation
 - `src/main/llm/` - LLM streaming module with provider-specific implementations
-  - `index.ts` - Main routing interface (streamLLM, buildFileContentMessages, buildAllMessages) and tool execution routing (executeToolWithRouting)
+  - `index.ts` - Main routing interface (streamLLM, buildFileContentMessages, buildAllMessages) and tool execution routing (executeToolWithRouting with MCP tool support)
   - `openai.ts` - OpenAI-compatible streaming with conversation history management and native tool calling
   - `glm.ts` - GLM streaming with conversation history management and native tool calling
 - `src/main/chat-agent-management.ts` - Chat agent system prompt generation, IPC handlers

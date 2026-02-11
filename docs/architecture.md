@@ -46,7 +46,9 @@ The main process is organized into dedicated modules:
 **`src/main/llm/index.ts`**
 - LLM streaming router and tool execution routing
 - `streamLLM()` - Routes to provider-specific streaming implementations
-- `executeToolWithRouting()` - Routes tools to Node.js worker or browser based on environment
+- `executeToolWithRouting()` - Routes tools to MCP server, Node.js worker, or browser based on tool type
+  - MCP tools: Routes to `executeMCPTool()` or `executeMCPToolStream()` via MCP client
+  - Custom tools: Routes based on `environment` ('node' or 'browser')
 
 **`src/main/chat-agent-management.ts`**
 - Chat agent logic (tools + files)
@@ -61,11 +63,12 @@ The main process is organized into dedicated modules:
 - LLM handlers manage conversation history (saves user/assistant messages)
 
 **`src/main/tool-management.ts`**
-- Tool CRUD operations
-- Storage helpers: `getToolsPath`, `loadTools`, `saveTools`, `getToolByName`
+- Tool CRUD operations (custom JavaScript tools + MCP tools)
+- Storage helpers: `getToolsPath`, `loadCustomTools`, `discoverMCPTools`, `loadTools`, `saveTools`, `getToolByName`
+  - Note: Tool loading functions are **synchronous** (tools cached in memory at app startup)
 - JSON Schema validator: `validateJSONSchema`
-- IPC handlers: CRUD operations, execution routing based on environment, validation
-- MCP tools integration: discovers tools from MCP servers
+- IPC handlers: CRUD operations, execution routing based on tool type, validation
+- MCP tools integration: `initializeMCPServers()` connects to all servers at startup and caches tools
 
 **`src/main/mcp-client.ts`**
 - MCP client implementation for server connections

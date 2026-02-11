@@ -125,9 +125,11 @@ MCP tools work transparently with chat agents:
 
 When the app starts:
 1. All saved MCP server configurations are loaded from storage
-2. The app automatically connects to all MCP servers
+2. The app automatically connects to all MCP servers via `initializeMCPServers()`
 3. Tools from each server are discovered and cached in memory
 4. Failed connections are logged but don't prevent other servers from connecting
+
+**Note:** Tool loading is synchronous - tools are cached in memory at startup, so `loadTools()` and `getToolByName()` are fast synchronous operations that don't require awaiting.
 
 ### During Operation
 
@@ -146,6 +148,32 @@ When the app quits:
 
 ## Tool Execution
 
+### LLM Integration
+
+MCP tools are transparently integrated with LLM providers during tool calling:
+
+**Execution Flow:**
+```
+LLM Provider → detects tool call → executeToolWithRouting() → MCP Client → MCP Server → returns result
+```
+
+**Key Integration Points:**
+- **`src/main/llm/index.ts`**: `executeToolWithRouting()` routes MCP tools to the appropriate execution function
+- **Tool Type Detection**: Tools with `toolType === 'mcp'` are routed to MCP client
+- **Server/Tool Names**: Uses `mcpServerName` and `mcpToolName` properties to identify the tool
+- **Streaming Support**: Tools with `isStreamable === true` use `executeMCPToolStream()` for real-time updates
+
+**MCP Tool Properties:**
+```typescript
+interface Tool {
+  toolType: 'mcp';
+  mcpServerName: string;    // MCP server name
+  mcpToolName: string;      // Original tool name from server
+  isStreamable?: boolean;   // Whether tool supports streaming
+  // ... other properties
+}
+```
+
 ### Standard Execution
 
 Most MCP tools execute synchronously:
@@ -153,14 +181,17 @@ Most MCP tools execute synchronously:
 LLM calls tool → MCP client invokes tool → Returns result → LLM processes result
 ```
 
-### Streaming Execution (Future)
+### Streaming Execution
 
 Some MCP tools support streaming for real-time updates:
 ```
 LLM calls tool → MCP client streams chunks → UI updates in real-time → Returns final result
 ```
 
-Note: Streaming support will be added when the MCP SDK adds streaming capabilities.
+**Implementation:**
+- Streamable tools use `executeMCPToolStream()` function
+- Chunks sent via `tools:streamChunk` IPC events to renderer
+- Currently supported for streamable-http transport
 
 ## Implementation Details
 
