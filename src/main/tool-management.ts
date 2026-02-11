@@ -8,7 +8,9 @@ import {
   executeMCPTool,
   executeMCPToolStream,
   testMCPServerConnection,
-  disconnectAllMCPServers
+  disconnectAllMCPServers,
+  getAllCachedMCPTools,
+  clearMCPToolsCache
 } from './mcp-client';
 import {
   loadMCPServers,
@@ -58,36 +60,36 @@ function loadCustomTools(): Tool[] {
 }
 
 /**
- * Discover MCP tools from connected servers
+ * Discover MCP tools from in-memory cache
+ * Tools are loaded at app startup and cached
  */
 async function discoverMCPTools(): Promise<Tool[]> {
-  const servers = loadMCPServers();
-  console.log(`[MCP] Discovering tools from ${servers.length} MCP servers`);
-  console.log(`[MCP] Servers status:`, servers.map(s => ({ name: s.name, connected: s.connected })));
+  console.log(`[MCP] Getting MCP tools from in-memory cache`);
+  const cachedTools = getAllCachedMCPTools();
+  console.log(`[MCP] Retrieved ${cachedTools.length} MCP tools from cache`);
+  return cachedTools;
+}
 
-  const allMCPTools: Tool[] = [];
+/**
+ * Initialize all MCP servers on application startup
+ * Connects to all saved MCP servers and caches their tools
+ */
+export async function initializeMCPServers(): Promise<void> {
+  const servers = loadMCPServers();
+  console.log(`[MCP] Initializing ${servers.length} MCP servers on app startup`);
 
   for (const server of servers) {
-    console.log(`[MCP] Checking server "${server.name}": connected=${server.connected}`);
-    if (server.connected) {
-      try {
-        const tools = await connectToMCPServer(server);
-        allMCPTools.push(...tools);
-        console.log(`[MCP] Successfully discovered ${tools.length} tools from "${server.name}"`);
-      } catch (error) {
-        console.error(`Failed to discover tools from MCP server "${server.name}":`, error);
-        // Mark server as disconnected
-        server.connected = false;
-        server.lastConnected = undefined;
-        saveMCPServers(servers);
-      }
-    } else {
-      console.log(`[MCP] Skipping server "${server.name}" (not connected)`);
+    try {
+      console.log(`[MCP] Connecting to server "${server.name}"...`);
+      const tools = await connectToMCPServer(server);
+      console.log(`[MCP] Successfully connected to "${server.name}" and cached ${tools.length} tools`);
+    } catch (error) {
+      console.error(`[MCP] Failed to connect to MCP server "${server.name}":`, error);
+      // Continue with other servers even if one fails
     }
   }
 
-  console.log(`[MCP] Total MCP tools discovered: ${allMCPTools.length}`);
-  return allMCPTools;
+  console.log(`[MCP] MCP server initialization complete`);
 }
 
 /**
@@ -408,18 +410,10 @@ export function registerToolIPCHandlers(): void {
   ipcMain.handle('mcp:addServer', async (_event, config: MCPServerConfig) => {
     const servers = addMCPServer(config);
 
-    // Auto-connect to discover tools
+    // Auto-connect to discover tools and cache them
     try {
       const tools = await connectToMCPServer(config);
-      // Update server with connection status
-      const updatedServers = loadMCPServers();
-      const serverIndex = updatedServers.findIndex(s => s.name === config.name);
-      if (serverIndex !== -1) {
-        updatedServers[serverIndex].connected = true;
-        updatedServers[serverIndex].toolCount = tools.length;
-        updatedServers[serverIndex].lastConnected = Date.now();
-        saveMCPServers(updatedServers);
-      }
+      console.log(`[MCP] Connected to new server "${config.name}", discovered and cached ${tools.length} tools`);
       return loadMCPServers();
     } catch (error: any) {
       throw new Error(`Failed to connect to MCP server: ${error.message}`);
@@ -430,24 +424,16 @@ export function registerToolIPCHandlers(): void {
   ipcMain.handle('mcp:updateServer', async (_event, name: string, config: MCPServerConfig) => {
     const oldServer = getMCPServerByName(name);
     if (oldServer) {
-      // Disconnect from old server
+      // Disconnect from old server (also clears cache)
       await disconnectMCPServer(name);
     }
 
     const servers = updateMCPServer(name, config);
 
-    // Reconnect to discover tools
+    // Reconnect to discover tools and cache them
     try {
       const tools = await connectToMCPServer(config);
-      // Update server with connection status
-      const updatedServers = loadMCPServers();
-      const serverIndex = updatedServers.findIndex(s => s.name === config.name);
-      if (serverIndex !== -1) {
-        updatedServers[serverIndex].connected = true;
-        updatedServers[serverIndex].toolCount = tools.length;
-        updatedServers[serverIndex].lastConnected = Date.now();
-        saveMCPServers(updatedServers);
-      }
+      console.log(`[MCP] Reconnected to updated server "${config.name}", discovered and cached ${tools.length} tools`);
       return loadMCPServers();
     } catch (error: any) {
       throw new Error(`Failed to connect to MCP server: ${error.message}`);
@@ -456,7 +442,7 @@ export function registerToolIPCHandlers(): void {
 
   // Handler: Remove an MCP server configuration
   ipcMain.handle('mcp:removeServer', async (_event, name: string) => {
-    // Disconnect from server first
+    // Disconnect from server first (also clears cache)
     await disconnectMCPServer(name);
     return removeMCPServer(name);
   });
@@ -483,30 +469,15 @@ export function registerToolIPCHandlers(): void {
       throw new Error(`MCP server "${name}" not found`);
     }
 
-    // Disconnect first
+    // Disconnect first (also clears cache)
     await disconnectMCPServer(name);
 
     // Reconnect
     try {
       const tools = await connectToMCPServer(server);
-      // Update server with connection status
-      const servers = loadMCPServers();
-      const serverIndex = servers.findIndex(s => s.name === name);
-      if (serverIndex !== -1) {
-        servers[serverIndex].connected = true;
-        servers[serverIndex].toolCount = tools.length;
-        servers[serverIndex].lastConnected = Date.now();
-        saveMCPServers(servers);
-      }
+      console.log(`[MCP] Reconnected to server "${name}", discovered and cached ${tools.length} tools`);
       return tools;
     } catch (error: any) {
-      // Mark as disconnected
-      const servers = loadMCPServers();
-      const serverIndex = servers.findIndex(s => s.name === name);
-      if (serverIndex !== -1) {
-        servers[serverIndex].connected = false;
-        saveMCPServers(servers);
-      }
       throw new Error(`Failed to reconnect to MCP server: ${error.message}`);
     }
   });
@@ -518,15 +489,7 @@ export function registerToolIPCHandlers(): void {
       throw new Error(`MCP server "${name}" not found`);
     }
 
-    // Disconnect from MCP server
+    // Disconnect from MCP server (also clears cache)
     await disconnectMCPServer(name);
-
-    // Update server connection status
-    const servers = loadMCPServers();
-    const serverIndex = servers.findIndex(s => s.name === name);
-    if (serverIndex !== -1) {
-      servers[serverIndex].connected = false;
-      saveMCPServers(servers);
-    }
   });
 }

@@ -194,6 +194,7 @@ export interface ToolManagementAPI {
 
 /**
  * MCP Server Configuration
+ * Note: connected, toolCount, and lastConnected are runtime-only fields and NOT persisted to storage
  */
 export interface MCPServerConfig {
   name: string;                    // Unique server identifier
@@ -203,9 +204,9 @@ export interface MCPServerConfig {
   url?: string;                    // URL for streamable-http transport
   env?: Record<string, string>;    // Environment variables for stdio
   headers?: Record<string, string>; // HTTP headers for streamable-http transport
-  connected?: boolean;             // Connection status
-  toolCount?: number;              // Number of discovered tools
-  lastConnected?: number;          // Timestamp of last connection
+  connected?: boolean;             // Runtime-only: Connection status (NOT saved)
+  toolCount?: number;              // Runtime-only: Number of discovered tools (NOT saved)
+  lastConnected?: number;          // Runtime-only: Timestamp of last connection (NOT saved)
 }
 
 /**

@@ -5,7 +5,7 @@ import type { Agent } from './types/agent-management';
 import { registerAgentIPCHandlers, loadAgents, saveAgent } from './main/agent-management';
 import { registerProviderIPCHandlers } from './main/provider-management';
 import { registerModelConfigIPCHandlers } from './main/model-config-management';
-import { registerToolIPCHandlers } from './main/tool-management';
+import { registerToolIPCHandlers, initializeMCPServers } from './main/tool-management';
 import { registerProjectIPCHandlers } from './main/project-management';
 import { registerChatAgentIPCHandlers } from './main/chat-agent-management';
 import { registerAppAgentIPCHandlers } from './main/app-agent-management';
@@ -53,11 +53,14 @@ function createWindow(): void {
 }
 
 // This method will be called when Electron has finished initialization
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow();
 
   // Register IPC handlers
   registerIPCHandlers();
+
+  // Initialize MCP servers (connect to all saved servers and cache tools)
+  await initializeMCPServers();
 
   // Register global shortcut for notepad
   registerGlobalShortcut();

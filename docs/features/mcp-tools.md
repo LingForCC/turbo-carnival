@@ -26,13 +26,13 @@ Both custom and MCP tools are stored in `tools.json`:
       "transport": "stdio",
       "command": "node",
       "args": ["path/to/server.js"],
-      "connected": true,
-      "toolCount": 5,
-      "lastConnected": 1234567890
+      "env": {}
     }
   ]
 }
 ```
+
+**Note:** The `connected`, `toolCount`, and `lastConnected` fields are runtime-only and are NOT persisted to storage.
 
 ### Tool Namespacing
 
@@ -84,6 +84,9 @@ For example, if the "filesystem" MCP server exposes a "read_file" tool, it will 
 - `url` (required for streamable-http): Server URL
 - `env` (optional): Environment variables for stdio transport
 - `headers` (optional): HTTP headers for streamable-http transport (e.g., API keys, auth tokens, session IDs)
+- `connected` (runtime-only): Connection status (NOT saved to storage)
+- `toolCount` (runtime-only): Number of discovered tools (NOT saved to storage)
+- `lastConnected` (runtime-only): Timestamp of last connection (NOT saved to storage)
 
 ## Usage
 
@@ -98,11 +101,14 @@ For example, if the "filesystem" MCP server exposes a "read_file" tool, it will 
 
 ### Managing MCP Servers
 
-- **Connect/Disconnect**: Toggle connection status for a server
-  - Click the **Connect** button (link icon) to connect to a disconnected server
-  - Click the **Disconnect** button (unlink icon) to disconnect from a connected server
+- **Reconnect**: Reconnect to a server and refresh its cached tools
+  - Click the **Reconnect** button (refresh icon) to reconnect to a server
+  - This disconnects and reconnects, then updates the cached tools
+- **Disconnect**: Disconnect from a server (clears cached tools)
+  - Click the **Disconnect** button (unlink icon) to disconnect from a server
+  - The server configuration remains saved for next startup
 - **Edit**: Modify server configuration (automatically reconnects on save)
-- **Delete**: Remove server and its tools
+- **Delete**: Remove server and disconnect (clears cached tools)
 
 ### Using MCP Tools in Chat
 
@@ -118,21 +124,25 @@ MCP tools work transparently with chat agents:
 ### Startup
 
 When the app starts:
-1. MCP servers marked as `connected: true` are auto-connected
-2. Tools are discovered and added to the available tools list
-3. Failed connections are marked as `connected: false`
+1. All saved MCP server configurations are loaded from storage
+2. The app automatically connects to all MCP servers
+3. Tools from each server are discovered and cached in memory
+4. Failed connections are logged but don't prevent other servers from connecting
 
 ### During Operation
 
-- Tools are executed on-demand when invoked by LLM providers
+- Tools are loaded from the in-memory cache (not from reconnecting to servers)
+- Tools are executed on-demand when invoked by LLM providers using cached connections
 - Failed tool executions show error messages in the chat
-- Servers can be explicitly connected or disconnected from the Tools dialog using the toggle button
+- Servers can be explicitly reconnected from the Tools dialog using the reconnect button
+- When a server is removed, its cached tools are automatically cleared from memory
 
 ### Shutdown
 
 When the app quits:
 1. All MCP server connections are cleanly closed
-2. Server configurations are preserved for next startup
+2. All cached tools are cleared from memory
+3. Server configurations are preserved for next startup
 
 ## Tool Execution
 
@@ -157,6 +167,7 @@ Note: Streaming support will be added when the MCP SDK adds streaming capabiliti
 ### Type Definitions
 
 ```typescript
+// Runtime-only fields are NOT persisted to storage
 export interface MCPServerConfig {
   name: string;
   transport: 'stdio' | 'streamable-http';
@@ -165,9 +176,9 @@ export interface MCPServerConfig {
   url?: string;
   env?: Record<string, string>;
   headers?: Record<string, string>;  // HTTP headers for streamable-http
-  connected?: boolean;
-  toolCount?: number;
-  lastConnected?: number;
+  connected?: boolean;      // Runtime-only: NOT saved
+  toolCount?: number;       // Runtime-only: NOT saved
+  lastConnected?: number;   // Runtime-only: NOT saved
 }
 
 export interface Tool {
@@ -192,12 +203,15 @@ export interface Tool {
 
 ### MCP Client Functions
 
-- `connectToMCPServer(config)`: Connect and discover tools
-- `disconnectMCPServer(serverName)`: Disconnect from server
+- `connectToMCPServer(config)`: Connect and discover tools (caches tools in memory)
+- `disconnectMCPServer(serverName)`: Disconnect from server and clear cached tools
 - `executeMCPTool(serverName, toolName, parameters)`: Execute tool
 - `executeMCPToolStream(serverName, toolName, parameters, onChunk)`: Execute with streaming
 - `testMCPServerConnection(config)`: Test without saving
 - `disconnectAllMCPServers()`: Cleanup on shutdown
+- `getAllCachedMCPTools()`: Get all cached MCP tools from memory
+- `clearMCPToolsCache()`: Clear all cached tools
+- `initializeMCPServers()`: Connect to all saved servers and cache tools (called at app startup)
 
 ## Security Considerations
 
@@ -207,10 +221,10 @@ export interface Tool {
 - Environment variables can be passed for authentication
 - Server code runs in isolated process
 
-### SSE Transport
+### Streamable-HTTP Transport
 
 - Server URL should use HTTPS in production
-- No built-in authentication (use reverse proxy)
+- Custom headers can be used for authentication (API keys, tokens, etc.)
 - Connection timeout applies
 
 ### Tool Execution
@@ -225,7 +239,7 @@ export interface Tool {
 
 1. **Invalid command/path**: Verify the command exists in PATH or use absolute path
 2. **Missing dependencies**: Ensure MCP server dependencies are installed
-3. **Port conflicts**: For SSE transport, verify the port is available
+3. **Invalid URL**: For streamable-http transport, verify the URL is correct and accessible
 
 ### Tool Discovery Issues
 
@@ -280,5 +294,4 @@ This server provides tools for interacting with GitHub repositories.
 - Batch tool execution
 - Tool execution history
 - Per-server authentication management
-- Automatic reconnection with exponential backoff
-- Tool caching for offline operation
+- Automatic reconnection with exponential backoff for failed connections

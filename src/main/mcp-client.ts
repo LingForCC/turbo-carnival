@@ -12,6 +12,9 @@ import type { MCPServerConfig } from '../types/tool-management';
 // Active MCP client connections
 const activeClients = new Map<string, Client>();
 
+// In-memory storage for MCP tools (loaded at app startup)
+const mcpToolsCache = new Map<string, Tool[]>();
+
 /**
  * Connect to an MCP server and discover tools
  */
@@ -91,6 +94,10 @@ export async function connectToMCPServer(config: MCPServerConfig): Promise<Tool[
     activeClients.set(config.name, client);
     console.log(`[MCP] ${config.name}: Client stored for later use`);
 
+    // Cache tools in memory
+    mcpToolsCache.set(config.name, tools);
+    console.log(`[MCP] ${config.name}: Tools cached in memory`);
+
     return tools;
   } catch (error: any) {
     console.error(`[MCP] ${config.name}: Connection failed:`, error);
@@ -103,14 +110,28 @@ export async function connectToMCPServer(config: MCPServerConfig): Promise<Tool[
  * Disconnect from an MCP server
  */
 export async function disconnectMCPServer(serverName: string): Promise<void> {
+  console.log(`[MCP] Disconnecting from server "${serverName}"`);
+
   const client = activeClients.get(serverName);
   if (client) {
     try {
       await client.close();
+      console.log(`[MCP] ${serverName}: Client closed`);
     } catch (error) {
-      console.error(`Error closing MCP client for ${serverName}:`, error);
+      console.error(`[MCP] Error closing MCP client for ${serverName}:`, error);
     }
     activeClients.delete(serverName);
+  } else {
+    console.log(`[MCP] ${serverName}: No active client found`);
+  }
+
+  // Clear tools cache for this server
+  const hadCachedTools = mcpToolsCache.has(serverName);
+  mcpToolsCache.delete(serverName);
+  if (hadCachedTools) {
+    console.log(`[MCP] ${serverName}: Cleared ${mcpToolsCache.has(serverName) ? 'FAILED' : 'successfully'} cleared from cache`);
+  } else {
+    console.log(`[MCP] ${serverName}: No cached tools to clear`);
   }
 }
 
@@ -204,4 +225,26 @@ export async function disconnectAllMCPServers(): Promise<void> {
  */
 export function isMCPServerConnected(serverName: string): boolean {
   return activeClients.has(serverName);
+}
+
+/**
+ * Get all cached MCP tools from all servers
+ */
+export function getAllCachedMCPTools(): Tool[] {
+  const allTools: Tool[] = [];
+  const entries = Array.from(mcpToolsCache.entries());
+  for (const [serverName, tools] of entries) {
+    console.log(`[MCP] Getting cached tools for server "${serverName}": ${tools.length} tools`);
+    allTools.push(...tools);
+  }
+  console.log(`[MCP] Total cached MCP tools: ${allTools.length}`);
+  return allTools;
+}
+
+/**
+ * Clear all MCP tools cache
+ */
+export function clearMCPToolsCache(): void {
+  mcpToolsCache.clear();
+  console.log(`[MCP] Cleared all MCP tools cache`);
 }
