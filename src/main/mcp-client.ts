@@ -248,3 +248,11 @@ export function clearMCPToolsCache(): void {
   mcpToolsCache.clear();
   console.log(`[MCP] Cleared all MCP tools cache`);
 }
+
+/**
+ * Get the number of cached tools for a specific server
+ */
+export function getCachedToolCount(serverName: string): number {
+  const tools = mcpToolsCache.get(serverName);
+  return tools ? tools.length : 0;
+}

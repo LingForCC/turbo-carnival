@@ -10,7 +10,9 @@ import {
   testMCPServerConnection,
   disconnectAllMCPServers,
   getAllCachedMCPTools,
-  clearMCPToolsCache
+  clearMCPToolsCache,
+  isMCPServerConnected,
+  getCachedToolCount
 } from './mcp-client';
 import {
   loadMCPServers,
@@ -401,9 +403,15 @@ export function registerToolIPCHandlers(): void {
 
   // ============ MCP IPC HANDLERS ============
 
-  // Handler: Get all MCP server configurations
+  // Handler: Get all MCP server configurations (with runtime connection status)
   ipcMain.handle('mcp:getServers', () => {
-    return loadMCPServers();
+    const servers = loadMCPServers();
+    // Add runtime connection status and tool count to each server
+    return servers.map(server => ({
+      ...server,
+      connected: isMCPServerConnected(server.name),
+      toolCount: getCachedToolCount(server.name)
+    }));
   });
 
   // Handler: Add a new MCP server configuration
