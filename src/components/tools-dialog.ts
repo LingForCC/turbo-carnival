@@ -365,7 +365,9 @@ export class ToolsDialog extends HTMLElement {
   }
 
   private renderToolsList(): string {
-    if (this.tools.length === 0) {
+    const customTools = this.tools.filter(t => (t.toolType || 'custom') === 'custom');
+
+    if (customTools.length === 0) {
       return `
         <p class="text-sm text-gray-400 dark:text-gray-500 text-center py-8 m-0">
           No tools yet. Click "Add Tool" to create one.
@@ -373,7 +375,7 @@ export class ToolsDialog extends HTMLElement {
       `;
     }
 
-    return this.tools.map(tool => {
+    return customTools.map(tool => {
       const environment = tool.environment || 'node';
       const envBadgeClass = environment === 'browser'
         ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
