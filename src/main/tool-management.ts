@@ -5,8 +5,6 @@ import { executeToolInWorker } from './tool-worker-executor';
 import {
   connectToMCPServer,
   disconnectMCPServer,
-  executeMCPTool,
-  executeMCPToolStream,
   testMCPServerConnection,
   disconnectAllMCPServers,
   getAllCachedMCPTools,
@@ -281,37 +279,7 @@ export function registerToolIPCHandlers(): void {
       throw new Error(`Parameter validation failed: ${validationError}`);
     }
 
-    // Route execution based on tool type
-    const toolType = tool.toolType || 'custom';
-
-    if (toolType === 'mcp') {
-      // MCP tool execution
-      if (!tool.mcpServerName || !tool.mcpToolName) {
-        throw new Error(`MCP tool "${request.toolName}" is missing server or tool name`);
-      }
-
-      if (tool.isStreamable) {
-        return await executeMCPToolStream(
-          tool.mcpServerName,
-          tool.mcpToolName,
-          request.parameters,
-          (chunk) => event.sender.send('tools:streamChunk', { toolName: request.toolName, chunk })
-        );
-      }
-
-      const result = await executeMCPTool(
-        tool.mcpServerName,
-        tool.mcpToolName,
-        request.parameters
-      );
-      return {
-        success: true,
-        result,
-        executionTime: 0
-      };
-    }
-
-    // Custom tool execution
+    // Custom tool execution only (MCP tools are handled separately)
     const environment = tool.environment || 'node';
 
     if (environment === 'browser') {
