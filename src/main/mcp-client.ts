@@ -19,8 +19,6 @@ const mcpToolsCache = new Map<string, Tool[]>();
  * Connect to an MCP server and discover tools
  */
 export async function connectToMCPServer(config: MCPServerConfig): Promise<Tool[]> {
-  console.log(`[MCP] Connecting to server "${config.name}" with transport: ${config.transport}`);
-
   const client = new Client({
     name: 'turbo-carnival',
     version: '1.0.0'
@@ -35,7 +33,6 @@ export async function connectToMCPServer(config: MCPServerConfig): Promise<Tool[
       if (!config.command) {
         throw new Error('stdio transport requires a command');
       }
-      console.log(`[MCP] ${config.name}: Creating stdio transport with command: ${config.command}`);
       transport = new StdioClientTransport({
         command: config.command,
         args: config.args || [],
@@ -44,10 +41,6 @@ export async function connectToMCPServer(config: MCPServerConfig): Promise<Tool[
     } else if (config.transport === 'streamable-http') {
       if (!config.url) {
         throw new Error('streamable-http transport requires a url');
-      }
-      console.log(`[MCP] ${config.name}: Creating streamable-http transport to URL: ${config.url}`);
-      if (config.headers) {
-        console.log(`[MCP] ${config.name}: Using headers:`, Object.keys(config.headers));
       }
       // Create StreamableHTTP transport with custom headers support
       const transportOptions: any = {
@@ -62,14 +55,11 @@ export async function connectToMCPServer(config: MCPServerConfig): Promise<Tool[
     }
 
     // Connect to server
-    console.log(`[MCP] ${config.name}: Connecting...`);
     await client.connect(transport);
-    console.log(`[MCP] ${config.name}: Connected successfully`);
 
     // List available tools
     const toolsResponse = await client.listTools();
     const mcpTools = toolsResponse.tools || [];
-    console.log(`[MCP] ${config.name}: Discovered ${mcpTools.length} tools:`, mcpTools.map(t => t.name));
 
     // Convert MCP tools to Tool format
     const tools: Tool[] = mcpTools.map((mcpTool: any) => ({
@@ -87,16 +77,11 @@ export async function connectToMCPServer(config: MCPServerConfig): Promise<Tool[
       isStreamable: config.transport === 'streamable-http' // Mark as streamable for streamable-http
     }));
 
-    console.log(`[MCP] ${config.name}: Converted ${tools.length} tools to internal format`);
-    console.log(`[MCP] ${config.name}: Tools are ENABLED:`, tools.map(t => ({ name: t.name, enabled: t.enabled })));
-
     // Store client for later use
     activeClients.set(config.name, client);
-    console.log(`[MCP] ${config.name}: Client stored for later use`);
 
     // Cache tools in memory
     mcpToolsCache.set(config.name, tools);
-    console.log(`[MCP] ${config.name}: Tools cached in memory`);
 
     return tools;
   } catch (error: any) {
@@ -110,29 +95,18 @@ export async function connectToMCPServer(config: MCPServerConfig): Promise<Tool[
  * Disconnect from an MCP server
  */
 export async function disconnectMCPServer(serverName: string): Promise<void> {
-  console.log(`[MCP] Disconnecting from server "${serverName}"`);
-
   const client = activeClients.get(serverName);
   if (client) {
     try {
       await client.close();
-      console.log(`[MCP] ${serverName}: Client closed`);
     } catch (error) {
       console.error(`[MCP] Error closing MCP client for ${serverName}:`, error);
     }
     activeClients.delete(serverName);
-  } else {
-    console.log(`[MCP] ${serverName}: No active client found`);
   }
 
   // Clear tools cache for this server
-  const hadCachedTools = mcpToolsCache.has(serverName);
   mcpToolsCache.delete(serverName);
-  if (hadCachedTools) {
-    console.log(`[MCP] ${serverName}: Cleared ${mcpToolsCache.has(serverName) ? 'FAILED' : 'successfully'} cleared from cache`);
-  } else {
-    console.log(`[MCP] ${serverName}: No cached tools to clear`);
-  }
 }
 
 /**
@@ -143,30 +117,19 @@ export async function executeMCPTool(
   toolName: string,
   parameters: Record<string, any>
 ): Promise<any> {
-  console.log(`[MCP] Executing tool: server="${serverName}", tool="${toolName}"`);
-  console.log(`[MCP] Tool parameters:`, parameters);
-
   const client = activeClients.get(serverName);
   if (!client) {
-    console.error(`[MCP] ERROR: MCP server "${serverName}" is not connected`);
-    console.log(`[MCP] Active clients:`, Array.from(activeClients.keys()));
     throw new Error(`MCP server "${serverName}" is not connected`);
   }
 
-  console.log(`[MCP] Client found for server "${serverName}"`);
-
   try {
-    console.log(`[MCP] Calling tool "${toolName}" on server "${serverName}"...`);
     const result = await client.callTool({
       name: toolName,
       arguments: parameters
     });
-    console.log(`[MCP] Tool "${toolName}" executed successfully`);
-    console.log(`[MCP] Result:`, result);
-
     return result;
   } catch (error: any) {
-    console.error(`[MCP] ERROR: Tool execution failed for "${toolName}":`, error);
+    console.error(`[MCP] Tool execution failed for "${toolName}":`, error);
     throw new Error(`MCP tool execution failed: ${error.message}`);
   }
 }
@@ -232,12 +195,9 @@ export function isMCPServerConnected(serverName: string): boolean {
  */
 export function getAllCachedMCPTools(): Tool[] {
   const allTools: Tool[] = [];
-  const entries = Array.from(mcpToolsCache.entries());
-  for (const [serverName, tools] of entries) {
-    console.log(`[MCP] Getting cached tools for server "${serverName}": ${tools.length} tools`);
+  for (const tools of mcpToolsCache.values()) {
     allTools.push(...tools);
   }
-  console.log(`[MCP] Total cached MCP tools: ${allTools.length}`);
   return allTools;
 }
 
@@ -246,7 +206,6 @@ export function getAllCachedMCPTools(): Tool[] {
  */
 export function clearMCPToolsCache(): void {
   mcpToolsCache.clear();
-  console.log(`[MCP] Cleared all MCP tools cache`);
 }
 
 /**
