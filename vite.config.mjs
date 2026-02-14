@@ -69,7 +69,8 @@ export default defineConfig({
         index: './index.html',
         notepad: './notepad.html',
         'quick-ai': './quick-ai.html',
-        snippet: './snippet.html'
+        snippet: './snippet.html',
+        'clipboard-history': './clipboard-history.html'
       }
     }
   },

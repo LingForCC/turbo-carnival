@@ -17,6 +17,9 @@ import { registerQuickAIPCHandlers } from './main/quick-ai-management';
 import { registerQuickAIGlobalShortcut, unregisterQuickAIGlobalShortcut, closeQuickAIWindow } from './main/quick-ai-window';
 import { registerSnippetIPCHandlers } from './main/snippet-management';
 import { registerSnippetShortcut, unregisterSnippetShortcut, closeSnippetWindow } from './main/snippet-window';
+import { registerClipboardHistoryIPCHandlers } from './main/clipboard-history-management';
+import { registerClipboardHistoryShortcut, unregisterClipboardHistoryShortcut, closeClipboardHistoryWindow } from './main/clipboard-history-window';
+import { startClipboardWatcher, stopClipboardWatcher } from './main/clipboard-watcher';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -71,6 +74,12 @@ app.whenReady().then(async () => {
   // Register global shortcut for Snippets
   registerSnippetShortcut();
 
+  // Start clipboard watcher
+  startClipboardWatcher();
+
+  // Register global shortcut for Clipboard History
+  registerClipboardHistoryShortcut();
+
   app.on('activate', () => {
     // On macOS, re-create the main window when the dock icon is clicked
     if (mainWindow === null) {
@@ -116,6 +125,9 @@ function registerIPCHandlers(): void {
 
   // ============ SNIPPET IPC HANDLERS ============
   registerSnippetIPCHandlers();
+
+  // ============ CLIPBOARD HISTORY IPC HANDLERS ============
+  registerClipboardHistoryIPCHandlers();
 }
 
 // Quit when all windows are closed, except on macOS
@@ -133,6 +145,10 @@ app.on('before-quit', async () => {
   closeQuickAIWindow();
   // Close snippet window
   closeSnippetWindow();
+  // Close clipboard history window
+  closeClipboardHistoryWindow();
+  // Stop clipboard watcher
+  stopClipboardWatcher();
   // Disconnect all MCP servers
   const { disconnectAllMCPServers } = await import('./main/mcp-client');
   await disconnectAllMCPServers();
@@ -144,4 +160,5 @@ app.on('will-quit', () => {
   unregisterGlobalShortcut();
   unregisterQuickAIGlobalShortcut();
   unregisterSnippetShortcut();
+  unregisterClipboardHistoryShortcut();
 });

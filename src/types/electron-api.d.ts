@@ -34,6 +34,9 @@ import type { QuickAISettingsValidation } from './quick-ai-management';
 // Import snippet types for use in ElectronAPI interface
 import type { SnippetFile } from './snippet-management';
 
+// Import clipboard history types for use in ElectronAPI interface
+import type { ClipboardHistoryItem } from './clipboard-history-management';
+
 interface ElectronAPI {
   platform: string;
   openFolderDialog: () => Promise<string | null>;
@@ -263,6 +266,29 @@ interface ElectronAPI {
 
   // Close snippet window
   closeSnippetWindow: () => void;
+
+  // ============ CLIPBOARD HISTORY METHODS ============
+
+  // Get list of clipboard history items
+  getClipboardHistoryItems: () => Promise<ClipboardHistoryItem[]>;
+
+  // Delete a clipboard history item
+  deleteClipboardHistoryItem: (id: string) => Promise<void>;
+
+  // Clear all clipboard history items
+  clearClipboardHistory: () => Promise<void>;
+
+  // Get text content of a clipboard history item
+  getTextContent: (id: string) => Promise<string>;
+
+  // Get image data as base64 data URL
+  getImageData: (id: string) => Promise<string>;
+
+  // Close clipboard history window
+  closeClipboardHistoryWindow: () => void;
+
+  // Listen for clipboard history window shown event
+  onClipboardHistoryWindowShown: (callback: () => void) => () => void;
 }
 
 declare global {
