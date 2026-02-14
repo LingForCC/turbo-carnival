@@ -3,6 +3,8 @@ import { getProviderManagementAPI } from '../api/provider-management';
 import type { AppSettings } from '../types/settings-management';
 import type { LLMProvider, ModelConfig } from '../types/provider-management';
 
+type SettingsTab = 'general' | 'notepad' | 'snippets' | 'clipboard-history' | 'quick-ai';
+
 /**
  * SettingsDialog Web Component
  * Modal dialog for app settings including notepad configuration
@@ -10,6 +12,7 @@ import type { LLMProvider, ModelConfig } from '../types/provider-management';
 export class SettingsDialog extends HTMLElement {
   private settings: AppSettings | null = null;
   private currentTheme: 'light' | 'dark' = 'light';
+  private currentTab: SettingsTab = 'general';
   private api = getSettingsManagementAPI();
   private providerApi = getProviderManagementAPI();
   private providers: LLMProvider[] = [];
@@ -75,151 +78,187 @@ export class SettingsDialog extends HTMLElement {
             </button>
           </div>
 
-          <!-- Content -->
-          <div class="p-6 space-y-6">
-            <!-- Theme Selection -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Theme
-              </label>
-              <div class="flex gap-4">
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="theme"
-                    value="light"
-                    ${this.currentTheme === 'light' ? 'checked' : ''}
-                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  >
-                  <span class="text-sm text-gray-700 dark:text-gray-300">Light</span>
+          <!-- Tab Navigation -->
+          <div class="px-6 pt-4 border-b border-gray-200 dark:border-gray-700">
+            <nav class="flex gap-1 -mb-px">
+              <button data-tab="general" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${this.currentTab === 'general' ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300'}">
+                General
+              </button>
+              <button data-tab="notepad" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${this.currentTab === 'notepad' ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300'}">
+                Notepad
+              </button>
+              <button data-tab="snippets" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${this.currentTab === 'snippets' ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300'}">
+                Snippets
+              </button>
+              <button data-tab="clipboard-history" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${this.currentTab === 'clipboard-history' ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300'}">
+                Clipboard
+              </button>
+              <button data-tab="quick-ai" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${this.currentTab === 'quick-ai' ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300'}">
+                Quick AI
+              </button>
+            </nav>
+          </div>
+
+          <!-- Tab Content -->
+          <div class="p-6 min-h-[200px]">
+            <!-- General Tab -->
+            <div id="tab-general" class="tab-content ${this.currentTab === 'general' ? '' : 'hidden'}">
+              <!-- Theme Selection -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Theme
                 </label>
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="theme"
-                    value="dark"
-                    ${this.currentTheme === 'dark' ? 'checked' : ''}
-                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  >
-                  <span class="text-sm text-gray-700 dark:text-gray-300">Dark</span>
+                <div class="flex gap-4">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="theme"
+                      value="light"
+                      ${this.currentTheme === 'light' ? 'checked' : ''}
+                      class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    >
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Light</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="theme"
+                      value="dark"
+                      ${this.currentTheme === 'dark' ? 'checked' : ''}
+                      class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    >
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Dark</span>
+                  </label>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Choose between light and dark appearance for the application.
+                </p>
+              </div>
+            </div>
+
+            <!-- Notepad Tab -->
+            <div id="tab-notepad" class="tab-content ${this.currentTab === 'notepad' ? '' : 'hidden'}">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="notepad-location">
+                  Notepad Save Location
                 </label>
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    id="notepad-location-input"
+                    readonly
+                    class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
+                    placeholder="Not configured"
+                    value="${this.escapeHtml(notepadLocation)}"
+                  >
+                  <button
+                    id="browse-notepad-btn"
+                    class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer border-0"
+                  >
+                    Browse...
+                  </button>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  If not configured, notepad content will not be saved.
+                </p>
               </div>
             </div>
 
-            <!-- Notepad Save Location -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="notepad-location">
-                Notepad Save Location
-              </label>
-              <div class="flex gap-2">
-                <input
-                  type="text"
-                  id="notepad-location-input"
-                  readonly
-                  class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
-                  placeholder="Not configured"
-                  value="${this.escapeHtml(notepadLocation)}"
-                >
-                <button
-                  id="browse-notepad-btn"
-                  class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer border-0"
-                >
-                  Browse...
-                </button>
+            <!-- Snippets Tab -->
+            <div id="tab-snippets" class="tab-content ${this.currentTab === 'snippets' ? '' : 'hidden'}">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="snippet-location">
+                  Snippet Save Location
+                </label>
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    id="snippet-location-input"
+                    readonly
+                    class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
+                    placeholder="Not configured"
+                    value="${this.escapeHtml(snippetLocation)}"
+                  >
+                  <button
+                    id="browse-snippet-btn"
+                    class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer border-0"
+                  >
+                    Browse...
+                  </button>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  If not configured, snippets will not be available (Option+S).
+                </p>
               </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                If not configured, notepad content will not be saved.
-              </p>
             </div>
 
-            <!-- Snippet Save Location -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="snippet-location">
-                Snippet Save Location
-              </label>
-              <div class="flex gap-2">
-                <input
-                  type="text"
-                  id="snippet-location-input"
-                  readonly
-                  class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
-                  placeholder="Not configured"
-                  value="${this.escapeHtml(snippetLocation)}"
-                >
-                <button
-                  id="browse-snippet-btn"
-                  class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer border-0"
-                >
-                  Browse...
-                </button>
+            <!-- Clipboard History Tab -->
+            <div id="tab-clipboard-history" class="tab-content ${this.currentTab === 'clipboard-history' ? '' : 'hidden'}">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="clipboard-history-location">
+                  Clipboard History Save Location
+                </label>
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    id="clipboard-history-location-input"
+                    readonly
+                    class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
+                    placeholder="Not configured"
+                    value="${this.escapeHtml(clipboardHistoryLocation)}"
+                  >
+                  <button
+                    id="browse-clipboard-history-btn"
+                    class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer border-0"
+                  >
+                    Browse...
+                  </button>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  If not configured, clipboard history will not be available (Shift+Cmd+V / Shift+Ctrl+V).
+                </p>
               </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                If not configured, snippets will not be available (Option+S).
-              </p>
             </div>
 
-            <!-- Clipboard History Save Location -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="clipboard-history-location">
-                Clipboard History Save Location
-              </label>
-              <div class="flex gap-2">
-                <input
-                  type="text"
-                  id="clipboard-history-location-input"
-                  readonly
-                  class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
-                  placeholder="Not configured"
-                  value="${this.escapeHtml(clipboardHistoryLocation)}"
+            <!-- Quick AI Tab -->
+            <div id="tab-quick-ai" class="tab-content ${this.currentTab === 'quick-ai' ? '' : 'hidden'} space-y-6">
+              <!-- Quick AI Default Provider -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="default-provider">
+                  Default Provider
+                </label>
+                <select
+                  id="default-provider-select"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
                 >
-                <button
-                  id="browse-clipboard-history-btn"
-                  class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer border-0"
-                >
-                  Browse...
-                </button>
+                  <option value="">-- Select Provider --</option>
+                  ${this.providers.map(provider =>
+                    `<option value="${this.escapeHtml(provider.id)}" ${defaultProviderId === provider.id ? 'selected' : ''}>${this.escapeHtml(provider.name)}</option>`
+                  ).join('')}
+                </select>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Default LLM provider for Quick AI conversations (Option+Q).
+                </p>
               </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                If not configured, clipboard history will not be available (Shift+Cmd+V / Shift+Ctrl+V).
-              </p>
-            </div>
 
-            <!-- Quick AI Default Provider -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="default-provider">
-                Quick AI Default Provider
-              </label>
-              <select
-                id="default-provider-select"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
-              >
-                <option value="">-- Select Provider --</option>
-                ${this.providers.map(provider =>
-                  `<option value="${this.escapeHtml(provider.id)}" ${defaultProviderId === provider.id ? 'selected' : ''}>${this.escapeHtml(provider.name)}</option>`
-                ).join('')}
-              </select>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Default LLM provider for Quick AI conversations (Option+Q).
-              </p>
-            </div>
-
-            <!-- Quick AI Default Model Config -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="default-model">
-                Quick AI Default Model
-              </label>
-              <select
-                id="default-model-select"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
-              >
-                <option value="">-- Select Model --</option>
-                ${this.modelConfigs.map(model =>
-                  `<option value="${this.escapeHtml(model.id)}" ${defaultModelConfigId === model.id ? 'selected' : ''}>${this.escapeHtml(model.name)}</option>`
-                ).join('')}
-              </select>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Default model configuration for Quick AI conversations.
-              </p>
+              <!-- Quick AI Default Model Config -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="default-model">
+                  Default Model
+                </label>
+                <select
+                  id="default-model-select"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
+                >
+                  <option value="">-- Select Model --</option>
+                  ${this.modelConfigs.map(model =>
+                    `<option value="${this.escapeHtml(model.id)}" ${defaultModelConfigId === model.id ? 'selected' : ''}>${this.escapeHtml(model.name)}</option>`
+                  ).join('')}
+                </select>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Default model configuration for Quick AI conversations.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -255,6 +294,18 @@ export class SettingsDialog extends HTMLElement {
       cancelBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.close());
     }
+
+    // Tab buttons
+    const tabBtns = this.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+      (btn as HTMLElement).addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const tab = target.dataset.tab as SettingsTab;
+        if (tab) {
+          this.switchTab(tab);
+        }
+      });
+    });
 
     // Theme radio buttons
     const themeRadios = this.querySelectorAll('input[name="theme"]');
@@ -296,9 +347,7 @@ export class SettingsDialog extends HTMLElement {
     // Default provider dropdown
     const providerSelect = this.querySelector('#default-provider-select');
     if (providerSelect) {
-      const newSelect = providerSelect.cloneNode(true);
-      providerSelect.replaceWith(newSelect);
-      (newSelect as HTMLSelectElement).addEventListener('change', (e) => {
+      (providerSelect as HTMLSelectElement).addEventListener('change', (e) => {
         const target = e.target as HTMLSelectElement;
         this.handleProviderChange(target.value);
       });
@@ -307,13 +356,16 @@ export class SettingsDialog extends HTMLElement {
     // Default model config dropdown
     const modelSelect = this.querySelector('#default-model-select');
     if (modelSelect) {
-      const newSelect = modelSelect.cloneNode(true);
-      modelSelect.replaceWith(newSelect);
-      (newSelect as HTMLSelectElement).addEventListener('change', (e) => {
+      (modelSelect as HTMLSelectElement).addEventListener('change', (e) => {
         const target = e.target as HTMLSelectElement;
         this.handleModelConfigChange(target.value);
       });
     }
+  }
+
+  private switchTab(tab: SettingsTab): void {
+    this.currentTab = tab;
+    this.render();
   }
 
   private async handleThemeChange(newTheme: string): Promise<void> {
