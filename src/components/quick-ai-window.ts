@@ -108,6 +108,9 @@ export class QuickAIWindow extends HTMLElement {
       this.attachEventListeners();
       // Re-attach conversation listeners (awaits getting the agent)
       await this.attachConversationListeners();
+      // Focus the input so user can start typing immediately
+      const conversation = this.querySelector('#conversation-panel') as any;
+      conversation?.focusInput();
     });
   }
 

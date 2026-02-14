@@ -73,15 +73,17 @@ export function createQuickAIWindow(): BrowserWindow {
 
 /**
  * Show the Quick AI window
- * Creates window if it doesn't exist, otherwise shows it
+ * Creates window if it doesn't exist, otherwise shows and brings it to front
  */
 export function showQuickAIWindow(): void {
   if (quickAIWindow) {
     quickAIWindow.show();
+    quickAIWindow.focus();
   } else {
     createQuickAIWindow();
     if (quickAIWindow) {
       quickAIWindow.show();
+      quickAIWindow.focus();
     }
   }
 }
@@ -100,7 +102,7 @@ export function toggleQuickAIWindow(): void {
 }
 
 /**
- * Register the global shortcut for opening/closing the Quick AI window
+ * Register the global shortcut for bringing the Quick AI window to front
  * Option+Q on macOS, Alt+Q on Windows/Linux
  */
 export function registerQuickAIGlobalShortcut(): void {
@@ -108,7 +110,7 @@ export function registerQuickAIGlobalShortcut(): void {
   // On macOS: Alt = Option key
   // On Windows/Linux: Alt = Alt key
   const ret = globalShortcut.register('Alt+Q', () => {
-    toggleQuickAIWindow();
+    showQuickAIWindow();
   });
 
   if (!ret) {

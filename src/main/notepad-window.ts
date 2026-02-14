@@ -71,15 +71,17 @@ export function createNotepadWindow(): BrowserWindow {
 
 /**
  * Show the notepad window
- * Creates window if it doesn't exist, otherwise shows it
+ * Creates window if it doesn't exist, otherwise shows and brings it to front
  */
 export function showNotepadWindow(): void {
   if (notepadWindow) {
     notepadWindow.show();
+    notepadWindow.focus();
   } else {
     createNotepadWindow();
     if (notepadWindow) {
       notepadWindow.show();
+      notepadWindow.focus();
     }
   }
 }
@@ -98,7 +100,7 @@ export function toggleNotepadWindow(): void {
 }
 
 /**
- * Register the global shortcut for opening/closing the notepad
+ * Register the global shortcut for bringing the notepad to front
  * Option+A on macOS, Alt+A on Windows/Linux
  */
 export function registerGlobalShortcut(): void {
@@ -106,7 +108,7 @@ export function registerGlobalShortcut(): void {
   // On macOS: Alt = Option key
   // On Windows/Linux: Alt = Alt key
   const ret = globalShortcut.register('Alt+A', () => {
-    toggleNotepadWindow();
+    showNotepadWindow();
   });
 
   if (!ret) {

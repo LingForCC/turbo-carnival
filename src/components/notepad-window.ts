@@ -88,6 +88,9 @@ export class NotepadWindow extends HTMLElement {
       await this.loadFiles();
       this.renderFileList();
       this.renderContent();
+      // Focus the textarea so user can start typing immediately
+      const textarea = this.querySelector('#notepad-textarea') as HTMLTextAreaElement;
+      textarea?.focus();
     });
   }
 

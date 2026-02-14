@@ -75,7 +75,7 @@ export function createClipboardHistoryWindow(): BrowserWindow {
 
 /**
  * Show the clipboard history window
- * Creates window if it doesn't exist, otherwise shows it
+ * Creates window if it doesn't exist, otherwise shows and brings it to front
  * Shows error dialog if save location is not configured
  */
 export function showClipboardHistoryWindow(): void {
@@ -91,10 +91,12 @@ export function showClipboardHistoryWindow(): void {
 
   if (clipboardHistoryWindow) {
     clipboardHistoryWindow.show();
+    clipboardHistoryWindow.focus();
   } else {
     createClipboardHistoryWindow();
     if (clipboardHistoryWindow) {
       clipboardHistoryWindow.show();
+      clipboardHistoryWindow.focus();
     }
   }
 }
@@ -113,15 +115,15 @@ export function toggleClipboardHistoryWindow(): void {
 }
 
 /**
- * Register the global shortcut for opening/closing the clipboard history window
- * Shift+Cmd+V on macOS, Shift+Alt+V on Windows/Linux
+ * Register the global shortcut for bringing the clipboard history window to front
+ * Shift+Cmd+V on macOS, Shift+Ctrl+V on Windows/Linux
  */
 export function registerClipboardHistoryShortcut(): void {
   // Use CmdOrCtrl+Shift+V which works across all platforms
   // On macOS: Cmd+Shift+V
   // On Windows/Linux: Ctrl+Shift+V
   const ret = globalShortcut.register('CmdOrCtrl+Shift+V', () => {
-    toggleClipboardHistoryWindow();
+    showClipboardHistoryWindow();
   });
 
   if (!ret) {

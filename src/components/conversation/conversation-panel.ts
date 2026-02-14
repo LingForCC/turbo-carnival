@@ -213,6 +213,15 @@ export class ConversationPanel extends HTMLElement {
   }
 
   /**
+   * Focus the chat input textarea
+   * Called by parent components when the window is shown/brought to front
+   */
+  public focusInput(): void {
+    const textarea = this.querySelector('#chat-input') as HTMLTextAreaElement;
+    textarea?.focus();
+  }
+
+  /**
    * Skip auto-scroll while streaming to avoid pulling the viewport.
    */
   private scrollIfNotStreaming(): void {
