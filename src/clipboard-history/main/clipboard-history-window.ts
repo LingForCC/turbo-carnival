@@ -46,6 +46,16 @@ export function createClipboardHistoryWindow(): BrowserWindow {
     clipboardHistoryWindow.loadFile(path.join(__dirname, '../dist-renderer/clipboard-history.html'));
   }
 
+  // Show window when ready to avoid focus issues
+  clipboardHistoryWindow.once('ready-to-show', () => {
+    if (clipboardHistoryWindow && !clipboardHistoryWindow.isDestroyed()) {
+      clipboardHistoryWindow.center();
+      clipboardHistoryWindow.show();
+      clipboardHistoryWindow.focus();
+      clipboardHistoryWindow.webContents.send('clipboard-history:windowShown');
+    }
+  });
+
   // Send event when window is shown (after being hidden)
   clipboardHistoryWindow.on('show', () => {
     clipboardHistoryWindow?.center();
@@ -90,14 +100,18 @@ export function showClipboardHistoryWindow(): void {
   }
 
   if (clipboardHistoryWindow) {
-    clipboardHistoryWindow.show();
-    clipboardHistoryWindow.focus();
-  } else {
-    createClipboardHistoryWindow();
-    if (clipboardHistoryWindow) {
+    // If window is already visible, just focus it
+    if (clipboardHistoryWindow.isVisible()) {
+      clipboardHistoryWindow.focus();
+    } else {
+      // Window exists but is hidden - show and focus
       clipboardHistoryWindow.show();
       clipboardHistoryWindow.focus();
     }
+  } else {
+    // Window doesn't exist - create it
+    // The ready-to-show event will handle showing and focusing
+    createClipboardHistoryWindow();
   }
 }
 

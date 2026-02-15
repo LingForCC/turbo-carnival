@@ -14,6 +14,8 @@ import type { SettingsManagementAPI } from '../../settings/types';
  * - Clear all items
  * - Handles "no save location configured" error gracefully
  * - Dark mode support synced with app settings
+ * - Keyboard navigation (arrow keys, Enter to copy)
+ * - Search bar to filter items by content or filename
  */
 export class ClipboardHistoryWindow extends HTMLElement {
   private api: ClipboardHistoryManagementAPI;
@@ -24,6 +26,8 @@ export class ClipboardHistoryWindow extends HTMLElement {
   private noLocationConfigured: boolean = false;
   private currentTheme: 'light' | 'dark' = 'light';
   private windowShownCleanup: (() => void) | null = null;
+  private searchQuery: string = '';
+  private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
 
   constructor() {
     super();
@@ -51,6 +55,11 @@ export class ClipboardHistoryWindow extends HTMLElement {
     if (this.windowShownCleanup) {
       this.windowShownCleanup();
       this.windowShownCleanup = null;
+    }
+    // Clean up keyboard handler
+    if (this.keyboardHandler) {
+      document.removeEventListener('keydown', this.keyboardHandler);
+      this.keyboardHandler = null;
     }
   }
 
@@ -84,6 +93,9 @@ export class ClipboardHistoryWindow extends HTMLElement {
       this.items = await this.api.getClipboardHistoryItems();
       this.noLocationConfigured = false;
 
+      // Reset search when loading items
+      this.searchQuery = '';
+
       // Select first item if available
       if (this.items.length > 0) {
         this.selectedItem = this.items[0];
@@ -115,15 +127,38 @@ export class ClipboardHistoryWindow extends HTMLElement {
    * Called when the window is shown again
    */
   private async refreshItems(): Promise<void> {
+    // Clear search when refreshing
+    this.searchQuery = '';
     await this.loadItems();
     this.render();
     this.attachEventListeners();
   }
 
   /**
+   * Get filtered items based on search query
+   */
+  private get filteredItems(): ClipboardHistoryItem[] {
+    if (!this.searchQuery.trim()) {
+      return this.items;
+    }
+    const query = this.searchQuery.toLowerCase();
+    return this.items.filter(item => {
+      if (item.type === 'text') {
+        return item.preview.toLowerCase().includes(query);
+      } else {
+        // For images, search in filename
+        return item.fileName.toLowerCase().includes(query);
+      }
+    });
+  }
+
+  /**
    * Render the clipboard history UI
    */
   private render(): void {
+    const displayItems = this.filteredItems;
+    const hasFilteredResults = !this.noLocationConfigured && this.items.length > 0 && displayItems.length === 0 && this.searchQuery.trim() !== '';
+
     this.innerHTML = `
       <div class="flex h-screen bg-white dark:bg-gray-900">
         <!-- Sidebar -->
@@ -144,12 +179,32 @@ export class ClipboardHistoryWindow extends HTMLElement {
             </div>
           </div>
 
+          <!-- Search Bar -->
+          ${!this.noLocationConfigured && this.items.length > 0 ? `
+          <div class="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+            <div class="relative">
+              <input
+                id="search-input"
+                type="text"
+                placeholder="Search history..."
+                value="${this.escapeHtml(this.searchQuery)}"
+                class="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none focus:border-blue-400 dark:focus:border-blue-500"
+              />
+              <svg class="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </div>
+          </div>
+          ` : ''}
+
           <!-- Item List -->
           <div id="history-list" class="flex-1 overflow-y-auto p-2 space-y-1">
             ${this.noLocationConfigured
               ? '<div class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">Please configure save location in Settings</div>'
               : this.items.length === 0
               ? '<div class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No clipboard history yet. Copy some text or images.</div>'
+              : hasFilteredResults
+              ? '<div class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No results found</div>'
               : this.renderHistoryListItems()
             }
           </div>
@@ -197,7 +252,8 @@ export class ClipboardHistoryWindow extends HTMLElement {
    * Generate HTML for history list items
    */
   private renderHistoryListItems(): string {
-    return this.items.map((item, index) => `
+    const displayItems = this.filteredItems;
+    return displayItems.map((item, index) => `
       <div class="history-item-container group flex items-center gap-1 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${this.selectedIndex === index ? 'bg-blue-50 dark:bg-blue-900/20' : ''}">
         <div
           class="history-item flex-1 min-w-0 p-2 rounded cursor-pointer"
@@ -296,10 +352,15 @@ export class ClipboardHistoryWindow extends HTMLElement {
   private renderHistoryList(): void {
     const historyList = this.querySelector('#history-list');
     if (historyList) {
+      const displayItems = this.filteredItems;
+      const hasFilteredResults = !this.noLocationConfigured && this.items.length > 0 && displayItems.length === 0 && this.searchQuery.trim() !== '';
+
       historyList.innerHTML = this.noLocationConfigured
         ? '<div class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">Please configure save location in Settings</div>'
         : this.items.length === 0
         ? '<div class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No clipboard history yet. Copy some text or images.</div>'
+        : hasFilteredResults
+        ? '<div class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No results found</div>'
         : this.renderHistoryListItems();
       this.attachHistoryListListeners();
     }
@@ -318,8 +379,24 @@ export class ClipboardHistoryWindow extends HTMLElement {
       (newBtn as HTMLElement).addEventListener('click', () => this.clearAll());
     }
 
+    // Search input
+    const searchInput = this.querySelector('#search-input') as HTMLInputElement;
+    if (searchInput) {
+      const newInput = searchInput.cloneNode(true);
+      searchInput.replaceWith(newInput);
+      (newInput as HTMLInputElement).addEventListener('input', (e) => {
+        this.searchQuery = (e.target as HTMLInputElement).value;
+        this.handleSearch();
+      });
+      // Focus the search input
+      (newInput as HTMLInputElement).focus();
+    }
+
     // History list items
     this.attachHistoryListListeners();
+
+    // Keyboard navigation
+    this.attachKeyboardHandler();
 
     // Load preview content if item is selected
     if (this.selectedItem) {
@@ -359,15 +436,16 @@ export class ClipboardHistoryWindow extends HTMLElement {
   }
 
   /**
-   * Select an item by index
+   * Select an item by index (in filtered list)
    */
   private async selectItem(index: number): Promise<void> {
-    if (index < 0 || index >= this.items.length) {
+    const displayItems = this.filteredItems;
+    if (index < 0 || index >= displayItems.length) {
       return;
     }
 
     this.selectedIndex = index;
-    this.selectedItem = this.items[index];
+    this.selectedItem = displayItems[index];
 
     // Re-render list to update selection style
     this.renderHistoryList();
@@ -421,29 +499,34 @@ export class ClipboardHistoryWindow extends HTMLElement {
   }
 
   /**
-   * Delete an item
+   * Delete an item (index is from filtered list)
    */
   private async deleteItem(index: number): Promise<void> {
-    const item = this.items[index];
+    const displayItems = this.filteredItems;
+    const item = displayItems[index];
     if (!item) return;
 
     try {
       await this.api.deleteClipboardHistoryItem(item.id);
 
-      // Remove from local array
-      this.items.splice(index, 1);
+      // Find the actual index in the original items array
+      const actualIndex = this.items.findIndex(i => i.id === item.id);
+      if (actualIndex >= 0) {
+        this.items.splice(actualIndex, 1);
+      }
+
+      // Clear search to reset filtering
+      this.searchQuery = '';
 
       // Update selection
-      if (this.selectedIndex === index) {
-        if (this.items.length > 0) {
-          this.selectedIndex = Math.min(index, this.items.length - 1);
-          this.selectedItem = this.items[this.selectedIndex];
-        } else {
-          this.selectedIndex = -1;
-          this.selectedItem = null;
-        }
-      } else if (this.selectedIndex > index) {
-        this.selectedIndex--;
+      if (this.items.length > 0) {
+        // Try to select the item at the same position, or the last item
+        const newIndex = Math.min(index, this.items.length - 1);
+        this.selectedIndex = newIndex;
+        this.selectedItem = this.items[newIndex];
+      } else {
+        this.selectedIndex = -1;
+        this.selectedItem = null;
       }
 
       // Re-render
@@ -489,6 +572,189 @@ export class ClipboardHistoryWindow extends HTMLElement {
     setTimeout(() => {
       toast.remove();
     }, 3000);
+  }
+
+  /**
+   * Handle search input changes
+   */
+  private handleSearch(): void {
+    const displayItems = this.filteredItems;
+
+    // Reset selection to first item when search changes
+    if (displayItems.length > 0) {
+      this.selectedIndex = 0;
+      this.selectedItem = displayItems[0];
+    } else {
+      this.selectedIndex = -1;
+      this.selectedItem = null;
+    }
+
+    // Re-render history list and preview
+    this.renderHistoryList();
+
+    // Update toolbar
+    const itemInfo = this.querySelector('#item-info');
+    const itemType = this.querySelector('#item-type');
+    if (itemInfo && this.selectedItem) {
+      itemInfo.textContent = this.getItemInfo(this.selectedItem);
+    } else if (itemInfo) {
+      itemInfo.textContent = 'No item selected';
+    }
+    if (itemType && this.selectedItem) {
+      itemType.textContent = this.selectedItem.type === 'text' ? 'Text' : 'Image';
+    } else if (itemType) {
+      itemType.textContent = '';
+    }
+
+    // Update preview container
+    const previewContainer = this.querySelector('#preview-container');
+    if (previewContainer) {
+      if (this.selectedItem) {
+        previewContainer.innerHTML = this.renderPreview();
+        this.loadPreviewContent();
+      } else {
+        const hasFilteredResults = !this.noLocationConfigured && this.items.length > 0 && displayItems.length === 0 && this.searchQuery.trim() !== '';
+        previewContainer.innerHTML = hasFilteredResults
+          ? '<div class="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">No matching items</div>'
+          : '<div class="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">Select an item to preview</div>';
+      }
+    }
+  }
+
+  /**
+   * Attach keyboard handler for navigation and copy
+   */
+  private attachKeyboardHandler(): void {
+    // Remove existing handler
+    if (this.keyboardHandler) {
+      document.removeEventListener('keydown', this.keyboardHandler);
+    }
+
+    this.keyboardHandler = (e: KeyboardEvent) => {
+      const displayItems = this.filteredItems;
+      if (displayItems.length === 0) return;
+
+      // Allow navigation and action keys even when search input is focused
+      const searchInput = this.querySelector('#search-input');
+      const isNavigationKey = e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === 'Escape';
+      if (document.activeElement === searchInput && !isNavigationKey) {
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          this.navigateDown(displayItems);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          this.navigateUp(displayItems);
+          break;
+        case 'Enter':
+          e.preventDefault();
+          this.copySelectedItem();
+          break;
+        case 'Escape':
+          // Clear search if there's a query, otherwise do nothing
+          if (this.searchQuery.trim()) {
+            e.preventDefault();
+            this.searchQuery = '';
+            const input = this.querySelector('#search-input') as HTMLInputElement;
+            if (input) {
+              input.value = '';
+            }
+            this.handleSearch();
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', this.keyboardHandler);
+  }
+
+  /**
+   * Navigate down in the list
+   */
+  private navigateDown(items: ClipboardHistoryItem[]): void {
+    if (this.selectedIndex < items.length - 1) {
+      this.selectItem(this.selectedIndex + 1);
+      this.scrollSelectedItemIntoView();
+    }
+  }
+
+  /**
+   * Navigate up in the list
+   */
+  private navigateUp(items: ClipboardHistoryItem[]): void {
+    if (this.selectedIndex > 0) {
+      this.selectItem(this.selectedIndex - 1);
+      this.scrollSelectedItemIntoView();
+    }
+  }
+
+  /**
+   * Scroll selected item into view
+   */
+  private scrollSelectedItemIntoView(): void {
+    const selectedItem = this.querySelector('.history-item-container.bg-blue-50, .history-item-container.dark\\:bg-blue-900\\/20');
+    if (selectedItem) {
+      selectedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+
+  /**
+   * Copy selected item to clipboard and close window
+   */
+  private async copySelectedItem(): Promise<void> {
+    if (!this.selectedItem) return;
+
+    try {
+      if (this.selectedItem.type === 'text') {
+        const content = await this.api.getTextContent(this.selectedItem.id);
+        await navigator.clipboard.writeText(content);
+      } else {
+        // For images, we need to use the Clipboard API with a blob
+        const dataUrl = await this.api.getImageData(this.selectedItem.id);
+        const blob = await this.dataUrlToBlob(dataUrl);
+        await navigator.clipboard.write([
+          new ClipboardItem({ [blob.type]: blob })
+        ]);
+      }
+      // Close window after successful copy
+      this.api.closeClipboardHistoryWindow();
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      this.showErrorMessage('Failed to copy to clipboard');
+    }
+  }
+
+  /**
+   * Convert data URL to Blob
+   */
+  private dataUrlToBlob(dataUrl: string): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to create blob'));
+          }
+        }, 'image/png');
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = dataUrl;
+    });
   }
 
   /**

@@ -29,6 +29,9 @@ The Clipboard History feature provides automatic monitoring and storage of clipb
 - **Right panel**: Content preview (readonly textarea for text, image display for images)
 - **Delete**: Individual item deletion with X button
 - **Clear All**: Remove all items at once (with confirmation)
+- **Search**: Filter items by text content or image filename
+- **Keyboard Navigation**: Use arrow keys to navigate, Enter to copy selected item
+- **Copy to Clipboard**: Press Enter to copy the selected item back to clipboard
 
 ### Settings Integration
 
@@ -125,6 +128,9 @@ The clipboard history window supports dark mode:
 1. Configure clipboard history save location in Settings
 2. Copy text or images - they are automatically saved
 3. Press `Cmd+Shift+V` (macOS) or `Ctrl+Shift+V` (Windows/Linux) to open history
-4. Click on items to preview
-5. Use X button to delete individual items
-6. Use trash icon in header to clear all
+4. Use the search bar to filter items by content or filename
+5. Navigate with arrow keys or click to select items
+6. Press Enter to copy the selected item to clipboard
+7. Press Escape to clear the search filter
+8. Use X button to delete individual items
+9. Use trash icon in header to clear all
