@@ -2,8 +2,8 @@
  * Unit tests for OpenAI message transformer
  */
 
-import { OpenAITransformer } from '../../../components/transformers/openai-transformer';
-import type { OpenAIMessage } from '../../../main/llm/openai';
+import { OpenAITransformer } from '../../../conversation/transformers/openai-transformer';
+import type { OpenAIMessage } from '../../../llm/main/streaming/openai';
 
 describe('OpenAITransformer', () => {
   let transformer: OpenAITransformer;

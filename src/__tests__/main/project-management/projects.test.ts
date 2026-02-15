@@ -4,10 +4,10 @@ import {
   getProjectsPath,
   loadProjects,
   saveProjects,
-} from '../../../main/project-management';
+} from '../../../project/main/project-management';
 import { createMockProject } from '../../helpers/mocks';
 import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
-import type { Project } from '../../../types/project-management';
+import type { Project } from '../../../project/types';
 
 describe('Project Management - Storage Helpers', () => {
   // Mock app.getPath before each test

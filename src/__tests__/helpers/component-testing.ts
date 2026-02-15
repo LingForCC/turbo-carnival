@@ -2,7 +2,7 @@
  * Helper utilities for testing Web Components
  */
 
-import type { Project } from '../../types/project-management';
+import type { Project } from '../../project/types';
 
 /**
  * Mount a custom element and return it with testing helpers
@@ -28,10 +28,14 @@ export function mountComponent<T extends HTMLElement>(
 } {
   // Dynamically import and register the component
   // The side effect of importing is that the custom element gets registered
-  // Special case for conversation-panel which is in a subfolder
-  const componentPath = tagName === 'conversation-panel'
-    ? '../../components/conversation/conversation-panel.ts'
-    : `../../components/${tagName}.ts`;
+  // Map tag names to new feature-based paths
+  const componentPaths: Record<string, string> = {
+    'conversation-panel': '../../conversation/components/conversation-panel',
+    'project-panel': '../../project/components/project-panel',
+    'settings-dialog': '../../settings/components/settings-dialog',
+    'app-panel': '../../agent/components/app-panel',
+  };
+  const componentPath = componentPaths[tagName] || `../../${tagName.replace('-', '/')}/components/${tagName}`;
   require(componentPath);
 
   const element = document.createElement(tagName) as T;

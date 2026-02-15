@@ -1,25 +1,25 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { Agent } from './types/agent-management';
-import { registerAgentIPCHandlers, loadAgents, saveAgent } from './main/agent-management';
-import { registerProviderIPCHandlers } from './main/provider-management';
-import { registerModelConfigIPCHandlers } from './main/model-config-management';
-import { registerToolIPCHandlers, initializeMCPServers } from './main/tool-management';
-import { registerProjectIPCHandlers } from './main/project-management';
-import { registerChatAgentIPCHandlers } from './main/chat-agent-management';
-import { registerAppAgentIPCHandlers } from './main/app-agent-management';
-import { registerSettingsIPCHandlers } from './main/settings-management';
-import { registerNotepadIPCHandlers } from './main/notepad-management';
-import { registerAgentTemplateIPCHandlers } from './main/agent-template-management';
-import { registerGlobalShortcut, unregisterGlobalShortcut, closeNotepadWindow } from './main/notepad-window';
-import { registerQuickAIPCHandlers } from './main/quick-ai-management';
-import { registerQuickAIGlobalShortcut, unregisterQuickAIGlobalShortcut, closeQuickAIWindow } from './main/quick-ai-window';
-import { registerSnippetIPCHandlers } from './main/snippet-management';
-import { registerSnippetShortcut, unregisterSnippetShortcut, closeSnippetWindow } from './main/snippet-window';
-import { registerClipboardHistoryIPCHandlers } from './main/clipboard-history-management';
-import { registerClipboardHistoryShortcut, unregisterClipboardHistoryShortcut, closeClipboardHistoryWindow } from './main/clipboard-history-window';
-import { startClipboardWatcher, stopClipboardWatcher } from './main/clipboard-watcher';
+import type { Agent } from './agent/types';
+import { registerAgentIPCHandlers, loadAgents, saveAgent } from './agent/main/agent-management';
+import { registerProviderIPCHandlers } from './llm/main/provider-management';
+import { registerModelConfigIPCHandlers } from './llm/main/model-config-management';
+import { registerToolIPCHandlers, initializeMCPServers } from './tools/main/tool-management';
+import { registerProjectIPCHandlers } from './project/main/project-management';
+import { registerChatAgentIPCHandlers } from './agent/main/chat-agent-management';
+import { registerAppAgentIPCHandlers } from './agent/main/app-agent-management';
+import { registerSettingsIPCHandlers } from './settings/main/settings-management';
+import { registerNotepadIPCHandlers } from './notepad/main/notepad-management';
+import { registerAgentTemplateIPCHandlers } from './agent/main/agent-template-management';
+import { registerGlobalShortcut, unregisterGlobalShortcut, closeNotepadWindow } from './notepad/main/notepad-window';
+import { registerQuickAIPCHandlers } from './quick-ai/main/quick-ai-management';
+import { registerQuickAIGlobalShortcut, unregisterQuickAIGlobalShortcut, closeQuickAIWindow } from './quick-ai/main/quick-ai-window';
+import { registerSnippetIPCHandlers } from './snippets/main/snippet-management';
+import { registerSnippetShortcut, unregisterSnippetShortcut, closeSnippetWindow } from './snippets/main/snippet-window';
+import { registerClipboardHistoryIPCHandlers } from './clipboard-history/main/clipboard-history-management';
+import { registerClipboardHistoryShortcut, unregisterClipboardHistoryShortcut, closeClipboardHistoryWindow } from './clipboard-history/main/clipboard-history-window';
+import { startClipboardWatcher, stopClipboardWatcher } from './clipboard-history/main/clipboard-watcher';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -150,7 +150,7 @@ app.on('before-quit', async () => {
   // Stop clipboard watcher
   stopClipboardWatcher();
   // Disconnect all MCP servers
-  const { disconnectAllMCPServers } = await import('./main/mcp-client');
+  const { disconnectAllMCPServers } = await import('./tools/main/mcp-client');
   await disconnectAllMCPServers();
 });
 

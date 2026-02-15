@@ -1,5 +1,5 @@
-import type { Agent } from '../../types/agent-management';
-import type { Project } from '../../types/project-management';
+import type { Agent } from '../../agent/types';
+import type { Project } from '../../project/types';
 
 /**
  * Create a mock Project object with optional overrides

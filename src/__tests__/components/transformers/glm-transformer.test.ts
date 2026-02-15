@@ -1,5 +1,5 @@
-import { GLMTransformer } from '../../../components/transformers/glm-transformer';
-import type { GLMMessage } from '../../../main/llm/glm';
+import { GLMTransformer } from '../../../conversation/transformers/glm-transformer';
+import type { GLMMessage } from '../../../llm/main/streaming/glm';
 
 describe('GLMTransformer', () => {
   let transformer: GLMTransformer;

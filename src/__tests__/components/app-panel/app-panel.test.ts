@@ -6,7 +6,7 @@ import { mountComponent, createMockProject, mockElectronAPI, waitForAsync } from
 import { createMockAgent } from '../../helpers/mocks';
 
 // Import the conversation component since app-panel uses it
-require('../../../components/conversation/conversation-panel.ts');
+require('../../../conversation/components/conversation-panel.ts');
 
 // Type for the AppPanel element
 interface AppPanel extends HTMLElement {

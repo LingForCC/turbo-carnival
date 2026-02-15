@@ -55,7 +55,7 @@ element.replaceWith(newElement);
 
 **Where to use:** Panel toggle buttons, tree node clicks, any dynamically generated interactive elements.
 
-See `src/components/project-panel.ts:82-90` for implementation example.
+See `src/project/components/project-panel.ts` for implementation example.
 
 ### Event Bubbling Best Practices
 
@@ -111,223 +111,245 @@ The documentation has been split into focused modules for better performance:
 ### Testing
 - **[docs/testing.md](docs/testing.md)** - Jest configuration, mocking patterns, test helpers, web component automation testing
 
+## Project Structure
+
+The codebase uses a **feature-based module structure** where all related files for a feature are grouped together:
+
+```
+src/
+├── main.ts              # Main entry point
+├── renderer.ts          # Main renderer entry
+├── preload.ts           # Preload script entry
+├── styles.css           # Global styles
+│
+├── core/                # Core application infrastructure
+│   ├── app-container.ts
+│   ├── project-agent-dashboard.ts
+│   └── types/electron-api.d.ts
+│
+├── project/             # Project management feature
+│   ├── main/project-management.ts
+│   ├── components/project-panel.ts, project-detail-panel.ts
+│   ├── preload/index.ts
+│   ├── api/index.ts
+│   └── types/index.ts
+│
+├── agent/               # Agent system feature
+│   ├── main/agent-management.ts, agent-template-management.ts, chat-agent-management.ts, app-agent-management.ts
+│   ├── components/agent-form-dialog.ts, agent-template-dialog.ts, chat-panel.ts, app-panel.ts
+│   ├── preload/
+│   ├── api/
+│   └── types/
+│
+├── llm/                 # LLM provider feature
+│   ├── main/provider-management.ts, model-config-management.ts
+│   ├── main/streaming/  # LLM streaming implementations
+│   ├── components/provider-dialog.ts, model-config-dialog.ts
+│   ├── preload/
+│   ├── api/
+│   └── types/
+│
+├── tools/               # Tool system feature
+│   ├── main/tool-management.ts, tool-worker-executor.ts, mcp-client.ts, mcp-storage.ts
+│   ├── components/tools-dialog.ts, tool-test-dialog.ts
+│   ├── browser/browser-tool-executor.ts
+│   ├── tool-worker.ts   # Tool worker entry
+│   ├── preload/
+│   ├── api/
+│   └── types/
+│
+├── conversation/        # Shared conversation system
+│   ├── components/conversation-panel.ts, user-message.ts, assistant-message.ts, tool-call-message.ts, app-code-message.ts
+│   └── transformers/    # Message format transformers
+│
+├── settings/            # Settings feature
+│   ├── main/settings-management.ts
+│   ├── components/settings-dialog.ts
+│   ├── preload/
+│   ├── api/
+│   └── types/
+│
+├── notepad/             # Notepad feature
+│   ├── main/notepad-management.ts, notepad-window.ts
+│   ├── components/notepad-window.ts
+│   ├── renderer.ts
+│   ├── preload/
+│   ├── api/
+│   └── types/
+│
+├── quick-ai/            # Quick AI feature
+│   ├── main/quick-ai-management.ts, quick-ai-window.ts
+│   ├── components/quick-ai-window.ts
+│   ├── renderer.ts
+│   ├── preload/
+│   ├── api/
+│   └── types/
+│
+├── snippets/            # Snippets feature
+│   ├── main/snippet-management.ts, snippet-window.ts
+│   ├── components/snippet-window.ts
+│   ├── renderer.ts
+│   ├── preload/
+│   ├── api/
+│   └── types/
+│
+└── clipboard-history/   # Clipboard history feature
+    ├── main/clipboard-history-management.ts, clipboard-history-window.ts, clipboard-watcher.ts
+    ├── components/clipboard-history-window.ts
+    ├── renderer.ts
+    ├── preload/
+    ├── api/
+    └── types/
+```
+
 ## Quick Reference
 
-### Main Process Modules
+### Entry Points
 - `src/main.ts` - Core app setup, window creation, IPC coordination
-- `src/main/project-management.ts` - Project CRUD, file tree, file listing
-- `src/main/agent-management.ts` - Agent CRUD operations
-- `src/main/agent-template-management.ts` - Agent template CRUD, validation, storage
-- `src/main/provider-management.ts` - LLM provider CRUD, validation, default URLs
-- `src/main/model-config-management.ts` - Model configuration CRUD, validation, storage
-- `src/main/settings-management.ts` - App settings CRUD, theme preference storage, validation
-- `src/main/llm/` - LLM streaming module with provider-specific implementations
-  - `index.ts` - Main routing interface (streamLLM, buildFileContentMessages, buildAllMessages) and tool execution routing (executeToolWithRouting with MCP tool support)
+- `src/renderer.ts` - Main renderer entry, imports components
+- `src/preload.ts` - Exposes `window.electronAPI` via contextBridge
+- `src/tool-worker.ts` → `src/tools/tool-worker.ts` - Tool execution worker
+
+### Main Process Modules (by feature)
+- `src/project/main/project-management.ts` - Project CRUD, file tree, file listing
+- `src/agent/main/agent-management.ts` - Agent CRUD operations
+- `src/agent/main/agent-template-management.ts` - Agent template CRUD, validation, storage
+- `src/agent/main/chat-agent-management.ts` - Chat agent system prompt generation, IPC handlers
+- `src/agent/main/app-agent-management.ts` - App agent system prompt generation, IPC handlers
+- `src/llm/main/provider-management.ts` - LLM provider CRUD, validation, default URLs
+- `src/llm/main/model-config-management.ts` - Model configuration CRUD, validation, storage
+- `src/llm/main/streaming/` - LLM streaming module with provider-specific implementations
+  - `index.ts` - Main routing interface (streamLLM, buildFileContentMessages, buildAllMessages) and tool execution routing
   - `openai.ts` - OpenAI-compatible streaming with conversation history management and native tool calling
   - `glm.ts` - GLM streaming with conversation history management and native tool calling
-- `src/main/chat-agent-management.ts` - Chat agent system prompt generation, IPC handlers
-- `src/main/app-agent-management.ts` - App agent system prompt generation, IPC handlers
-- `src/main/tool-management.ts` - Tool CRUD, JSON Schema validation, execution routing, MCP tools integration
-- `src/main/mcp-client.ts` - MCP client implementation for server connections
-- `src/main/mcp-storage.ts` - MCP server configuration storage and management
-- `src/main/notepad-management.ts` - Notepad file operations, IPC handlers
-- `src/main/notepad-window.ts` - Notepad window lifecycle, global shortcut registration
-- `src/main/quick-ai-management.ts` - Quick AI conversation management, IPC handlers
-- `src/main/quick-ai-window.ts` - Quick AI window lifecycle, global shortcut registration
-- `src/main/snippet-management.ts` - Snippet file operations, IPC handlers, name sanitization, conflict handling
-- `src/main/snippet-window.ts` - Snippet window lifecycle, global shortcut registration
-- `src/main/clipboard-watcher.ts` - Clipboard monitoring with content hash comparison, auto-save text/images
-- `src/main/clipboard-history-management.ts` - Clipboard history file operations, IPC handlers
-- `src/main/clipboard-history-window.ts` - Clipboard history window lifecycle, global shortcut registration
+- `src/tools/main/tool-management.ts` - Tool CRUD, JSON Schema validation, execution routing, MCP tools integration
+- `src/tools/main/tool-worker-executor.ts` - Tool execution in isolated worker processes
+- `src/tools/main/mcp-client.ts` - MCP client implementation for server connections
+- `src/tools/main/mcp-storage.ts` - MCP server configuration storage and management
+- `src/settings/main/settings-management.ts` - App settings CRUD, theme preference storage, validation
+- `src/notepad/main/notepad-management.ts` - Notepad file operations, IPC handlers
+- `src/notepad/main/notepad-window.ts` - Notepad window lifecycle, global shortcut registration
+- `src/quick-ai/main/quick-ai-management.ts` - Quick AI conversation management, IPC handlers
+- `src/quick-ai/main/quick-ai-window.ts` - Quick AI window lifecycle, global shortcut registration
+- `src/snippets/main/snippet-management.ts` - Snippet file operations, IPC handlers, name sanitization
+- `src/snippets/main/snippet-window.ts` - Snippet window lifecycle, global shortcut registration
+- `src/clipboard-history/main/clipboard-watcher.ts` - Clipboard monitoring with content hash comparison
+- `src/clipboard-history/main/clipboard-history-management.ts` - Clipboard history file operations, IPC handlers
+- `src/clipboard-history/main/clipboard-history-window.ts` - Clipboard history window lifecycle, global shortcut registration
 
-### Preload Modules
+### Preload Modules (by feature)
 - `src/preload.ts` - Main preload script, exposes `window.electronAPI` via contextBridge
-- `src/preload/project-management.ts` - Project management functions for preload (uses ipcRenderer)
-- `src/preload/agent-management.ts` - Agent management functions for preload (uses ipcRenderer)
-- `src/preload/agent-template-management.ts` - Agent template functions for preload (uses ipcRenderer)
-- `src/preload/provider-management.ts` - Provider and model config functions for preload (uses ipcRenderer)
-- `src/preload/tool-management.ts` - Tool management functions for preload (uses ipcRenderer)
-- `src/preload/mcp-management.ts` - MCP server management functions for preload (uses ipcRenderer)
-- `src/preload/settings-management.ts` - Settings management functions for preload (uses ipcRenderer)
-- `src/preload/notepad-management.ts` - Notepad management functions for preload (uses ipcRenderer)
-- `src/preload/quick-ai-management.ts` - Quick AI management functions for preload (uses ipcRenderer)
-- `src/preload/snippet-management.ts` - Snippet management functions for preload (uses ipcRenderer)
-- `src/preload/clipboard-history-management.ts` - Clipboard history management functions for preload (uses ipcRenderer)
+- `src/project/preload/index.ts` - Project management functions for preload
+- `src/agent/preload/agent-management.ts` - Agent management functions for preload
+- `src/agent/preload/agent-template-management.ts` - Agent template functions for preload
+- `src/llm/preload/index.ts` - Provider and model config functions for preload
+- `src/tools/preload/index.ts` - Tool management functions for preload
+- `src/settings/preload/index.ts` - Settings management functions for preload
+- `src/notepad/preload/notepad-management.ts` - Notepad management functions for preload
+- `src/quick-ai/preload/quick-ai-management.ts` - Quick AI management functions for preload
+- `src/snippets/preload/snippet-management.ts` - Snippet management functions for preload
+- `src/clipboard-history/preload/clipboard-history-management.ts` - Clipboard history management functions for preload
 
-### Renderer API Layer
-- `src/api/project-management.ts` - Renderer-safe project management API (wraps window.electronAPI)
-- `src/types/project-management.d.ts` - Project management type definitions (Project, FileTreeNode, etc.)
-- `src/api/agent-management.ts` - Renderer-safe agent management API (wraps window.electronAPI)
-- `src/types/agent-management.d.ts` - Agent management type definitions (Agent, etc.)
-- `src/api/agent-template-management.ts` - Renderer-safe agent template management API (wraps window.electronAPI)
-- `src/types/agent-template.d.ts` - Agent template type definitions (AgentTemplate, AgentTemplateManagementAPI)
-- `src/api/provider-management.ts` - Renderer-safe provider management API (wraps window.electronAPI)
-- `src/types/provider-management.d.ts` - Provider and model config type definitions (LLMProvider, ModelConfig, LLMProviderType)
-- `src/api/tool-management.ts` - Renderer-safe tool management API (wraps window.electronAPI)
-- `src/types/tool-management.d.ts` - Tool management type definitions (Tool, ToolExecutionRequest, ToolExecutionResult, JSONSchema, MCPServer, MCPTool)
-- `src/api/mcp-management.ts` - Renderer-safe MCP server management API (wraps window.electronAPI)
-- `src/types/mcp-management.d.ts` - MCP management type definitions (MCPServer, MCPTool, MCPManagementAPI)
-- `src/api/settings-management.ts` - Renderer-safe settings management API (wraps window.electronAPI)
-- `src/types/settings-management.d.ts` - Settings management type definitions (AppSettings, SettingsManagementAPI)
-- `src/api/notepad-management.ts` - Renderer-safe notepad management API (wraps window.electronAPI)
-- `src/types/notepad-management.d.ts` - Notepad management type definitions (NotepadFile, NotepadManagementAPI)
-- `src/api/quick-ai-management.ts` - Renderer-safe Quick AI management API (wraps window.electronAPI)
-- `src/types/quick-ai-management.d.ts` - Quick AI management type definitions (QuickAIManagementAPI, QuickAISettingsValidation)
-- `src/api/snippet-management.ts` - Renderer-safe snippet management API (wraps window.electronAPI)
-- `src/types/snippet-management.d.ts` - Snippet management type definitions (SnippetFile, SnippetManagementAPI)
-- `src/api/clipboard-history-management.ts` - Renderer-safe clipboard history management API (wraps window.electronAPI)
-- `src/types/clipboard-history-management.d.ts` - Clipboard history type definitions (ClipboardHistoryItem, ClipboardHistoryManagementAPI)
+### Renderer API Layer (by feature)
+- `src/project/api/index.ts` - Renderer-safe project management API
+- `src/project/types/index.ts` - Project management type definitions (Project, FileTreeNode, etc.)
+- `src/agent/api/index.ts` - Renderer-safe agent management API
+- `src/agent/types/index.ts` - Agent management type definitions (Agent, etc.)
+- `src/llm/api/index.ts` - Renderer-safe provider management API
+- `src/llm/types/index.ts` - Provider and model config type definitions
+- `src/tools/api/index.ts` - Renderer-safe tool management API
+- `src/tools/types/index.ts` - Tool management type definitions
+- `src/settings/api/index.ts` - Renderer-safe settings management API
+- `src/settings/types/index.ts` - Settings management type definitions
+- `src/notepad/api/index.ts` - Renderer-safe notepad management API
+- `src/notepad/types/index.ts` - Notepad management type definitions
+- `src/quick-ai/api/index.ts` - Renderer-safe Quick AI management API
+- `src/quick-ai/types/index.ts` - Quick AI management type definitions
+- `src/snippets/api/index.ts` - Renderer-safe snippet management API
+- `src/snippets/types/index.ts` - Snippet management type definitions
+- `src/clipboard-history/api/index.ts` - Renderer-safe clipboard history management API
+- `src/clipboard-history/types/index.ts` - Clipboard history type definitions
 
 ### UI Components (Web Components)
-- `app-container` - Root layout, event forwarding (uses `getSettingsManagementAPI()`)
-- `project-panel` - Left sidebar, project management (uses `getProjectManagementAPI()`)
-- `project-agent-dashboard` - Center area, agent grid/chat switching
-- `conversation-panel` - Reusable chat interface (event-driven, tool call indicators, message factories for user, assistant, and tool call messages)
-- `user-message` - Web Component for user messages (plain text rendering, HTML escaping, blue background, right-aligned)
-- `assistant-message` - Web Component for assistant messages (markdown rendering, reasoning display, save/copy buttons, factory pattern for handlers)
-- `app-code-message` - Web Component for app agent messages (HTML code block extraction, app code callouts with View App button, markdown rendering for remaining content, save/copy buttons, factory pattern)
-- `tool-call-message` - Web Component for tool call messages (status indicators, parameter/result display, collapsible details, factory pattern)
-- `chat-panel` - Right sidebar chat interface (uses conversation-panel, provides message factories for user, assistant, and tool call messages, handles chat-agent IPC)
-- `app-panel` - Conditional layout for App-type agents: default conversation view (full-width) or preview view (full-width app preview with close button), uses conversation-panel, provides AppCodeMessage factory for app-specific rendering, handles app-agent IPC
-- `project-detail-panel` - Right sidebar, file tree (uses `getProjectManagementAPI()`)
-- `agent-form-dialog` - Agent creation/editing with model config and provider selection (uses `getAgentManagementAPI()`, `getProviderManagementAPI()`, and `getAgentTemplateManagementAPI()`)
-- `agent-template-dialog` - Agent template management with list and form views (uses `getAgentTemplateManagementAPI()` and `getProviderManagementAPI()`)
-- `provider-dialog` - LLM provider management (uses `getProviderManagementAPI()`)
-- `model-config-dialog` - Model configuration management with extra properties support (uses `getProviderManagementAPI()`)
-- `tools-dialog` - Tool management with testing, MCP server configuration (uses `getToolManagementAPI()`)
-- `tool-test-dialog` - Tool execution testing (uses `getToolManagementAPI()`)
-- `settings-dialog` - App settings management with theme selection, notepad save location, snippet save location, clipboard history save location, and Quick AI defaults (uses `getSettingsManagementAPI()` and `getProviderManagementAPI()`)
-- `notepad-window` - Standalone notepad window with file list and auto-save (uses `getNotepadManagementAPI()`)
-- `quick-ai-window` - Standalone Quick AI conversation window with tool support, error handling, and dark mode support (uses `getQuickAIManagementAPI()` and `getSettingsManagementAPI()`)
-- `snippet-window` - Standalone snippet window with inline name editing, keyboard navigation, and clipboard integration (uses `getSnippetManagementAPI()`)
-- `clipboard-history-window` - Standalone clipboard history window with list preview, text/image display, delete and clear functionality (uses `getClipboardHistoryManagementAPI()`, located in `src/components/`)
+- `src/core/app-container.ts` - Root layout, event forwarding
+- `src/project/components/project-panel.ts` - Left sidebar, project management
+- `src/project/components/project-detail-panel.ts` - Right sidebar, file tree
+- `src/core/project-agent-dashboard.ts` - Center area, agent grid/chat switching
+- `src/conversation/components/conversation-panel.ts` - Reusable chat interface
+- `src/conversation/components/user-message.ts` - User messages (plain text, HTML escaping)
+- `src/conversation/components/assistant-message.ts` - Assistant messages (markdown, save/copy)
+- `src/conversation/components/tool-call-message.ts` - Tool call messages (status indicators)
+- `src/conversation/components/app-code-message.ts` - App agent messages (HTML code extraction)
+- `src/agent/components/chat-panel.ts` - Chat sidebar interface
+- `src/agent/components/app-panel.ts` - App agent panel with preview
+- `src/agent/components/agent-form-dialog.ts` - Agent creation/editing
+- `src/agent/components/agent-template-dialog.ts` - Agent template management
+- `src/llm/components/provider-dialog.ts` - LLM provider management
+- `src/llm/components/model-config-dialog.ts` - Model configuration management
+- `src/tools/components/tools-dialog.ts` - Tool management with testing
+- `src/tools/components/tool-test-dialog.ts` - Tool execution testing
+- `src/settings/components/settings-dialog.ts` - App settings management
+- `src/notepad/components/notepad-window.ts` - Standalone notepad window
+- `src/quick-ai/components/quick-ai-window.ts` - Standalone Quick AI window
+- `src/snippets/components/snippet-window.ts` - Standalone snippet window
+- `src/clipboard-history/components/clipboard-history-window.ts` - Standalone clipboard history window
 
 ### Transformers
-- `src/components/transformers/openai-transformer.ts` - Transforms OpenAI native message format to ChatMessage format for UI display
-- `src/components/transformers/glm-transformer.ts` - Transforms GLM native message format to ChatMessage format (standalone implementation)
-- `src/components/transformers/index.ts` - Factory function to create appropriate transformer based on provider type
+- `src/conversation/transformers/openai-transformer.ts` - Transforms OpenAI native message format to ChatMessage format
+- `src/conversation/transformers/glm-transformer.ts` - Transforms GLM native message format to ChatMessage format
+- `src/conversation/transformers/index.ts` - Factory function to create appropriate transformer
 
 ### Key IPC Channels
 - `projects:*` - Project CRUD operations
 - `agents:*` - Agent CRUD operations
-- `agent-templates:*` - Agent template CRUD operations (get, add, update, remove, getById)
-- `providers:*` - LLM provider CRUD operations (get, add, update, remove, getById)
-- `model-configs:*` - Model configuration CRUD operations (get, add, update, remove, getById)
-- `settings:*` - Settings CRUD operations (get, update)
+- `agent-templates:*` - Agent template CRUD operations
+- `providers:*` - LLM provider CRUD operations
+- `model-configs:*` - Model configuration CRUD operations
+- `settings:*` - Settings CRUD operations
 - `tools:*` - Tool CRUD and execution
 - `mcp:*` - MCP server and tool management
 - `project:getFileTree` - File tree structure
 - `files:list`, `files:readContents` - File operations for @mention
-- `files:saveMessageToFile` - Save message content to a file in the project folder
-- `chat-agent:streamMessage` - Chat agent streaming (with tools + files)
-- `chat-agent:clearHistory` - Clear chat agent conversation history
-- `chat-agent:toolCall` - Real-time tool call status updates (one-way IPC from main to renderer)
-- `app-agent:streamMessage` - App agent streaming (files only, no tools)
-- `app-agent:clearHistory` - Clear app agent conversation history
-- `notepad:getFiles` - Get list of notepad files
-- `notepad:readFile` - Read notepad file content
-- `notepad:createFile` - Create new notepad file
-- `notepad:saveContent` - Save notepad content (auto-save)
-- `notepad:deleteFile` - Delete notepad file
-- `quick-ai:streamMessage` - Quick AI streaming (with tools, no files)
-- `quick-ai:clearHistory` - Clear Quick AI conversation history
-- `quick-ai:validateSettings` - Validate Quick AI settings (provider and model configured)
-- `quick-ai:windowShown` - Quick AI window shown event (one-way IPC from main to renderer)
-- `quick-ai:toolCall` - Tool call events during Quick AI streaming (one-way IPC from main to renderer)
-- `snippets:getFiles` - Get list of snippet files
-- `snippets:readFile` - Read snippet file content
-- `snippets:createFile` - Create new snippet file
-- `snippets:saveContent` - Save snippet content (auto-save)
-- `snippets:renameFile` - Rename snippet file
-- `snippets:deleteFile` - Delete snippet file
-- `snippets:closeWindow` - Close snippet window
-- `clipboard-history:getItems` - Get list of clipboard history items
-- `clipboard-history:deleteItem` - Delete a clipboard history item
-- `clipboard-history:clearAll` - Clear all clipboard history items
-- `clipboard-history:getTextContent` - Get text content of a clipboard history item
-- `clipboard-history:getImageData` - Get image data as base64 data URL
-- `clipboard-history:closeWindow` - Close clipboard history window
-- `clipboard-history:windowShown` - Clipboard history window shown event (one-way IPC from main to renderer)
+- `files:saveMessageToFile` - Save message content to a file
+- `chat-agent:streamMessage`, `chat-agent:clearHistory`, `chat-agent:toolCall` - Chat agent
+- `app-agent:streamMessage`, `app-agent:clearHistory` - App agent
+- `notepad:*` - Notepad operations
+- `quick-ai:*` - Quick AI operations
+- `snippets:*` - Snippet operations
+- `clipboard-history:*` - Clipboard history operations
 
 ### Storage Locations
 - `app.getPath('userData')/projects.json` - Project list
 - `app.getPath('userData')/agent-templates.json` - Agent templates
 - `app.getPath('userData')/providers.json` - LLM providers
 - `app.getPath('userData')/model-configs.json` - Model configurations
-- `app.getPath('userData')/settings.json` - App settings (theme preference, notepad save location, snippet save location, clipboard history save location, Quick AI defaults)
+- `app.getPath('userData')/settings.json` - App settings
 - `app.getPath('userData')/tools.json` - Custom tools and MCP servers
-- `{notepadSaveLocation}/` - Notepad files (.txt format, timestamp naming) - user-configured location
-- `{snippetSaveLocation}/` - Snippet files (.txt format, user-provided names) - user-configured location
-- `{clipboardHistorySaveLocation}/` - Clipboard history files (UUID.txt for text, timestamp.ext for images) - user-configured location
-- `{projectFolder}/agent-{name}.json` - Agent files (stored in project folders)
-
-## TypeScript Configuration
-
-- Target: ES2020, Module: CommonJS
-- Strict mode enabled
-- Outputs to `dist/` from `src/` root
-- ElectronAPI interface defined in `src/types/electron-api.d.ts`
-- Project management types in `src/types/project-management.d.ts` (Project, FileTreeNode, etc.)
-- Agent management types in `src/types/agent-management.d.ts` (Agent, etc.)
-- Provider management types in `src/types/provider-management.d.ts` (LLMProvider, ModelConfig, LLMProviderType)
-- Tool management types in `src/types/tool-management.d.ts` (Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent, JSONSchema)
-- Settings management types in `src/types/settings-management.d.ts` (AppSettings, SettingsManagementAPI)
-- Preload modules in `src/preload/*.ts` (contextBridge exposure)
-- Renderer API modules in `src/api/*.ts` (type-safe wrappers for window.electronAPI)
-
-## Styling
-
-- Tailwind CSS v4 with PostCSS
-- Import in renderer: `import './styles.css'`
-- All styling uses utility classes directly in component templates
-- No separate CSS files per component
+- `{notepadSaveLocation}/` - Notepad files (.txt format)
+- `{snippetSaveLocation}/` - Snippet files (.txt format)
+- `{clipboardHistorySaveLocation}/` - Clipboard history files
+- `{projectFolder}/agent-{name}.json` - Agent files
 
 ## Common Workflows
 
 ### Using the Renderer API Layer
 
-When creating renderer components that need provider or model config management functionality:
+When creating renderer components that need API access:
 
 ```typescript
-// Import the API getter function and types
-import { getProviderManagementAPI } from '../api/provider-management';
-import type { ProviderManagementAPI, LLMProvider, ModelConfig } from '../types/provider-management';
-
-export class MyComponent extends HTMLElement {
-  private api: ProviderManagementAPI;
-
-  constructor() {
-    super();
-    // Initialize API instance
-    this.api = getProviderManagementAPI();
-  }
-
-  async loadProviders() {
-    // Use the API - type-safe and testable
-    const providers = await this.api.getProviders();
-    // ... rest of implementation
-  }
-}
-```
-
-When creating renderer components that need project management functionality:
-
-```typescript
-// Import the API getter function and types
-import { getProjectManagementAPI } from '../api/project-management';
-import type { ProjectManagementAPI, Project } from '../types/project-management';
+// Import the API getter function and types from the feature module
+import { getProjectManagementAPI } from '../project/api';
+import type { ProjectManagementAPI, Project } from '../project/types';
 
 export class MyComponent extends HTMLElement {
   private api: ProjectManagementAPI;
 
   constructor() {
     super();
-    // Initialize API instance
     this.api = getProjectManagementAPI();
   }
 
   async loadProjects() {
-    // Use the API - type-safe and testable
     const projects = await this.api.getProjects();
     // ... rest of implementation
   }
@@ -335,64 +357,21 @@ export class MyComponent extends HTMLElement {
 ```
 
 **Benefits:**
-- Type safety through `ProjectManagementAPI` interface
-- Easy to mock in tests (just create a mock object)
+- Type safety through interface types
+- Easy to mock in tests
 - No direct dependency on `window.electronAPI`
 - Prevents bundling Electron APIs into renderer code
 
 ### Adding a New Feature
-1. Read relevant documentation in `docs/`
-2. Check for similar existing patterns in codebase
-3. Write tests first (see `docs/testing.md`)
-   - Main process modules: Write storage helper and IPC handler tests
-   - Web Components: Write rendering, interaction, event, and XSS prevention tests
-4. Implement feature following established patterns
-5. Run tests to ensure nothing breaks
-6. **Update relevant documentation** (see "Documentation Maintenance" below)
-
-### Documentation Maintenance
-
-**When to Update Documentation:**
-
-After making code changes, update documentation if you:
-- Add a new module or feature
-- Modify IPC channels or storage locations
-- Change critical patterns or best practices
-- Add new components or change component behavior
-- Update test structure or add new test types
-- Modify configuration or build process
-
-**What to Update:**
-
-1. **CLAUDE.md** - Update when:
-   - Adding new main process modules (add to "Main Process Modules" section)
-   - Adding new UI components (add to "UI Components" section)
-   - Adding new IPC channels (add to "Key IPC Channels" section)
-   - Changing storage locations (update "Storage Locations" section)
-   - Adding new file types or extensions (update "File Extensions Reference")
-
-2. **docs/architecture.md** - Update when:
-   - Adding new modules (module organization, dependencies, pattern)
-   - Modifying IPC channels (add to relevant sections)
-   - Changing storage (update storage section)
-   - Modifying type definitions (add to "Type Definitions")
-
-3. **docs/features/[feature].md** - Update when:
-   - Modifying feature behavior
-   - Adding new functionality to existing features
-   - Changing implementation details
-
-4. **docs/testing.md** - Update when:
-   - Adding new test files or test structure
-   - Adding new test helpers or patterns
-   - Updating testing configuration
-
-**Documentation Update Workflow:**
-1. After code changes are complete and tests pass
-2. Review which documentation sections are affected
-3. Update the relevant documentation files
-4. Verify documentation links are correct
-5. Ensure examples and code snippets in docs are current
+1. Create feature directory under `src/`
+2. Create subdirectories: `main/`, `components/`, `preload/`, `api/`, `types/`
+3. Create entry point (e.g., `renderer.ts` for standalone windows)
+4. Write tests first (see `docs/testing.md`)
+5. Implement feature following established patterns
+6. Register IPC handlers in `src/main.ts`
+7. Expose preload functions in `src/preload.ts`
+8. Run tests to ensure nothing breaks
+9. **Update relevant documentation**
 
 ### Debugging IPC Issues
 1. Check handler registered in main process module
@@ -401,24 +380,18 @@ After making code changes, update documentation if you:
 4. Use `console.log()` in main and renderer to trace calls
 5. Verify channel names match exactly
 
-### Adding a New Module
-1. Create file in `src/main/`
-2. Export helpers and `register*IPCHandlers()` function
-3. Import and register in `src/main.ts`
-4. Document in `docs/architecture.md`
-
 ## File Extensions Reference
 
 When working with specific file types:
 - `.ts` - TypeScript source files
-- `.json` - Configuration and data files (agents, projects, providers, tools)
+- `.json` - Configuration and data files
 - `.test.ts` - Test files
 - `.md` - Documentation files
 
 ## Performance Notes
 
 This CLAUDE.md file has been optimized for performance by:
-- Splitting into modular documentation files (~75% size reduction)
+- Splitting into modular documentation files
 - Keeping only essential information in main file
 - Linking to detailed docs for deep dives
 - Removing redundancy and verbose examples

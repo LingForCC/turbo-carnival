@@ -4,9 +4,9 @@ import {
   loadSettings,
   saveSettings,
   updateSettingsFields,
-} from '../../../main/settings-management';
+} from '../../../settings/main/settings-management';
 import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
-import type { AppSettings } from '../../../types/settings-management';
+import type { AppSettings } from '../../../settings/types';
 
 describe('Settings Management - Storage Helpers', () => {
   // Mock app.getPath before each test
@@ -50,7 +50,7 @@ describe('Settings Management - Storage Helpers', () => {
       const { cleanup } = setupMockFS({});
 
       const settings = loadSettings();
-      expect(settings).toEqual({ theme: 'light' });
+      expect(settings).toEqual({ theme: 'light', snippetSaveLocation: null });
 
       cleanup();
     });
@@ -62,7 +62,7 @@ describe('Settings Management - Storage Helpers', () => {
       const { cleanup } = setupMockFS(mockFiles);
 
       const settings = loadSettings();
-      expect(settings).toEqual({ theme: 'light' });
+      expect(settings).toEqual({ theme: 'light', snippetSaveLocation: null });
 
       cleanup();
     });
@@ -74,7 +74,7 @@ describe('Settings Management - Storage Helpers', () => {
       const { cleanup } = setupMockFS(mockFiles);
 
       const settings = loadSettings();
-      expect(settings).toEqual({ theme: 'light' });
+      expect(settings).toEqual({ theme: 'light', snippetSaveLocation: null });
 
       cleanup();
     });
@@ -85,11 +85,11 @@ describe('Settings Management - Storage Helpers', () => {
       const { cleanup } = setupMockFS({});
 
       const updated = updateSettingsFields({ theme: 'dark' });
-      expect(updated).toEqual({ theme: 'dark' });
+      expect(updated).toEqual({ theme: 'dark', snippetSaveLocation: null });
 
       // Verify it was saved
       const loaded = loadSettings();
-      expect(loaded).toEqual({ theme: 'dark' });
+      expect(loaded).toEqual({ theme: 'dark', snippetSaveLocation: null });
 
       cleanup();
     });

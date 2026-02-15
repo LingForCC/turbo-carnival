@@ -1,19 +1,19 @@
 // Import Tailwind CSS
-import './styles.css';
+import './core/styles.css';
 
 // Import Web Components
-import './components/project-panel';
-import './components/chat-panel';
-import './components/app-panel';
-import './components/project-agent-dashboard';
-import './components/app-container';
-import './components/agent-form-dialog';
-import './components/provider-dialog';
-import './components/project-detail-panel';
-import './components/conversation/conversation-panel';
+import './project/components/project-panel';
+import './agent/components/chat-panel';
+import './agent/components/app-panel';
+import './core/project-agent-dashboard';
+import './core/app-container';
+import './agent/components/agent-form-dialog';
+import './llm/components/provider-dialog';
+import './project/components/project-detail-panel';
+import './conversation/components/conversation-panel';
 
 // Import browser tool executor
-import { executeToolInBrowser } from './renderer/browser-tool-executor';
+import { executeToolInBrowser } from './tools/browser/browser-tool-executor';
 
 // Initialize the application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {

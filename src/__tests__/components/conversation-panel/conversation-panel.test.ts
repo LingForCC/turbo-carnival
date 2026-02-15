@@ -4,14 +4,14 @@
 
 import { mountComponent, createMockProject, mockElectronAPI, waitForAsync, spyOnEvent } from '../../helpers/component-testing';
 import { createMockAgent } from '../../helpers/mocks';
-import type { ChatMessage, ToolCallData } from '../../../components/conversation/conversation-panel';
-import { UserMessage } from '../../../components/conversation/user-message';
-import { AssistantMessage } from '../../../components/conversation/assistant-message';
-import { ToolCallMessage } from '../../../components/conversation/tool-call-message';
+import type { ChatMessage, ToolCallData } from '../../../conversation/components/conversation-panel';
+import { UserMessage } from '../../../conversation/components/user-message';
+import { AssistantMessage } from '../../../conversation/components/assistant-message';
+import { ToolCallMessage } from '../../../conversation/components/tool-call-message';
 
 // Import conversation-panel to register the custom element
 // Note: mountComponent will also do this, but we import here for type safety
-require('../../../components/conversation/conversation-panel.ts');
+require('../../../conversation/components/conversation-panel.ts');
 
 // Type for the ConversationPanel element
 interface ConversationPanel extends HTMLElement {

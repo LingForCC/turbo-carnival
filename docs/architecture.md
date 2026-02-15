@@ -9,229 +9,155 @@ The app follows standard Electron architecture:
 - Handles app lifecycle
 - Coordinates all IPC handler registrations
 
-### Module Organization
-The main process is organized into dedicated modules:
+## Feature-Based Module Structure
 
-**`src/main/project-management.ts`**
-- Project CRUD operations
-- Storage helpers: `getProjectsPath`, `loadProjects`, `saveProjects`
-- File tree helpers: `isHidden`, `buildFileTree`
-- File listing helpers: `listFilesRecursive`
-- IPC handler registration: `registerProjectIPCHandlers`
+The codebase is organized into **feature modules**, where all related files for a feature are grouped together. Each feature typically contains:
+- `main/` - Main process modules (IPC handlers, business logic)
+- `components/` - Web Components for UI
+- `preload/` - Preload functions for IPC bridge
+- `api/` - Renderer-safe API wrappers
+- `types/` - TypeScript type definitions
 
-**`src/main/agent-management.ts`**
-- Agent CRUD operations
-- Storage helpers: `loadAgents`, `saveAgent`, `deleteAgent`, `sanitizeAgentName`, `getAgentFilePath`
-- IPC handler registration: `registerAgentIPCHandlers`
+### Feature Modules
 
-**`src/main/provider-management.ts`**
-- LLM provider CRUD operations
-- Storage helpers: `getProvidersPath`, `loadProviders`, `saveProviders`, `getProviderById`
-- Validation: `validateProvider` (type-specific validation)
-- Default URLs: `getDefaultBaseURL` (returns default endpoints per provider type)
-- IPC handler registration: `registerProviderIPCHandlers`
+**`src/project/`** - Project Management
+- `main/project-management.ts` - Project CRUD operations
+  - Storage helpers: `getProjectsPath`, `loadProjects`, `saveProjects`
+  - File tree helpers: `isHidden`, `buildFileTree`
+  - File listing helpers: `listFilesRecursive`
+  - IPC handler registration: `registerProjectIPCHandlers`
 
-**`src/main/llm/` - LLM Streaming Module**
-- `index.ts` - Main routing interface with `streamLLM()` function and `StreamLLMOptions` interface
-  - Helper functions: `buildFileContentMessages()`, `buildAllMessages()`
-- `openai.ts` - OpenAI-compatible streaming with native tool calling and tool call iteration
-  - Complete flow: `streamOpenAI()` - saves user/assistant messages, handles tool call iteration loop (max 10 rounds)
-  - Single streaming: `streamOpenAISingle()` - handles SSE parsing, tool_calls extraction
-  - Tool execution: `executeToolCalls()` - validates and executes tools, sends IPC events
-  - Tool helpers: `convertToolToOpenAIFormat()`, `handleToolSuccess()`, `handleToolError()`
-- `glm.ts` - GLM (Zhipu AI) streaming with native tool calling
-  - Same structure as openai.ts: `streamGLM()`, `streamGLMSingle()`, `executeToolCalls()`
-  - Uses OpenAI-compatible tool calling format (tools array, tool_calls in delta, tool_call_id for results)
+**`src/agent/`** - Agent System
+- `main/agent-management.ts` - Agent CRUD operations
+  - Storage helpers: `loadAgents`, `saveAgent`, `deleteAgent`, `sanitizeAgentName`, `getAgentFilePath`
+  - IPC handler registration: `registerAgentIPCHandlers`
+- `main/agent-template-management.ts` - Agent template CRUD, validation, storage
+- `main/chat-agent-management.ts` - Chat agent logic (tools + files)
+  - System prompt generation: `generateChatAgentSystemPrompt()`
+  - IPC handlers: `chat-agent:streamMessage`, `chat-agent:clearHistory`
+- `main/app-agent-management.ts` - App agent logic (files only, no tools)
+  - System prompt generation: `generateAppAgentSystemPrompt()`
+  - IPC handlers: `app-agent:streamMessage`, `app-agent:clearHistory`
 
-**`src/main/llm/index.ts`**
-- LLM streaming router and tool execution routing
-- `streamLLM()` - Routes to provider-specific streaming implementations
-- `executeToolWithRouting()` - Routes tools to MCP server, Node.js worker, or browser based on tool type
-  - MCP tools: Routes to `executeMCPTool()` or `executeMCPToolStream()` via MCP client
-  - Custom tools: Routes based on `environment` ('node' or 'browser')
+**`src/llm/`** - LLM Provider System
+- `main/provider-management.ts` - LLM provider CRUD operations
+  - Storage helpers: `getProvidersPath`, `loadProviders`, `saveProviders`, `getProviderById`
+  - Validation: `validateProvider` (type-specific validation)
+  - Default URLs: `getDefaultBaseURL` (returns default endpoints per provider type)
+  - IPC handler registration: `registerProviderIPCHandlers`
+- `main/model-config-management.ts` - Model configuration CRUD, validation, storage
+- `main/streaming/` - LLM Streaming Module
+  - `index.ts` - Main routing interface with `streamLLM()` function, `executeToolWithRouting()` for tool execution routing
+  - `openai.ts` - OpenAI-compatible streaming with native tool calling
+  - `glm.ts` - GLM (Zhipu AI) streaming with native tool calling
 
-**`src/main/chat-agent-management.ts`**
-- Chat agent logic (tools + files)
-- System prompt generation: `generateChatAgentSystemPrompt()`
-- IPC handlers: `chat-agent:streamMessage`, `chat-agent:clearHistory`
-- LLM handlers manage conversation history (saves user/assistant messages)
+**`src/tools/`** - Tool System
+- `main/tool-management.ts` - Tool CRUD operations (custom JavaScript tools + MCP tools)
+  - Storage helpers: `getToolsPath`, `loadCustomTools`, `discoverMCPTools`, `loadTools`, `saveTools`
+  - JSON Schema validator: `validateJSONSchema`
+  - IPC handlers: CRUD operations, execution routing, validation
+  - MCP tools integration: `initializeMCPServers()`
+- `main/tool-worker-executor.ts` - Tool execution in isolated worker processes
+- `main/mcp-client.ts` - MCP client implementation for server connections
+- `main/mcp-storage.ts` - MCP server configuration storage and management
+- `tool-worker.ts` - Worker process entry point for tool execution
+- `browser/browser-tool-executor.ts` - Browser tool execution in renderer context
 
-**`src/main/app-agent-management.ts`**
-- App agent logic (files only, no tools)
-- System prompt generation: `generateAppAgentSystemPrompt()` (system prompt only)
-- IPC handlers: `app-agent:streamMessage`, `app-agent:clearHistory`
-- LLM handlers manage conversation history (saves user/assistant messages)
+**`src/settings/`** - Application Settings
+- `main/settings-management.ts` - Settings CRUD operations
+  - Storage helpers: `getSettingsPath`, `loadSettings`, `saveSettings`, `updateSettingsFields`
+  - IPC handler registration: `registerSettingsIPCHandlers`
 
-**`src/main/tool-management.ts`**
-- Tool CRUD operations (custom JavaScript tools + MCP tools)
-- Storage helpers: `getToolsPath`, `loadCustomTools`, `discoverMCPTools`, `loadTools`, `saveTools`, `getToolByName`
-  - Note: Tool loading functions are **synchronous** (tools cached in memory at app startup)
-- JSON Schema validator: `validateJSONSchema`
-- IPC handlers: CRUD operations, execution routing based on tool type, validation
-- MCP tools integration: `initializeMCPServers()` connects to all servers at startup and caches tools
+**`src/notepad/`** - Quick Notepad
+- `main/notepad-management.ts` - Notepad CRUD operations
+- `main/notepad-window.ts` - Notepad window lifecycle, global shortcut registration
+- `renderer.ts` - Notepad window renderer entry
 
-**`src/main/mcp-client.ts`**
-- MCP client implementation for server connections
-- Transport implementations: stdio and SSE
-- Tool discovery from MCP servers
-- Tool execution through MCP protocol
-- Connection management and health checking
+**`src/quick-ai/`** - Quick AI Conversation
+- `main/quick-ai-management.ts` - Quick AI conversation management
+- `main/quick-ai-window.ts` - Quick AI window lifecycle, global shortcut registration
+- `renderer.ts` - Quick AI window renderer entry
 
-**`src/main/mcp-storage.ts`**
-- MCP server configuration storage and management
-- CRUD operations for MCP servers
-- Server validation and connection testing
-- Integration with tool-management.ts for tool discovery
+**`src/snippets/`** - Snippets Manager
+- `main/snippet-management.ts` - Snippet CRUD operations
+- `main/snippet-window.ts` - Snippet window lifecycle, global shortcut registration
+- `renderer.ts` - Snippet window renderer entry
 
-**`src/main/settings-management.ts`**
-- Settings CRUD operations
-- Storage helpers: `getSettingsPath`, `loadSettings`, `saveSettings`, `updateSettingsFields`
-- IPC handler registration: `registerSettingsIPCHandlers`
+**`src/clipboard-history/`** - Clipboard History
+- `main/clipboard-history-management.ts` - Clipboard history CRUD operations
+- `main/clipboard-history-window.ts` - Clipboard history window lifecycle, global shortcut registration
+- `main/clipboard-watcher.ts` - Clipboard monitoring with content hash comparison
+- `renderer.ts` - Clipboard history window renderer entry
 
-**`src/main/notepad-management.ts`**
-- Notepad CRUD operations
-- Storage helpers: `getNotepadDir`, `ensureNotepadDir`, `loadNotepadFiles`, `createNotepadFile`, `readNotepadContent`, `saveNotepadContent`, `deleteNotepadFile`
-- IPC handlers: `notepad:getFiles`, `notepad:readFile`, `notepad:createFile`, `notepad:saveContent`, `notepad:deleteFile`
-- Returns null if no save location configured (user's preference: no default save)
+**`src/conversation/`** - Shared Conversation System
+- `components/` - Reusable conversation UI components
+- `transformers/` - Message format transformers for different providers
 
-**`src/main/notepad-window.ts`**
-- Notepad window lifecycle management
-- Global shortcut registration: `registerGlobalShortcut`, `unregisterGlobalShortcut`
-- Window management: `createNotepadWindow`, `showNotepadWindow`, `toggleNotepadWindow`
-- Show/hide pattern (preserves state between activations)
-
-**`src/main/quick-ai-management.ts`**
-- Quick AI conversation management
-- Settings validation: `validateQuickAISettings()` (checks provider and model configured)
-- In-memory agent management (no persistence)
-- IPC handlers: `quick-ai:streamMessage`, `quick-ai:clearHistory`, `quick-ai:validateSettings`
-- LLM handlers manage conversation history (in-memory only)
-
-**`src/main/quick-ai-window.ts`**
-- Quick AI window lifecycle management
-- Global shortcut registration: `registerQuickAIGlobalShortcut`, `unregisterQuickAIGlobalShortcut`
-- Window management: `createQuickAIWindow`, `showQuickAIWindow`, `toggleQuickAIWindow`
-- Show/hide pattern (preserves state between activations)
-
-**`src/renderer/browser-tool-executor.ts`**
-- Browser tool execution module
-- Runs tools in renderer context with access to browser APIs
+**`src/core/`** - Core Application Infrastructure
+- `app-container.ts` - Root layout container
+- `project-agent-dashboard.ts` - Agent grid display
+- `types/electron-api.d.ts` - Electron API type definitions
 
 ### Module Dependencies
-- `llm/index.ts` imports from: `llm/openai.ts`, `llm/glm.ts`
-- `llm/openai.ts` imports from: `provider-management.ts`, `tool-management.ts`, `llm/index.ts` (executeToolWithRouting)
-- `llm/glm.ts` imports from: `provider-management.ts`, `tool-management.ts`, `llm/index.ts` (executeToolWithRouting)
-- `chat-agent-management.ts` imports from: `llm/index.ts` (streamLLM), `agent-management.ts`, `provider-management.ts`, `model-config-management.ts`, `tool-management.ts`
-- `app-agent-management.ts` imports from: `llm/index.ts` (streamLLM), `agent-management.ts`, `provider-management.ts`, `model-config-management.ts`
-- `notepad-management.ts` imports from: `settings-management.ts` (loadSettings)
-- `quick-ai-management.ts` imports from: `llm/index.ts` (streamLLM), `settings-management.ts`, `provider-management.ts`, `model-config-management.ts`
-- `main.ts` imports from: `project-management.ts`, `provider-management.ts`, `model-config-management.ts`, `chat-agent-management.ts`, `app-agent-management.ts`, `tool-management.ts`, `mcp-client.ts`, `mcp-storage.ts`, `settings-management.ts`, `notepad-management.ts`, `notepad-window.ts`, `quick-ai-management.ts`, `quick-ai-window.ts`
+- `llm/main/streaming/index.ts` imports from: `streaming/openai.ts`, `streaming/glm.ts`, `tools/main/tool-management.ts`, `tools/main/mcp-client.ts`
+- `agent/main/chat-agent-management.ts` imports from: `llm/main/streaming`, `agent/main/agent-management.ts`, `llm/main/provider-management.ts`, `tools/main/tool-management.ts`
+- `agent/main/app-agent-management.ts` imports from: `llm/main/streaming`, `agent/main/agent-management.ts`, `llm/main/provider-management.ts`
+- `notepad/main/notepad-management.ts` imports from: `settings/main/settings-management.ts`
+- `quick-ai/main/quick-ai-management.ts` imports from: `llm/main/streaming`, `settings/main/settings-management.ts`, `llm/main/provider-management.ts`
+- `main.ts` imports from all feature main modules
 
 ### Pattern for Creating New Modules
-1. Create a new file in `src/main/` (e.g., `src/main/feature-name.ts`)
-2. Export storage/helper functions and a `registerFeatureIPCHandlers()` function
-3. Import and call the registration function in `src/main.ts` within `registerIPCHandlers()`
-4. If the module needs functions from another module, import them directly from that module
-5. Update CLAUDE.md to document the new module
+1. Create a new feature directory under `src/` (e.g., `src/new-feature/`)
+2. Create subdirectories: `main/`, `components/`, `preload/`, `api/`, `types/`
+3. Export storage/helper functions and a `registerFeatureIPCHandlers()` function in `main/`
+4. Import and call the registration function in `src/main.ts`
+5. Expose preload functions in `src/preload.ts`
+6. Update CLAUDE.md to document the new module
 
 ### Preload Script (`src/preload.ts`)
 - Bridges main and renderer via contextBridge
-- Organized into modules for better maintainability
-- Exposes `window.electronAPI` with:
-  - `platform` - Current platform (darwin/win32/linux)
-  - `openFolderDialog()` - Opens native folder picker dialog
-  - `getProjects()`, `addProject(path)`, `removeProject(path)` - Project operations
-  - `getAgents(projectPath)`, `addAgent(...)`, `removeAgent(...)`, `updateAgent(...)` - Agent operations
-  - `getProviders()`, `addProvider(...)`, `updateProvider(id, ...)`, `removeProvider(id)`, `getProviderById(id)` - Provider operations
-  - `getTools()`, `addTool(...)`, `updateTool(...)`, `removeTool(toolName)` - Tool operations
-  - `executeTool(request)` - Executes a tool (routes based on environment)
-  - `onBrowserToolExecution(callback)` - Listens for browser tool execution requests
-  - `sendBrowserToolResult(result)` - Sends browser tool execution result back
-  - `getFileTree(projectPath, options)` - Gets file tree structure
-  - `listProjectFiles(projectPath, options)` - Lists .txt and .md files
-  - `readFileContents(filePaths)` - Reads multiple file contents
-  - `saveMessageToFile(projectPath, content)` - Saves message content to a file in the project folder
-  - `streamChatAgentMessage(projectPath, agentName, message, filePaths, onChunk, onComplete, onError)` - Streams chat agent message
-  - `streamAppAgentMessage(projectPath, agentName, message, filePaths, onChunk, onComplete, onError)` - Streams app agent message
+- Imports from feature preload modules
+- Exposes `window.electronAPI` with all API functions
 
-### Preload Module Organization
-The preload script is organized into focused modules:
+### Preload Module Organization (by feature)
 
-**`src/preload/project-management.ts`**
-- Project management functions for preload context
-- Uses `ipcRenderer` directly to invoke IPC channels
-- Exported as `projectManagement` for use in `preload.ts`
+**`src/project/preload/index.ts`**
 - Functions: `openFolderDialog`, `getProjects`, `addProject`, `removeProject`, `getFileTree`, `listProjectFiles`, `readFileContents`, `saveMessageToFile`, `onProjectFileUpdated`
 
-**`src/preload/agent-management.ts`**
-- Agent management functions for preload context
-- Uses `ipcRenderer` directly to invoke IPC channels
-- Exported as `agentManagement` for use in `preload.ts`
+**`src/agent/preload/agent-management.ts`**
 - Functions: `getAgents`, `addAgent`, `removeAgent`, `updateAgent`, `clearChatAgentHistory`, `streamChatAgentMessage`, `clearAppAgentHistory`, `streamAppAgentMessage`, `onToolCallEvent`
 
-**`src/preload/provider-management.ts`**
-- Provider and model config management functions for preload context
-- Uses `ipcRenderer` directly to invoke IPC channels
-- Exported as `providerManagement` for use in `preload.ts`
+**`src/llm/preload/index.ts`**
 - Provider functions: `getProviders`, `addProvider`, `updateProvider`, `removeProvider`, `getProviderById`
 - Model config functions: `getModelConfigs`, `addModelConfig`, `updateModelConfig`, `removeModelConfig`, `getModelConfigById`
 
-**`src/preload/tool-management.ts`**
-- Tool management functions for preload context
-- Uses `ipcRenderer` directly to invoke IPC channels
-- Exported as `toolManagement` for use in `preload.ts`
+**`src/tools/preload/index.ts`**
 - Functions: `getTools`, `addTool`, `updateTool`, `removeTool`, `executeTool`, `onBrowserToolExecution`, `sendBrowserToolResult`
 
-**`src/preload/settings-management.ts`**
-- Settings management functions for preload context
-- Uses `ipcRenderer` directly to invoke IPC channels
-- Exported as `settingsManagement` for use in `preload.ts`
+**`src/settings/preload/index.ts`**
 - Functions: `getSettings`, `updateSettings`
-
-**`src/preload.ts`**
-- Main preload script that imports and exposes all modules via spread operator in `electronAPI`
-- Imports: `projectManagement`, `agentManagement`, `providerManagement`, `toolManagement`, `settingsManagement`
 
 ### Renderer Process (`src/renderer.ts`)
 - Web Components UI, runs in browser context
+- Imports components from feature directories
 - Includes browser tool execution handler
-- Listens for `tools:executeBrowser` events and executes tools via `browser-tool-executor.ts`
 
-### Renderer API Layer (`src/api/`)
+### Renderer API Layer (by feature)
+
 Renderer-safe API modules that wrap `window.electronAPI`:
 
-**`src/api/project-management.ts`**
-- Renderer-safe project management API
-- Exports `getProjectManagementAPI()` function that returns a `ProjectManagementAPI` instance
-- Internally wraps `window.electronAPI` calls
-- Used by renderer components (`project-panel`, `project-detail-panel`) for type-safe API access
-
-**`src/api/agent-management.ts`**
-- Renderer-safe agent management API
-- Exports `getAgentManagementAPI()` function that returns an `AgentManagementAPI` instance
-- Internally wraps `window.electronAPI` calls
-- Used by renderer components for type-safe agent operations
-
-**`src/api/provider-management.ts`**
-- Renderer-safe provider management API
-- Exports `getProviderManagementAPI()` function that returns a `ProviderManagementAPI` instance
-- Internally wraps `window.electronAPI` calls
-- Used by renderer components (`provider-dialog`, `model-config-dialog`, `agent-form-dialog`) for type-safe provider and model config operations
-
-**`src/api/tool-management.ts`**
-- Renderer-safe tool management API
-- Exports `getToolManagementAPI()` function that returns a `ToolManagementAPI` instance
-- Internally wraps `window.electronAPI` calls
-- Used by renderer components (`tools-dialog`, `tool-test-dialog`) for type-safe tool operations
-
-**`src/api/settings-management.ts`**
-- Renderer-safe settings management API
-- Exports `getSettingsManagementAPI()` function that returns a `SettingsManagementAPI` instance
-- Internally wraps `window.electronAPI` calls
-- Used by renderer components (`app-container`) for type-safe settings operations
+- `src/project/api/index.ts` - `getProjectManagementAPI()` returns `ProjectManagementAPI`
+- `src/agent/api/index.ts` - `getAgentManagementAPI()` returns `AgentManagementAPI`
+- `src/llm/api/index.ts` - `getProviderManagementAPI()` returns `ProviderManagementAPI`
+- `src/tools/api/index.ts` - `getToolManagementAPI()` returns `ToolManagementAPI`
+- `src/settings/api/index.ts` - `getSettingsManagementAPI()` returns `SettingsManagementAPI`
+- `src/notepad/api/index.ts` - `getNotepadManagementAPI()` returns `NotepadManagementAPI`
+- `src/quick-ai/api/index.ts` - `getQuickAIManagementAPI()` returns `QuickAIManagementAPI`
+- `src/snippets/api/index.ts` - `getSnippetManagementAPI()` returns `SnippetManagementAPI`
+- `src/clipboard-history/api/index.ts` - `getClipboardHistoryManagementAPI()` returns `ClipboardHistoryManagementAPI`
 
 **Benefits of the API Layer:**
-- Type safety through interfaces (`ProjectManagementAPI`, `AgentManagementAPI`, `ProviderManagementAPI`, `ToolManagementAPI`, `SettingsManagementAPI`)
+- Type safety through interfaces
 - Encapsulation of `window.electronAPI` access
 - Easier to mock for testing
 - Consistent API patterns across renderer components
@@ -243,25 +169,36 @@ The project uses **Vite** as the sole build tool (`vite.config.mjs`):
 
 - `vite-plugin-electron` - Bundles main process and preload script
 - `vite-plugin-electron-renderer` - Handles renderer process
-- Outputs to `dist/` (main/preload) and `dist-renderer/` (renderer)
+- Outputs to `dist/` (main/preload/tool-worker) and `dist-renderer/` (renderer)
 
 ## UI Architecture: Web Components
 
-The renderer uses vanilla JavaScript Web Components (not Vue/React). Each component is a TypeScript class extending `HTMLElement`:
+The renderer uses vanilla JavaScript Web Components. Each component is a TypeScript class extending `HTMLElement`:
 
-**Components:**
-- `app-container` (`src/components/app-container.ts`) - Root layout container, manages panel visibility and toggle buttons, forwards events between components, manages provider dialog, routes between chat-panel and app-panel based on agent type
-- `project-panel` (`src/components/project-panel.ts`) - Collapsible left sidebar (264px wide) that manages local folder projects using `projectManagementAPI`
-- `project-agent-dashboard` (`src/components/project-agent-dashboard.ts`) - Center content area that displays agents in a grid, handles dashboard/chat view switching
-- `conversation-panel` (`src/components/conversation-panel.ts`) - Reusable chat interface with streaming, tool call indicators, and optional file tagging
-- `assistant-message` (`src/components/conversation/assistant-message.ts`) - Web Component for rendering assistant messages with markdown, reasoning display, save/copy buttons; uses factory pattern for handler injection
-- `chat-panel` (`src/components/chat-panel.ts`) - Interactive chat interface with streaming support, wraps conversation-panel for chat agents, provides assistant message factory with save handler
-- `app-panel` (`src/components/app-panel.ts`) - Split-panel interface for App-type agents with chat (left 25%) and live app preview (right 75%), provides custom renderers for app-specific message rendering
-- `project-detail-panel` (`src/components/project-detail-panel.ts`) - Collapsible right sidebar (264px wide) that displays recursive file tree using `projectManagementAPI`
-- `agent-form-dialog` (`src/components/agent-form-dialog.ts`) - Modal dialog for creating and editing agents
-- `provider-dialog` (`src/components/provider-dialog.ts`) - Modal dialog for managing LLM providers
-- `tools-dialog` (`src/components/tools-dialog.ts`) - Modal dialog for managing custom tools with add/edit/delete/test functionality
-- `tool-test-dialog` (`src/components/tool-test-dialog.ts`) - Modal dialog for testing tool execution
+**Components (by feature):**
+
+- `src/core/app-container.ts` - Root layout container
+- `src/core/project-agent-dashboard.ts` - Agent grid display
+- `src/project/components/project-panel.ts` - Collapsible left sidebar
+- `src/project/components/project-detail-panel.ts` - Collapsible right sidebar
+- `src/conversation/components/conversation-panel.ts` - Reusable chat interface
+- `src/conversation/components/user-message.ts` - User messages
+- `src/conversation/components/assistant-message.ts` - Assistant messages with markdown
+- `src/conversation/components/tool-call-message.ts` - Tool call messages
+- `src/conversation/components/app-code-message.ts` - App agent messages
+- `src/agent/components/chat-panel.ts` - Chat sidebar interface
+- `src/agent/components/app-panel.ts` - App agent panel with preview
+- `src/agent/components/agent-form-dialog.ts` - Agent creation/editing dialog
+- `src/agent/components/agent-template-dialog.ts` - Agent template management
+- `src/llm/components/provider-dialog.ts` - LLM provider management
+- `src/llm/components/model-config-dialog.ts` - Model configuration management
+- `src/tools/components/tools-dialog.ts` - Tool management with testing
+- `src/tools/components/tool-test-dialog.ts` - Tool execution testing
+- `src/settings/components/settings-dialog.ts` - App settings management
+- `src/notepad/components/notepad-window.ts` - Standalone notepad window
+- `src/quick-ai/components/quick-ai-window.ts` - Standalone Quick AI window
+- `src/snippets/components/snippet-window.ts` - Standalone snippet window
+- `src/clipboard-history/components/clipboard-history-window.ts` - Standalone clipboard history window
 
 ### Component Patterns
 All Web Components follow this pattern:
@@ -269,210 +206,124 @@ All Web Components follow this pattern:
 2. `render()` - Sets `innerHTML` with Tailwind classes, must re-attach listeners after render
 3. `attachEventListeners()` - Clones and replaces DOM nodes to prevent duplicate listeners
 4. Public methods for external control (e.g., `expand()`, `collapse()`, `getValue()`, `show()`, `hide()`)
-5. Custom events for parent communication (e.g., `panel-toggle`, `project-selected`, `agent-selected`, `chat-back`, `provider-dialog-close`)
+5. Custom events for parent communication (e.g., `panel-toggle`, `project-selected`, `agent-selected`, `chat-back`)
 
 ### Event Flow
-1. User clicks project in `project-panel` → emits `project-selected` event (bubbles, composed)
-2. `app-container` catches event → forwards to both `project-agent-dashboard` and `project-detail-panel` with `bubbles: false` to prevent infinite loop
+1. User clicks project in `project-panel` → emits `project-selected` event
+2. `app-container` catches event → forwards to `project-agent-dashboard` and `project-detail-panel`
 3. `project-agent-dashboard.handleProjectSelected()` loads agents via IPC
 4. `project-detail-panel.handleProjectSelected()` loads file tree via IPC
-5. User clicks agent card → `project-agent-dashboard` emits `agent-selected` event, switches to chat view
+5. User clicks agent card → `project-agent-dashboard` emits `agent-selected` event
 6. `chat-panel` or `app-panel` (based on agent type) loads and displays conversation
-7. **Chat message flow (event-driven)**:
-   - User sends message in `conversation-panel` → dispatches `message-sent` event (bubbles, composed) with message details
-   - Parent component (`chat-panel` or `app-panel`) listens for `message-sent` → calls appropriate IPC (`chat-agent:*` or `app-agent:*`)
-   - **For chat agents with tools**: Main process emits `chat-agent:toolCall` events during tool execution → parent component calls `handleToolCallStart()`, `handleToolCallComplete()`, or `handleToolCallFailed()` on conversation panel
-   - Main process handles streaming → calls back via `handleStreamChunk()`, `handleStreamComplete()`, or `handleStreamError()`
-   - Parent component listens for `stream-complete` event for additional processing (e.g., `app-panel` parses app code)
-8. User clicks back button → parent panel emits `chat-back` event, returns to dashboard view
-
-### Dashboard/Chat View Switching
-The `project-agent-dashboard` component has two display modes:
-- **Dashboard mode** (default): Grid of agent cards with add/edit/delete actions
-- **Chat mode**: Shows the `chat-panel` component for the selected agent
-
-When an agent is selected via the `agent-selected` event, the dashboard hides the agent grid and shows the chat panel. The `chat-back` event reverses this.
+7. User sends message → streaming response from LLM
+8. User clicks back button → returns to dashboard view
 
 ## IPC Communication
 
-The app uses Electron's IPC (Inter-Process Communication) for secure communication between main and renderer processes.
+The app uses Electron's IPC for secure communication between main and renderer processes.
 
 ### Project IPC Channels
-- `dialog:openFolder` - Opens native folder picker dialog, returns folder path or null
-- `projects:get` - Returns all saved projects from storage
-- `projects:add` - Adds a new project (prevents duplicates)
-- `projects:remove` - Removes a project by path
+- `dialog:openFolder` - Opens native folder picker dialog
+- `projects:get` - Returns all saved projects
+- `projects:add` - Adds a new project
+- `projects:remove` - Removes a project
 
 ### Agent IPC Channels
-- `agents:get` - Returns all agents for a project (reads agent-*.json files from project folder)
-- `agents:add` - Adds a new agent to a project (validates and saves agent-{name}.json)
-- `agents:remove` - Removes an agent from a project (deletes agent-{name}.json)
-- `agents:update` - Updates an existing agent (validates, handles name changes)
+- `agents:get` - Returns all agents for a project
+- `agents:add` - Adds a new agent
+- `agents:remove` - Removes an agent
+- `agents:update` - Updates an existing agent
 
 ### Provider IPC Channels
 - `providers:get` - Returns all stored providers
-- `providers:add` - Adds a new provider (validates and saves to providers.json)
-- `providers:update` - Updates an existing provider (preserves createdAt, sets updatedAt)
-- `providers:remove` - Removes a provider by ID
+- `providers:add` - Adds a new provider
+- `providers:update` - Updates an existing provider
+- `providers:remove` - Removes a provider
 - `providers:getById` - Gets a single provider by ID
 
 ### Settings IPC Channels
-- `settings:get` - Returns all settings from storage
-- `settings:update` - Updates settings (supports partial updates)
+- `settings:get` - Returns all settings
+- `settings:update` - Updates settings
 
 ### Tool IPC Channels
 - `tools:get` - Returns all stored tools
-- `tools:add` - Adds a new tool (validates name, description, code, and parameters; validates code syntax)
-- `tools:update` - Updates an existing tool (preserves createdAt, sets updatedAt)
-- `tools:remove` - Removes a tool by name
-- `tools:execute` - Executes a tool (routes to worker, renderer, or MCP server based on tool type)
-- `tools:executeBrowser` - Event sent to renderer to execute browser-based tools
-- `tools:browserResult` - Event sent from renderer with browser tool execution result
-- `mcp:servers:get` - Returns all configured MCP servers
-- `mcp:servers:add` - Adds a new MCP server configuration
-- `mcp:servers:update` - Updates an existing MCP server configuration
-- `mcp:servers:remove` - Removes an MCP server by ID
-- `mcp:servers:test` - Tests connection to an MCP server
-- `mcp:tools:get` - Returns all MCP tools from all enabled servers
-- `mcp:tools:discover` - Forces discovery of tools from all enabled servers
-
-### Project Detail IPC Channels
-- `project:getFileTree` - Gets file tree structure for a project folder (recursive, filters hidden files)
-
-### File Reading IPC Channels
-- `files:list` - Lists all .txt and .md files in a project folder (recursive, up to 10 levels deep)
-- `files:readContents` - Reads multiple file contents at once (batch operation)
+- `tools:add` - Adds a new tool
+- `tools:update` - Updates an existing tool
+- `tools:remove` - Removes a tool
+- `tools:execute` - Executes a tool
+- `tools:executeBrowser` - Event sent to renderer for browser-based tools
+- `tools:browserResult` - Event sent from renderer with browser tool result
+- `mcp:servers:*` - MCP server management
+- `mcp:tools:*` - MCP tool discovery
 
 ### Chat IPC Channels
+- `chat-agent:streamMessage` - Initiates streaming message with tool calling
+- `chat-agent:toolCall` - Real-time tool call status updates
+- `chat-agent:clearHistory` - Clears conversation history
+- `app-agent:streamMessage` - Initiates streaming message for app agents
+- `app-agent:clearHistory` - Clears app agent history
 
-**Chat Agent (with tools):**
-- `chat-agent:streamMessage` - Initiates streaming message with tool calling + file context
-- `chat-agent:toolCall` - Real-time tool call status updates (one-way IPC from main to renderer, sent during tool execution)
-- `chat-agent:clearHistory` - Clears conversation history for a chat agent
+### Quick AI IPC Channels
+- `quick-ai:streamMessage` - Initiates streaming message
+- `quick-ai:clearHistory` - Clears conversation history
+- `quick-ai:validateSettings` - Validates settings
+- `quick-ai:windowShown` - Window shown event
 
-**App Agent (files only, no tools):**
-- `app-agent:streamMessage` - Initiates streaming message with file context only
-- `app-agent:clearHistory` - Clears conversation history for an app agent
-
-**Quick AI (no tools, no files):**
-- `quick-ai:streamMessage` - Initiates streaming message with default model/provider
-- `quick-ai:clearHistory` - Clears Quick AI conversation history (in-memory)
-- `quick-ai:validateSettings` - Validates Quick AI settings (provider and model configured)
-- `quick-ai:windowShown` - Signals Quick AI window was shown (one-way IPC from main to renderer)
-
-**Streaming Events (one-way IPC from main to renderer):**
-- `chat-chunk` - Content chunk during streaming (sent by chat-agent, app-agent, and quick-ai)
-- `chat-reasoning` - Reasoning/thinking chunk during streaming (GLM only, sent by chat-agent, app-agent, and quick-ai)
-- `chat-complete` - Signals streaming completion (sent by chat-agent, app-agent, and quick-ai)
-- `chat-error` - Signals streaming error with error message (sent by chat-agent, app-agent, and quick-ai)
-
-**Note:** The old `chat:sendMessage` and `chat:streamMessage` channels have been removed in favor of the more specific `chat-agent:*` and `app-agent:*` channels.
+### Streaming Events
+- `chat-chunk` - Content chunk during streaming
+- `chat-reasoning` - Reasoning chunk during streaming
+- `chat-complete` - Signals streaming completion
+- `chat-error` - Signals streaming error
 
 ## Storage
 
 ### Project Storage
 - Projects stored as JSON in `app.getPath('userData')/projects.json`
-- Each project contains: `path` (absolute path), `name` (folder name), `addedAt` (timestamp)
-- Projects persist across app restarts
-- Storage helpers and IPC handlers in `src/main/project-management.ts`
+- Each project contains: `path`, `name`, `addedAt`
 
 ### Agent Storage
-- Agents stored as individual JSON files in project folders: `agent-{sanitized-name}.json`
-- Agent names sanitized for filenames (lowercase, special chars removed, spaces to hyphens)
-- Each agent file contains complete agent metadata including conversation history
-- Storage helpers and IPC handlers in `src/main/agent-management.ts`
+- Agents stored as JSON files in project folders: `agent-{sanitized-name}.json`
+- Agent names sanitized for filenames
 
 ### Provider Storage
 - LLM providers stored in `app.getPath('userData')/providers.json`
-- Each provider contains: `id` (unique identifier), `type` (provider type discriminator), `name` (display name), `apiKey` (secret), `baseURL` (optional, overrides default), `createdAt` (timestamp), `updatedAt` (optional timestamp)
-- Agents reference providers by ID via `config.providerId` property
-- Storage helpers, validation, and IPC handlers in `src/main/provider-management.ts`
+- Each provider contains: `id`, `type`, `name`, `apiKey`, `baseURL`, `createdAt`, `updatedAt`
 
 ### Tool Storage
 - Tools stored in `app.getPath('userData')/tools.json`
 - Contains both custom tools and MCP server configurations
-- Each tool contains: `name`, `description`, `code`, `parameters` (JSON Schema), `returns` (optional), `timeout` (default 30000ms), `environment` ('node' or 'browser', default 'node'), `enabled` (default true), `createdAt`, `updatedAt`
-- Each MCP server contains: `id`, `name`, `url` (or `command` for stdio), `transport` ('stdio' or 'sse'), `enabled` (default true), `createdAt`, `updatedAt`
-- Storage helpers, JSON Schema validator, and IPC handlers in `src/main/tool-management.ts`
-- Tools execute in different environments based on `environment` setting:
-  - **Node.js tools**: Execute in isolated worker processes with access to Node.js APIs
-  - **Browser tools**: Execute in renderer process with access to browser APIs
-  - **MCP tools**: Execute through connected MCP servers via MCP protocol
 
 ### MCP Storage
-- MCP servers stored within `app.getPath('userData')/tools.json` under `mcpServers` key
-- Server discovery cache stored separately with tool lists and metadata
-- Connection health periodically updated and cached
-- Tool discovery performed when servers are enabled/disabled
+- MCP servers stored within `tools.json` under `mcpServers` key
 
 ## Type Definitions
 
-### ElectronAPI Interface (`src/types/electron-api.d.ts`)
-Central type definition file for the ElectronAPI interface:
+Type definitions are organized by feature in `types/` subdirectories:
 
-- Imports types from dedicated type definition modules
-- Defines `ElectronAPI` interface that is exposed to renderer via contextBridge
-- **Note**: All type definitions are organized in dedicated modules under `src/types/`
+### Core Types (`src/core/types/electron-api.d.ts`)
+- `ElectronAPI` interface for contextBridge exposure
 
-### Tool Management Types (`src/types/tool-management.d.ts`)
-Tool-related types organized in a dedicated module:
+### Project Types (`src/project/types/`)
+- `Project`, `FileTreeNode`, `FileReference`, `FileContent`, `ProjectManagementAPI`
 
-- `Tool` - Custom tool definition (name, description, code, parameters, returns, timeout, environment, enabled, createdAt, updatedAt)
-- `MCPServer` - MCP server configuration (id, name, url/command, transport, enabled, createdAt, updatedAt)
-- `MCPTool` - MCP tool definition (serverId, name, description, inputSchema, outputSchema, enabled)
-- `ToolExecutionRequest` - Request for tool execution (toolName, parameters, optional tool)
-- `ToolExecutionResult` - Result from tool execution (success, result, error, executionTime)
-- `ToolCallEvent` - Tool call event for IPC communication (toolName, parameters, status, result, executionTime, error)
-- `JSONSchema` - JSON Schema definition for tool parameters and return values
-- `BrowserToolExecutionRequest` - Browser tool execution request from main to renderer
-- `ToolManagementAPI` - Interface for tool management operations
-- `MCPManagementAPI` - Interface for MCP server and tool management operations
+### Agent Types (`src/agent/types/`)
+- `Agent`, `AgentConfig`, `AgentPrompts`, `AgentSettings`, `AgentManagementAPI`
+- `AgentTemplate`, `AgentTemplateManagementAPI`
 
-### Project Management Types (`src/types/project-management.d.ts`)
-Project-related types organized in a dedicated module:
+### LLM Types (`src/llm/types/`)
+- `LLMProvider`, `LLMProviderType`, `ModelConfig`, `ProviderManagementAPI`
 
-- `Project` - Local folder project with `path`, `name`, and `addedAt` properties
-- `FileType` - Discriminator union for file system nodes ('file' | 'directory')
-- `FileTreeNode` - Node in the file tree (name, path, type, children, expanded)
-- `FileTreeOptions` - Configuration for file tree traversal (maxDepth, excludeHidden, includeExtensions)
-- `FileReference` - File reference for @mention (name, path, extension)
-- `FileContent` - File content with metadata (path, name, content, size, error)
-- `FileListOptions` - Configuration for file listing (extensions, maxDepth, excludeHidden)
-- `ProjectManagementAPI` - Interface for project management operations
+### Tool Types (`src/tools/types/`)
+- `Tool`, `MCPServer`, `MCPTool`, `ToolExecutionRequest`, `ToolExecutionResult`, `ToolCallEvent`, `JSONSchema`, `ToolManagementAPI`
 
-### Agent Management Types (`src/types/agent-management.d.ts`)
-Agent-related types organized in a dedicated module:
+### Settings Types (`src/settings/types/`)
+- `AppSettings`, `SettingsManagementAPI`
 
-- `Agent` - AI agent with name, type, description, config, prompts, history, and settings
-- `AgentConfig` - Model configuration (modelId, providerId, and deprecated fields)
-- `AgentPrompts` - System and user prompts
-- `AgentSettings` - Flexible settings object
-- `AgentManagementAPI` - Interface for agent management operations (imports ToolCallEvent from `types/tool-management.d`)
-
-### Provider Management Types (`src/types/provider-management.d.ts`)
-Provider and model config types organized in a dedicated module:
-
-- `LLMProviderType` - Union type for provider types ('openai' | 'glm' | 'azure' | 'custom')
-- `LLMProvider` - LLM provider storage (id, type as LLMProviderType, name, apiKey, baseURL?, createdAt, updatedAt?)
-- `ModelConfig` - Model configuration for reusing model settings (id, name, model, type as LLMProviderType, temperature, maxTokens, topP, extra, createdAt, updatedAt)
-- `ProviderManagementAPI` - Interface for provider and model config operations
-
-### Settings Management Types (`src/types/settings-management.d.ts`)
-Settings-related types organized in a dedicated module:
-
-- `AppSettings` - Application settings (theme preference, notepad save location, Quick AI defaults)
-- `SettingsManagementAPI` - Interface for settings management operations
-
-### Quick AI Management Types (`src/types/quick-ai-management.d.ts`)
-Quick AI-related types organized in a dedicated module:
-
-- `QuickAISettingsValidation` - Settings validation result (valid flag and optional error message)
-- `QuickAIManagementAPI` - Interface for Quick AI operations (stream message, clear history, validate settings)
-
-### Component-Specific Types
-
-Some UI components define their own types locally for better encapsulation:
-- `conversation-panel.ts` defines `ChatMessage` and `ToolCallData` interfaces for UI display (exported for testing)
+### Feature-specific Types
+- `src/notepad/types/` - `NotepadFile`, `NotepadManagementAPI`
+- `src/quick-ai/types/` - `QuickAISettingsValidation`, `QuickAIManagementAPI`
+- `src/snippets/types/` - `SnippetFile`, `SnippetManagementAPI`
+- `src/clipboard-history/types/` - `ClipboardHistoryItem`, `ClipboardHistoryManagementAPI`
 
 ## TypeScript Configuration
 

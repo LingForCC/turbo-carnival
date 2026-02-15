@@ -44,7 +44,7 @@ export default defineConfig({
       },
       {
         // Tool worker entry point
-        entry: 'src/tool-worker.ts',
+        entry: 'src/tools/tool-worker.ts',
         onstart(args) {
           args.reload();
         },
