@@ -326,6 +326,7 @@ export class ConversationPanel extends HTMLElement {
 
       if (lastMessage && lastMessage.role === 'assistant' && lastMessage.toolCall) {
         this.currentStreamedContent = '';
+        this.currentStreamedReasoning = '';
         this.chatHistory.push({
           role: 'assistant',
           content: ''
