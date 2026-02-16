@@ -337,6 +337,7 @@ export class NotepadWindow extends HTMLElement {
 
   /**
    * Handle textarea input with debounced auto-save
+   * Also updates in-memory storage immediately for persistence
    */
   private handleTextareaInput(): void {
     const textarea = this.querySelector('#notepad-textarea') as HTMLTextAreaElement;
@@ -345,7 +346,12 @@ export class NotepadWindow extends HTMLElement {
     this.content = textarea.value;
     this.updateSaveStatus('unsaved');
 
-    // Debounce save
+    // Update in-memory storage immediately for persistence
+    if (this.currentFile) {
+      this.api.updateInMemoryContent(this.currentFile.path, this.content);
+    }
+
+    // Debounce save to disk
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout);
     }

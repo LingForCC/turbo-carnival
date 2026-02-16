@@ -151,6 +151,12 @@ interface ElectronAPI {
   // Delete notepad file
   deleteFile: (filePath: string) => Promise<void>;
 
+  // Update in-memory content (called on every keystroke for persistence)
+  updateInMemoryContent: (filePath: string, content: string) => Promise<void>;
+
+  // Listen for notepad window shown event
+  onWindowShown: (callback: () => void) => (() => void);
+
   // ============ CHAT-AGENT METHODS ============
 
   // Clear chat-agent history

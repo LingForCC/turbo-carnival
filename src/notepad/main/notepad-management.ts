@@ -8,6 +8,15 @@ import { loadSettings } from '../../settings/main/settings-management';
 
 const ERROR_NOTEPAD_NO_LOCATION = 'NOTEPAD_NO_LOCATION';
 
+// ============ IN-MEMORY STORAGE ============
+
+/**
+ * In-memory storage for notepad content
+ * Stores unsaved content keyed by file path
+ * This ensures content persistence even if window is closed before auto-save triggers
+ */
+const inMemoryContent = new Map<string, string>();
+
 // ============ STORAGE HELPERS ============
 
 /**
@@ -98,10 +107,18 @@ export function createNotepadFile(dir: string): NotepadFile {
 
 /**
  * Read notepad file content
+ * Checks in-memory storage first for unsaved content, then falls back to disk
  * @param filePath - Full path to the notepad file
  * @returns File content as string, empty string if file doesn't exist
  */
 export function readNotepadContent(filePath: string): string {
+  // Check in-memory storage first (for unsaved content)
+  const inMemory = inMemoryContent.get(filePath);
+  if (inMemory !== undefined) {
+    return inMemory;
+  }
+
+  // Fall back to disk
   if (fs.existsSync(filePath)) {
     try {
       return fs.readFileSync(filePath, 'utf-8');
@@ -114,14 +131,38 @@ export function readNotepadContent(filePath: string): string {
 }
 
 /**
+ * Update in-memory content for a file
+ * Called when user types to ensure content is persisted even before auto-save
+ * @param filePath - Full path to the notepad file
+ * @param content - Current content in the editor
+ */
+export function updateInMemoryContent(filePath: string, content: string): void {
+  inMemoryContent.set(filePath, content);
+}
+
+/**
+ * Clear in-memory content for a file (after successful save or file deletion)
+ * @param filePath - Full path to the notepad file
+ */
+export function clearInMemoryContent(filePath: string): void {
+  inMemoryContent.delete(filePath);
+}
+
+/**
  * Save notepad content to file
+ * Also updates in-memory content and clears it after successful save
  * @param filePath - Full path to the notepad file
  * @param content - Content to save
  * @throws Error if save fails
  */
 export function saveNotepadContent(filePath: string, content: string): void {
   try {
+    // Update in-memory content first
+    inMemoryContent.set(filePath, content);
+    // Save to disk
     fs.writeFileSync(filePath, content, 'utf-8');
+    // Clear in-memory content after successful save
+    inMemoryContent.delete(filePath);
   } catch (error) {
     console.error('Failed to save notepad content:', error);
     throw error;
@@ -130,9 +171,13 @@ export function saveNotepadContent(filePath: string, content: string): void {
 
 /**
  * Delete notepad file
+ * Also clears any in-memory content for the file
  * @param filePath - Full path to the notepad file
  */
 export function deleteNotepadFile(filePath: string): void {
+  // Clear in-memory content first
+  inMemoryContent.delete(filePath);
+
   if (fs.existsSync(filePath)) {
     try {
       fs.unlinkSync(filePath);
@@ -188,5 +233,10 @@ export function registerNotepadIPCHandlers(): void {
   // Handler: Delete notepad file
   ipcMain.handle('notepad:deleteFile', async (_event, filePath: string) => {
     deleteNotepadFile(filePath);
+  });
+
+  // Handler: Update in-memory content (called on every keystroke)
+  ipcMain.handle('notepad:updateInMemoryContent', async (_event, filePath: string, content: string) => {
+    updateInMemoryContent(filePath, content);
   });
 }

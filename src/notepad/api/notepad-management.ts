@@ -55,6 +55,13 @@ const apiInstance: NotepadManagementAPI = {
   },
 
   /**
+   * Update in-memory content (called on every keystroke for persistence)
+   */
+  updateInMemoryContent: (filePath: string, content: string): Promise<void> => {
+    return getElectronAPI().updateInMemoryContent(filePath, content);
+  },
+
+  /**
    * Register callback for when notepad window is shown
    */
   onWindowShown: (callback: () => void): (() => void) => {

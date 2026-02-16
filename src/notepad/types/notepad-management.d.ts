@@ -63,6 +63,15 @@ export interface NotepadManagementAPI {
   deleteFile(filePath: string): Promise<void>;
 
   /**
+   * Update in-memory content for a file
+   * Called on every keystroke to ensure content is persisted even before auto-save
+   * @param filePath - Full path to the notepad file
+   * @param content - Current content in the editor
+   * @returns Promise that resolves when update is complete
+   */
+  updateInMemoryContent(filePath: string, content: string): Promise<void>;
+
+  /**
    * Register callback for when notepad window is shown
    * @param callback - Function to call when window is shown
    * @returns Unsubscribe function to remove the listener

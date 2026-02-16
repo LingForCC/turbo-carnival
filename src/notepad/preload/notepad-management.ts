@@ -21,6 +21,10 @@ export const notepadManagement = {
   // Delete notepad file
   deleteFile: (filePath: string) => ipcRenderer.invoke('notepad:deleteFile', filePath),
 
+  // Update in-memory content (called on every keystroke for persistence)
+  updateInMemoryContent: (filePath: string, content: string) =>
+    ipcRenderer.invoke('notepad:updateInMemoryContent', filePath, content),
+
   // Listen for window shown event (one-way IPC from main to renderer)
   onWindowShown: (callback: () => void) => {
     const listener = () => callback();
