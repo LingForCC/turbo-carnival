@@ -9,10 +9,12 @@ export class ToolsDialog extends HTMLElement {
   private api: ToolManagementAPI;
   private tools: Tool[] = [];
   private editingTool: Tool | null = null;
+  private editingToolIndex: number = -1; // -1 means add mode, >= 0 means edit at specific index
   private activeTab: 'custom' | 'mcp' = 'custom';
   private mcpServers: MCPServerConfig[] = [];
   private mcpTools: Tool[] = [];
   private editingMCPServer: MCPServerConfig | null = null;
+  private editingMCPServerIndex: number = -1; // -1 means add mode, >= 0 means edit at specific index
 
   constructor() {
     super();
@@ -72,6 +74,8 @@ export class ToolsDialog extends HTMLElement {
 
   private renderCustomTab(): string {
     const customTools = this.tools.filter(t => (t.toolType || 'custom') === 'custom');
+    const isAdding = this.editingToolIndex === -1 && this.editingTool !== null;
+
     return `
       <div>
         <div class="flex justify-between items-center mb-4">
@@ -87,117 +91,199 @@ export class ToolsDialog extends HTMLElement {
         </div>
 
         <div id="tools-list" class="space-y-2">
-          ${this.renderToolsList()}
+          ${this.renderToolsListWithForm()}
         </div>
+      </div>
+    `;
+  }
 
-        <!-- Add/Edit Tool Form (hidden by default) -->
-        <div id="tool-form" class="hidden mt-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 m-0" id="form-title">Add New Tool</h4>
-          <form id="tool-form-element" class="space-y-3">
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-name">
-                  Name <span class="text-red-500">*</span>
-                </label>
-                <input type="text" id="tool-name" name="name" required
-                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       placeholder="e.g., calculate_distance">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-environment">
-                  Execution Environment
-                </label>
-                <select id="tool-environment" name="environment"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="node">Node.js (File system, child processes, etc.)</option>
-                  <option value="browser">Browser (Fetch, localStorage, DOM, etc.)</option>
-                </select>
-              </div>
+  private renderToolsListWithForm(): string {
+    const customTools = this.tools.filter(t => (t.toolType || 'custom') === 'custom');
+    const isAdding = this.editingToolIndex === -1 && this.editingTool !== null;
+
+    if (customTools.length === 0 && !isAdding) {
+      return `
+        <p class="text-sm text-gray-400 dark:text-gray-500 text-center py-8 m-0">
+          No tools yet. Click "Add Tool" to create one.
+        </p>
+      `;
+    }
+
+    const parts: string[] = [];
+
+    // If in add mode, show form at the top
+    if (isAdding) {
+      parts.push(this.renderToolForm('Add New Tool'));
+    }
+
+    // Render tools, inserting edit form after the tool being edited
+    customTools.forEach((tool, index) => {
+      const environment = tool.environment || 'node';
+      const envBadgeClass = environment === 'browser'
+        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+        : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300';
+
+      parts.push(`
+        <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 ${!tool.enabled ? 'opacity-60' : ''}">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">${this.escapeHtml(tool.name)}</span>
+              <span class="text-xs px-2 py-0.5 rounded ${tool.enabled ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}">
+                ${tool.enabled ? 'Enabled' : 'Disabled'}
+              </span>
+              <span class="text-xs px-2 py-0.5 rounded ${envBadgeClass}">
+                ${environment === 'browser' ? 'Browser' : 'Node'}
+              </span>
             </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">${this.escapeHtml(tool.description)}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 m-0">
+              Environment: ${environment} • Timeout: ${tool.timeout || 30000}ms • Created: ${new Date(tool.createdAt).toLocaleDateString()}
+            </p>
+          </div>
+          <div class="flex gap-1">
+            <button class="edit-tool-btn p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded cursor-pointer border-0 bg-transparent"
+                    data-tool-name="${this.escapeHtml(tool.name)}" data-tool-index="${index}" title="Edit tool">
+              <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+            </button>
+            <button class="delete-tool-btn p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded cursor-pointer border-0 bg-transparent"
+                    data-tool-name="${this.escapeHtml(tool.name)}" title="Delete tool">
+              <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      `);
 
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-timeout">
-                  Timeout (ms)
-                </label>
-                <input type="number" id="tool-timeout" name="timeout" value="30000" min="1000" max="300000"
-                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       placeholder="30000">
-              </div>
-              <div class="flex items-end">
-                <p class="text-xs text-gray-500 dark:text-gray-400 pb-2.5 m-0">
-                  Node.js tools run in isolated process. Browser tools run in renderer.
-                </p>
-              </div>
-            </div>
+      // If this is the tool being edited, show the form below it
+      if (this.editingToolIndex === index && this.editingTool !== null) {
+        parts.push(this.renderToolForm('Edit Tool'));
+      }
+    });
 
+    return parts.join('');
+  }
+
+  private renderToolForm(title: string): string {
+    const tool = this.editingTool;
+    const name = tool?.name || '';
+    const description = tool?.description || '';
+    const code = tool?.code || '';
+    const parameters = tool?.parameters ? JSON.stringify(tool.parameters, null, 2) : '';
+    const returns = tool?.returns ? JSON.stringify(tool.returns, null, 2) : '';
+    const timeout = tool?.timeout || 30000;
+    const environment = tool?.environment || 'node';
+    const enabled = tool?.enabled !== false;
+
+    return `
+      <div id="tool-form" class="mt-2 mb-2 p-4 border border-blue-300 dark:border-blue-600 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 m-0">${title}</h4>
+        <form id="tool-form-element" class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-description">
-                Description <span class="text-red-500">*</span>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-name">
+                Name <span class="text-red-500">*</span>
               </label>
-              <input type="text" id="tool-description" name="description" required
+              <input type="text" id="tool-name" name="name" required
                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     placeholder="What this tool does (shown to AI agent)">
+                     placeholder="e.g., calculate_distance" value="${this.escapeHtml(name)}">
             </div>
-
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-code">
-                JavaScript Code <span class="text-red-500">*</span>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-environment">
+                Execution Environment
               </label>
-              <textarea id="tool-code" name="code" required rows="8"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                        placeholder="function tool(params) { ... }"></textarea>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-0">
-                Code must export a function named "tool" or "run" that takes a params object
+              <select id="tool-environment" name="environment"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="node" ${environment === 'node' ? 'selected' : ''}>Node.js (File system, child processes, etc.)</option>
+                <option value="browser" ${environment === 'browser' ? 'selected' : ''}>Browser (Fetch, localStorage, DOM, etc.)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-timeout">
+                Timeout (ms)
+              </label>
+              <input type="number" id="tool-timeout" name="timeout" value="${timeout}" min="1000" max="300000"
+                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     placeholder="30000">
+            </div>
+            <div class="flex items-end">
+              <p class="text-xs text-gray-500 dark:text-gray-400 pb-2.5 m-0">
+                Node.js tools run in isolated process. Browser tools run in renderer.
               </p>
             </div>
+          </div>
 
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-parameters">
-                  Parameters (JSON Schema) <span class="text-red-500">*</span>
-                </label>
-                <textarea id="tool-parameters" name="parameters" required rows="4"
-                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                          placeholder='{"type": "object", "properties": {...}, "required": [...]}'></textarea>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-returns">
-                  Returns (JSON Schema - Optional)
-                </label>
-                <textarea id="tool-returns" name="returns" rows="4"
-                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                          placeholder='{"type": "object", "properties": {...}, "required": [...]}'></textarea>
-              </div>
-            </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-description">
+              Description <span class="text-red-500">*</span>
+            </label>
+            <input type="text" id="tool-description" name="description" required
+                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   placeholder="What this tool does (shown to AI agent)" value="${this.escapeHtml(description)}">
+          </div>
 
-            <div class="flex items-center gap-2">
-              <input type="checkbox" id="tool-enabled" name="enabled" checked class="w-4 h-4">
-              <label for="tool-enabled" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Enabled (available for agents to use)
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-code">
+              JavaScript Code <span class="text-red-500">*</span>
+            </label>
+            <textarea id="tool-code" name="code" required rows="8"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                      placeholder="function tool(params) { ... }">${this.escapeHtml(code)}</textarea>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-0">
+              Code must export a function named "tool" or "run" that takes a params object
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-parameters">
+                Parameters (JSON Schema) <span class="text-red-500">*</span>
               </label>
+              <textarea id="tool-parameters" name="parameters" required rows="4"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                        placeholder='{"type": "object", "properties": {...}, "required": [...]}'>${this.escapeHtml(parameters)}</textarea>
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="tool-returns">
+                Returns (JSON Schema - Optional)
+              </label>
+              <textarea id="tool-returns" name="returns" rows="4"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                        placeholder='{"type": "object", "properties": {...}, "required": [...]}'>${this.escapeHtml(returns)}</textarea>
+            </div>
+          </div>
 
-            <div class="flex justify-between items-center pt-2">
-              <div class="flex gap-2">
-                <button type="button" id="test-tool-btn"
-                        class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0">
-                  Test Code
-                </button>
-              </div>
-              <div class="flex gap-2">
-                <button type="button" id="cancel-form-btn"
-                        class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0">
-                  Cancel
-                </button>
-                <button type="submit"
-                        class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg cursor-pointer border-0">
-                  Save Tool
-                </button>
-              </div>
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="tool-enabled" name="enabled" ${enabled ? 'checked' : ''} class="w-4 h-4">
+            <label for="tool-enabled" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Enabled (available for agents to use)
+            </label>
+          </div>
+
+          <div class="flex justify-between items-center pt-2">
+            <div class="flex gap-2">
+              <button type="button" id="test-tool-btn"
+                      class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0">
+                Test Code
+              </button>
             </div>
-          </form>
-        </div>
+            <div class="flex gap-2">
+              <button type="button" id="cancel-form-btn"
+                      class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0">
+                Cancel
+              </button>
+              <button type="submit"
+                      class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg cursor-pointer border-0">
+                Save Tool
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
     `;
   }
@@ -219,7 +305,7 @@ export class ToolsDialog extends HTMLElement {
         </div>
 
         <div id="mcp-servers-list" class="space-y-2 mb-6">
-          ${this.renderMCPServersList()}
+          ${this.renderMCPServersListWithForm()}
         </div>
 
         <!-- MCP Tools Section -->
@@ -231,55 +317,14 @@ export class ToolsDialog extends HTMLElement {
             ${this.renderMCPToolsList()}
           </div>
         </div>
-
-        <!-- Add/Edit MCP Server Form (hidden by default) -->
-        <div id="mcp-server-form" class="hidden mt-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 m-0" id="mcp-form-title">Add MCP Server</h4>
-          <div class="space-y-3">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="mcp-config-json">
-                Server Configuration (JSON) <span class="text-red-500">*</span>
-              </label>
-              <textarea id="mcp-config-json" required rows="10"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                        placeholder='{
-  "name": "jira",
-  "transport": "streamable-http",
-  "url": "https://mcp-server.example.com/mcp",
-  "headers": {
-    "jira_token": "your-jira-token",
-    "mcp-session-id": "unique-session-id"
-  }
-}'></textarea>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-0">
-                Transports: "stdio" (command, args, env) or "streamable-http" (url, headers)
-              </p>
-            </div>
-
-            <div class="flex justify-between items-center pt-2">
-              <button type="button" id="test-mcp-connection-btn"
-                      class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0">
-                Test Connection
-              </button>
-              <div class="flex gap-2">
-                <button type="button" id="cancel-mcp-form-btn"
-                        class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0">
-                  Cancel
-                </button>
-                <button type="button" id="save-mcp-server-btn"
-                        class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg cursor-pointer border-0">
-                  Save Server
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     `;
   }
 
-  private renderMCPServersList(): string {
-    if (this.mcpServers.length === 0) {
+  private renderMCPServersListWithForm(): string {
+    const isAdding = this.editingMCPServerIndex === -1 && this.editingMCPServer !== null;
+
+    if (this.mcpServers.length === 0 && !isAdding) {
       return `
         <p class="text-sm text-gray-400 dark:text-gray-500 text-center py-8 m-0">
           No MCP servers configured. Click "Add Server" to connect to an MCP server.
@@ -287,12 +332,20 @@ export class ToolsDialog extends HTMLElement {
       `;
     }
 
-    return this.mcpServers.map(server => {
+    const parts: string[] = [];
+
+    // If in add mode, show form at the top
+    if (isAdding) {
+      parts.push(this.renderMCPServerForm('Add MCP Server'));
+    }
+
+    // Render servers, inserting edit form after the server being edited
+    this.mcpServers.forEach((server, index) => {
       const statusClass = server.connected
         ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
         : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400';
 
-      return `
+      parts.push(`
         <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
@@ -320,7 +373,7 @@ export class ToolsDialog extends HTMLElement {
               </svg>
             </button>
             <button class="edit-mcp-btn p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded cursor-pointer border-0 bg-transparent"
-                    data-server-name="${this.escapeHtml(server.name)}" title="Edit server">
+                    data-server-name="${this.escapeHtml(server.name)}" data-server-index="${index}" title="Edit server">
               <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
               </svg>
@@ -333,8 +386,71 @@ export class ToolsDialog extends HTMLElement {
             </button>
           </div>
         </div>
-      `;
-    }).join('');
+      `);
+
+      // If this is the server being edited, show the form below it
+      if (this.editingMCPServerIndex === index && this.editingMCPServer !== null) {
+        parts.push(this.renderMCPServerForm('Edit MCP Server'));
+      }
+    });
+
+    return parts.join('');
+  }
+
+  private renderMCPServerForm(title: string): string {
+    const server = this.editingMCPServer;
+    const configJson = server ? JSON.stringify(server, null, 2) : JSON.stringify({
+      name: '',
+      transport: 'streamable-http',
+      url: '',
+      headers: {
+        'x-api-key': ''
+      }
+    }, null, 2);
+
+    return `
+      <div id="mcp-server-form" class="mt-2 mb-2 p-4 border border-blue-300 dark:border-blue-600 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 m-0">${title}</h4>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="mcp-config-json">
+              Server Configuration (JSON) <span class="text-red-500">*</span>
+            </label>
+            <textarea id="mcp-config-json" required rows="10"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                      placeholder='{
+  "name": "jira",
+  "transport": "streamable-http",
+  "url": "https://mcp-server.example.com/mcp",
+  "headers": {
+    "jira_token": "your-jira-token",
+    "mcp-session-id": "unique-session-id"
+  }
+}'>${this.escapeHtml(configJson)}</textarea>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-0">
+              Transports: "stdio" (command, args, env) or "streamable-http" (url, headers)
+            </p>
+          </div>
+
+          <div class="flex justify-between items-center pt-2">
+            <button type="button" id="test-mcp-connection-btn"
+                    class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0">
+              Test Connection
+            </button>
+            <div class="flex gap-2">
+              <button type="button" id="cancel-mcp-form-btn"
+                      class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0">
+                Cancel
+              </button>
+              <button type="button" id="save-mcp-server-btn"
+                      class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg cursor-pointer border-0">
+                Save Server
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   private renderMCPToolsList(): string {
@@ -361,59 +477,6 @@ export class ToolsDialog extends HTMLElement {
           </div>
         </div>
       `;
-    }).join('');
-  }
-
-  private renderToolsList(): string {
-    const customTools = this.tools.filter(t => (t.toolType || 'custom') === 'custom');
-
-    if (customTools.length === 0) {
-      return `
-        <p class="text-sm text-gray-400 dark:text-gray-500 text-center py-8 m-0">
-          No tools yet. Click "Add Tool" to create one.
-        </p>
-      `;
-    }
-
-    return customTools.map(tool => {
-      const environment = tool.environment || 'node';
-      const envBadgeClass = environment === 'browser'
-        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-        : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300';
-
-      return `
-      <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 ${!tool.enabled ? 'opacity-60' : ''}">
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-gray-800 dark:text-gray-200">${this.escapeHtml(tool.name)}</span>
-            <span class="text-xs px-2 py-0.5 rounded ${tool.enabled ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}">
-              ${tool.enabled ? 'Enabled' : 'Disabled'}
-            </span>
-            <span class="text-xs px-2 py-0.5 rounded ${envBadgeClass}">
-              ${environment === 'browser' ? 'Browser' : 'Node'}
-            </span>
-          </div>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">${this.escapeHtml(tool.description)}</p>
-          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 m-0">
-            Environment: ${environment} • Timeout: ${tool.timeout || 30000}ms • Created: ${new Date(tool.createdAt).toLocaleDateString()}
-          </p>
-        </div>
-        <div class="flex gap-1">
-          <button class="edit-tool-btn p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded cursor-pointer border-0 bg-transparent"
-                  data-tool-name="${this.escapeHtml(tool.name)}" title="Edit tool">
-            <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-            </svg>
-          </button>
-          <button class="delete-tool-btn p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded cursor-pointer border-0 bg-transparent"
-                  data-tool-name="${this.escapeHtml(tool.name)}" title="Delete tool">
-            <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    `;
     }).join('');
   }
 
@@ -583,47 +646,27 @@ export class ToolsDialog extends HTMLElement {
   }
 
   private showAddMCPForm(): void {
-    this.editingMCPServer = null;
-    const form = this.querySelector('#mcp-server-form');
-    const formTitle = this.querySelector('#mcp-form-title');
-    if (form) form.classList.remove('hidden');
-    if (formTitle) formTitle.textContent = 'Add MCP Server';
-
-    // Clear form
-    const configTextarea = this.querySelector('#mcp-config-json') as HTMLTextAreaElement;
-    if (configTextarea) {
-      configTextarea.value = JSON.stringify({
-        name: '',
-        transport: 'streamable-http',
-        url: '',
-        headers: {
-          'x-api-key': ''
-        }
-      }, null, 2);
-    }
+    // Set to add mode (index -1 means add at top)
+    this.editingMCPServerIndex = -1;
+    // Set a placeholder object to indicate we're in add mode
+    this.editingMCPServer = {} as MCPServerConfig;
+    this.render();
   }
 
   private showEditMCPForm(serverName: string): void {
-    const server = this.mcpServers.find(s => s.name === serverName);
+    const serverIndex = this.mcpServers.findIndex(s => s.name === serverName);
+    const server = this.mcpServers[serverIndex];
     if (!server) return;
 
-    this.editingMCPServer = server;
-    const form = this.querySelector('#mcp-server-form');
-    const formTitle = this.querySelector('#mcp-form-title');
-    if (form) form.classList.remove('hidden');
-    if (formTitle) formTitle.textContent = 'Edit MCP Server';
-
-    // Populate form
-    const configTextarea = this.querySelector('#mcp-config-json') as HTMLTextAreaElement;
-    if (configTextarea) {
-      configTextarea.value = JSON.stringify(server, null, 2);
-    }
+    this.editingMCPServerIndex = serverIndex;
+    this.editingMCPServer = { ...server };
+    this.render();
   }
 
   private hideMCPForm(): void {
-    const form = this.querySelector('#mcp-server-form');
-    if (form) form.classList.add('hidden');
+    this.editingMCPServerIndex = -1;
     this.editingMCPServer = null;
+    this.render();
   }
 
   private async testMCPConnection(): Promise<void> {
@@ -659,7 +702,8 @@ export class ToolsDialog extends HTMLElement {
     }
 
     try {
-      if (this.editingMCPServer) {
+      // Check if we're in edit mode (index >= 0)
+      if (this.editingMCPServerIndex >= 0 && this.editingMCPServer) {
         await this.api.updateMCPServer(this.editingMCPServer.name, config);
       } else {
         await this.api.addMCPServer(config);
@@ -668,7 +712,6 @@ export class ToolsDialog extends HTMLElement {
       await this.loadMCPServers();
       await this.loadTools(); // Reload tools to include discovered MCP tools
       this.hideMCPForm();
-      this.render();
     } catch (error: any) {
       alert(`Error saving MCP server: ${error.message}`);
     }
@@ -717,52 +760,37 @@ export class ToolsDialog extends HTMLElement {
   }
 
   private showAddForm(): void {
-    this.editingTool = null;
-    const form = this.querySelector('#tool-form');
-    const formTitle = this.querySelector('#form-title');
-    if (form) form.classList.remove('hidden');
-    if (formTitle) formTitle.textContent = 'Add New Tool';
-
-    // Clear form
-    const formElement = this.querySelector('#tool-form-element') as HTMLFormElement;
-    if (formElement) formElement.reset();
-
-    // Set default values
-    const timeoutInput = this.querySelector('#tool-timeout') as HTMLInputElement;
-    if (timeoutInput) timeoutInput.value = '30000';
-
-    const enabledInput = this.querySelector('#tool-enabled') as HTMLInputElement;
-    if (enabledInput) enabledInput.checked = true;
+    // Set to add mode (index -1 means add at top)
+    this.editingToolIndex = -1;
+    // Set a placeholder object to indicate we're in add mode
+    this.editingTool = {
+      name: '',
+      description: '',
+      code: '',
+      parameters: { type: 'object', properties: {} },
+      timeout: 30000,
+      environment: 'node',
+      enabled: true,
+      createdAt: Date.now()
+    };
+    this.render();
   }
 
   private showEditForm(toolName: string): void {
-    const tool = this.tools.find(t => t.name === toolName);
+    const customTools = this.tools.filter(t => (t.toolType || 'custom') === 'custom');
+    const toolIndex = customTools.findIndex(t => t.name === toolName);
+    const tool = customTools[toolIndex];
     if (!tool) return;
 
-    this.editingTool = tool;
-    const form = this.querySelector('#tool-form');
-    const formTitle = this.querySelector('#form-title');
-    if (form) form.classList.remove('hidden');
-    if (formTitle) formTitle.textContent = 'Edit Tool';
-
-    // Populate form
-    const formElement = this.querySelector('#tool-form-element') as HTMLFormElement;
-    if (formElement) {
-      (formElement.elements.namedItem('name') as HTMLInputElement).value = tool.name;
-      (formElement.elements.namedItem('description') as HTMLInputElement).value = tool.description;
-      (formElement.elements.namedItem('code') as HTMLTextAreaElement).value = tool.code;
-      (formElement.elements.namedItem('parameters') as HTMLTextAreaElement).value = JSON.stringify(tool.parameters, null, 2);
-      (formElement.elements.namedItem('returns') as HTMLTextAreaElement).value = tool.returns ? JSON.stringify(tool.returns, null, 2) : '';
-      (formElement.elements.namedItem('timeout') as HTMLInputElement).value = String(tool.timeout || 30000);
-      (formElement.elements.namedItem('environment') as HTMLSelectElement).value = tool.environment || 'node';
-      (formElement.elements.namedItem('enabled') as HTMLInputElement).checked = tool.enabled;
-    }
+    this.editingToolIndex = toolIndex;
+    this.editingTool = { ...tool };
+    this.render();
   }
 
   private hideForm(): void {
-    const form = this.querySelector('#tool-form');
-    if (form) form.classList.add('hidden');
+    this.editingToolIndex = -1;
     this.editingTool = null;
+    this.render();
   }
 
   private async handleSubmit(e: Event): Promise<void> {
@@ -786,10 +814,11 @@ export class ToolsDialog extends HTMLElement {
         environment: (formData.get('environment') as string) || 'node',
         enabled: (formData.get('enabled') as string) === 'on',
         createdAt: this.editingTool?.createdAt || Date.now(),
-        updatedAt: this.editingTool ? Date.now() : undefined
+        updatedAt: this.editingToolIndex >= 0 ? Date.now() : undefined
       };
 
-      if (this.editingTool) {
+      // Check if we're in edit mode (index >= 0)
+      if (this.editingToolIndex >= 0 && this.editingTool) {
         await this.api.updateTool(this.editingTool.name, toolData);
       } else {
         await this.api.addTool(toolData);
@@ -797,7 +826,6 @@ export class ToolsDialog extends HTMLElement {
 
       await this.loadTools();
       this.hideForm();
-      this.render();
     } catch (error: any) {
       alert(`Error saving tool: ${error.message}`);
     }
