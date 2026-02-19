@@ -11,6 +11,7 @@ import './agent/components/agent-form-dialog';
 import './llm/components/provider-dialog';
 import './project/components/project-detail-panel';
 import './conversation/components/conversation-panel';
+import './quick-access/components/quick-project-access';
 
 // Import browser tool executor
 import { executeToolInBrowser } from './tools/browser/browser-tool-executor';

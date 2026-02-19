@@ -39,6 +39,7 @@ export class AppContainer extends HTMLElement {
     await this.loadTheme();
     this.render();
     this.attachEventListeners();
+    this.attachGlobalKeyboardListeners();
   }
 
   private render(): void {
@@ -386,6 +387,72 @@ export class AppContainer extends HTMLElement {
 
     dialog.addEventListener('agent-template-dialog-close', () => {
       dialog.remove();
+    });
+  }
+
+  /**
+   * Attach global keyboard listeners (Cmd+O / Ctrl+O for quick project access)
+   */
+  private attachGlobalKeyboardListeners(): void {
+    document.addEventListener('keydown', (e: KeyboardEvent) => {
+      // Check if an input or textarea is focused
+      const activeElement = document.activeElement;
+      if (activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Cmd+O on Mac, Ctrl+O on Windows/Linux
+      if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
+        e.preventDefault();
+        this.openQuickProjectAccess();
+      }
+    });
+  }
+
+  /**
+   * Open the quick project access popup
+   */
+  private openQuickProjectAccess(): void {
+    // Don't open if already open
+    if (document.querySelector('quick-project-access')) {
+      return;
+    }
+
+    const popup = document.createElement('quick-project-access');
+    document.body.appendChild(popup);
+
+    // Listen for project selection from the popup
+    popup.addEventListener('project-selected', (event: Event) => {
+      const customEvent = event as CustomEvent;
+
+      // Forward to dashboard
+      const dashboard = this.querySelector('#project-agent-dashboard');
+      if (dashboard) {
+        dashboard.dispatchEvent(new CustomEvent('project-selected', {
+          detail: customEvent.detail,
+          bubbles: false,
+          composed: true
+        }));
+      }
+
+      // Forward to project-detail-panel
+      const projectDetailPanel = this.querySelector('#project-detail-panel');
+      if (projectDetailPanel) {
+        projectDetailPanel.dispatchEvent(new CustomEvent('project-selected', {
+          detail: customEvent.detail,
+          bubbles: false,
+          composed: true
+        }));
+      }
+
+      // If currently showing chat, switch back to dashboard view
+      if (this.showingChat) {
+        this.showDashboard();
+      }
+    });
+
+    popup.addEventListener('quick-project-access-close', () => {
+      popup.remove();
     });
   }
 }
