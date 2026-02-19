@@ -33,3 +33,6 @@ coverage/
 
 # Electron
 out/
+
+# Testing (Playwright MCP)
+test-user-data/

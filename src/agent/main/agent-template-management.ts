@@ -1,6 +1,6 @@
-import { ipcMain, app } from 'electron';
-import * as path from 'path';
+import { ipcMain } from 'electron';
 import * as fs from 'fs';
+import { getStoragePath } from '../../core/storage-resolver';
 import type { AgentTemplate } from '../types';
 
 // ============ AGENT TEMPLATE STORAGE HELPERS ============
@@ -9,7 +9,7 @@ import type { AgentTemplate } from '../types';
  * Get the file path for agent templates storage
  */
 export function getTemplatesPath(): string {
-  return path.join(app.getPath('userData'), 'agent-templates.json');
+  return getStoragePath('agent-templates.json');
 }
 
 /**

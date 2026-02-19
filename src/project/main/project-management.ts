@@ -1,6 +1,7 @@
-import { app, ipcMain, dialog } from 'electron';
+import { ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { getStoragePath } from '../../core/storage-resolver';
 import type { Project } from '../types';
 
 // ============ SETTINGS GETTER (injectable for testing) ============

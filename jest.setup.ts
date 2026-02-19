@@ -24,7 +24,7 @@ jest.mock('fs', () => {
       return true;
     }
     // Special case for base mock directories (but not subdirectories)
-    if (filePath === '/mock' || filePath === '/mock/userdata') {
+    if (filePath === '/mock' || filePath === '/mock/userdata' || filePath === '/mock/turbo-carnival-dev') {
       return true;
     }
     // Check if it's a project directory (path ends with /project or contains /project/ but not specific files)
@@ -80,7 +80,7 @@ jest.mock('fs', () => {
         size: mockFiles[filePath].length,
       } as any;
     }
-    if (filePath.includes('project') || filePath === '/mock' || filePath === '/mock/userdata') {
+    if (filePath.includes('project') || filePath === '/mock' || filePath === '/mock/userdata' || filePath === '/mock/turbo-carnival-dev') {
       return {
         isFile: () => false,
         isDirectory: () => true,
@@ -136,6 +136,7 @@ jest.mock('electron', () => {
       getPath,
       getName: () => 'Turbo Carnival',
       getVersion: () => '1.0.0',
+      isPackaged: false, // Simulate unpackaged app for dev mode detection
     },
     ipcMain: {
       handle: jest.fn(),
@@ -153,7 +154,7 @@ jest.mock('electron', () => {
     BrowserWindow: jest.fn(),
     __esModule: true, // For esModuleInterop
     default: {
-      app: { getPath },
+      app: { getPath, isPackaged: false },
     },
   };
 });

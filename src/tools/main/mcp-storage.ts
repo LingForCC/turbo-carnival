@@ -3,16 +3,15 @@
  * Handles storage of MCP server configurations in tools.json
  */
 
-import { app } from 'electron';
-import * as path from 'path';
 import * as fs from 'fs';
+import { getStoragePath } from '../../core/storage-resolver';
 import type { MCPServerConfig } from '../types';
 
 /**
  * Get the file path for tools storage
  */
 function getToolsPath(): string {
-  return path.join(app.getPath('userData'), 'tools.json');
+  return getStoragePath('tools.json');
 }
 
 /**

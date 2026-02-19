@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "playwright-electron": {
+      "command": "npx",
+      "args": [
+        "@robertn702/playwright-mcp-electron@latest",
+        "--executable-path", "./electron-wrapper.sh"
+      ]
+    }
+  }
+}

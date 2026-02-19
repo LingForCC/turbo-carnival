@@ -1,6 +1,6 @@
-import { ipcMain, app } from 'electron';
-import * as path from 'path';
+import { ipcMain } from 'electron';
 import * as fs from 'fs';
+import { getStoragePath } from '../../core/storage-resolver';
 import type { LLMProvider, LLMProviderType } from '../types';
 
 // ============ PROVIDER STORAGE HELPERS ============
@@ -9,7 +9,7 @@ import type { LLMProvider, LLMProviderType } from '../types';
  * Get the file path for providers storage
  */
 export function getProvidersPath(): string {
-  return path.join(app.getPath('userData'), 'providers.json');
+  return getStoragePath('providers.json');
 }
 
 /**

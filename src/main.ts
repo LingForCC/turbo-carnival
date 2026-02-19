@@ -22,6 +22,7 @@ import { registerClipboardHistoryShortcut, unregisterClipboardHistoryShortcut, c
 import { startClipboardWatcher, stopClipboardWatcher } from './clipboard-history/main/clipboard-watcher';
 import { startProjectFolderWatcher, stopProjectFolderWatcher, updateWatcherFolder } from './project/main/project-folder-watcher';
 import { loadSettings, setOnProjectFolderChangedCallback } from './settings/main/settings-management';
+import { logStorageConfig } from './core/storage-resolver';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -59,6 +60,9 @@ function createWindow(): void {
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(async () => {
+  // Log storage configuration for debugging
+  logStorageConfig();
+
   createWindow();
 
   // Register IPC handlers

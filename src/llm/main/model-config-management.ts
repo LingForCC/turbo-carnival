@@ -1,6 +1,6 @@
-import { ipcMain, app } from 'electron';
-import * as path from 'path';
+import { ipcMain } from 'electron';
 import * as fs from 'fs';
+import { getStoragePath } from '../../core/storage-resolver';
 import type { ModelConfig } from '../types';
 
 // ============ MODEL CONFIG STORAGE HELPERS ============
@@ -9,7 +9,7 @@ import type { ModelConfig } from '../types';
  * Get the file path for model configs storage
  */
 export function getModelConfigsPath(): string {
-  return path.join(app.getPath('userData'), 'model-configs.json');
+  return getStoragePath('model-configs.json');
 }
 
 /**

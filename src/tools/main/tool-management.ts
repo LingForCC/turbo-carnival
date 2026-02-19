@@ -1,6 +1,6 @@
-import { ipcMain, app } from 'electron';
-import * as path from 'path';
+import { ipcMain } from 'electron';
 import * as fs from 'fs';
+import { getStoragePath } from '../../core/storage-resolver';
 import { executeToolInWorker } from './tool-worker-executor';
 import {
   connectToMCPServer,
@@ -36,7 +36,7 @@ import type {
  * Get the file path for tools storage
  */
 function getToolsPath(): string {
-  return path.join(app.getPath('userData'), 'tools.json');
+  return getStoragePath('tools.json');
 }
 
 /**

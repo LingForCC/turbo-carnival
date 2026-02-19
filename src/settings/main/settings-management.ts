@@ -1,6 +1,6 @@
-import { ipcMain, app, dialog, BrowserWindow } from 'electron';
-import * as path from 'path';
+import { ipcMain, dialog } from 'electron';
 import * as fs from 'fs';
+import { getStoragePath } from '../../core/storage-resolver';
 import type { AppSettings } from '../types';
 
 // Callback for projectFolder changes
@@ -19,7 +19,7 @@ export function setOnProjectFolderChangedCallback(callback: (newFolder: string |
  * Get the file path for settings storage
  */
 export function getSettingsPath(): string {
-  return path.join(app.getPath('userData'), 'settings.json');
+  return getStoragePath('settings.json');
 }
 
 /**
