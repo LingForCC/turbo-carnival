@@ -5,17 +5,11 @@ import { ipcRenderer } from 'electron';
  * For use in preload.ts to expose via contextBridge
  */
 export const projectManagement = {
-  // Open folder picker dialog
-  openFolderDialog: () => ipcRenderer.invoke('dialog:openFolder'),
-
-  // Get all saved projects
+  // Get all projects from the configured project folder
   getProjects: () => ipcRenderer.invoke('projects:get'),
 
-  // Add a new project
-  addProject: (folderPath: string) => ipcRenderer.invoke('projects:add', folderPath),
-
-  // Remove a project
-  removeProject: (folderPath: string) => ipcRenderer.invoke('projects:remove', folderPath),
+  // Refresh projects (manual refresh)
+  refreshProjects: () => ipcRenderer.invoke('projects:refresh'),
 
   // Get file tree for a project
   getFileTree: (projectPath: string, options?: any) =>
@@ -36,5 +30,10 @@ export const projectManagement = {
   // Listen for project file updates
   onProjectFileUpdated: (callback: (data: { projectPath: string; filePath: string }) => void) => {
     ipcRenderer.on('project-file-updated', (_event, data) => callback(data));
+  },
+
+  // Listen for project list changes (when subfolders are added/removed)
+  onProjectsChanged: (callback: () => void) => {
+    ipcRenderer.on('projects:changed', () => callback());
   },
 };

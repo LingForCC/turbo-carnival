@@ -3,42 +3,86 @@ import * as path from 'path';
 import * as fs from 'fs';
 import type { Project } from '../types';
 
-// ============ PROJECT STORAGE HELPERS ============
+// ============ SETTINGS GETTER (injectable for testing) ============
 
 /**
- * Get the file path for projects.json storage
+ * Function to get project folder from settings
+ * Can be overridden for testing
  */
-export function getProjectsPath(): string {
-  return path.join(app.getPath('userData'), 'projects.json');
+let _getProjectFolder: () => string | undefined | Promise<string | undefined> = async () => {
+  const { loadSettings } = await import('../../settings/main/settings-management');
+  return loadSettings().projectFolder;
+};
+
+/**
+ * Set a custom function to get the project folder (for testing)
+ */
+export function setProjectFolderGetter(getter: () => string | undefined | Promise<string | undefined>): void {
+  _getProjectFolder = getter;
 }
 
 /**
- * Load all projects from storage
+ * Get the project folder from settings
  */
-export function loadProjects(): Project[] {
-  const projectsPath = getProjectsPath();
-  if (fs.existsSync(projectsPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(projectsPath, 'utf-8'));
-      return data.projects || [];
-    } catch (error) {
-      console.error('Failed to load projects:', error);
+async function getProjectFolder(): Promise<string | undefined> {
+  return await _getProjectFolder();
+}
+
+// ============ PROJECT FOLDER HELPERS ============
+
+/**
+ * Load projects from a folder (immediate subfolders)
+ * @param projectFolder - The parent folder containing project subfolders
+ * @returns Array of Project objects
+ */
+export function loadProjectsFromFolder(projectFolder: string): Project[] {
+  if (!projectFolder || !fs.existsSync(projectFolder)) {
+    console.warn(`Project folder does not exist: ${projectFolder}`);
+    return [];
+  }
+
+  try {
+    const stat = fs.statSync(projectFolder);
+    if (!stat.isDirectory()) {
+      console.warn(`Project folder path is not a directory: ${projectFolder}`);
       return [];
     }
-  }
-  return [];
-}
 
-/**
- * Save projects to storage
- */
-export function saveProjects(projects: Project[]): void {
-  const projectsPath = getProjectsPath();
-  const data = { projects };
-  try {
-    fs.writeFileSync(projectsPath, JSON.stringify(data, null, 2));
+    const entries = fs.readdirSync(projectFolder);
+    const projects: Project[] = [];
+
+    for (const entry of entries) {
+      // Skip hidden folders (starting with .)
+      if (entry.startsWith('.')) {
+        continue;
+      }
+
+      const fullPath = path.join(projectFolder, entry);
+
+      try {
+        const entryStat = fs.statSync(fullPath);
+
+        // Only include directories
+        if (entryStat.isDirectory()) {
+          projects.push({
+            path: fullPath,
+            name: entry,
+            addedAt: entryStat.mtimeMs // Use folder modification time
+          });
+        }
+      } catch (entryError) {
+        // Skip entries we can't stat (permissions, etc.)
+        console.warn(`Could not stat ${fullPath}:`, entryError);
+      }
+    }
+
+    // Sort alphabetically by name
+    projects.sort((a, b) => a.name.localeCompare(b.name));
+
+    return projects;
   } catch (error) {
-    console.error('Failed to save projects:', error);
+    console.error(`Failed to load projects from folder ${projectFolder}:`, error);
+    return [];
   }
 }
 
@@ -209,50 +253,26 @@ export function listFilesRecursive(
  * Register all project-related IPC handlers
  */
 export function registerProjectIPCHandlers(): void {
-  // Handler: Open folder picker dialog
-  ipcMain.handle('dialog:openFolder', async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ['openDirectory'],
-      title: 'Select Project Folder'
-    });
-    if (result.canceled || result.filePaths.length === 0) {
-      return null;
-    }
-    return result.filePaths[0];
-  });
+  // Handler: Get all projects from the configured project folder
+  ipcMain.handle('projects:get', async () => {
+    const projectFolder = await getProjectFolder();
 
-  // Handler: Get all projects
-  ipcMain.handle('projects:get', () => {
-    return loadProjects();
-  });
-
-  // Handler: Add a project
-  ipcMain.handle('projects:add', async (_event, folderPath: string) => {
-    const projects = loadProjects();
-
-    // Check for duplicates
-    if (projects.some(p => p.path === folderPath)) {
-      return projects;
+    if (!projectFolder) {
+      return [];
     }
 
-    // Add new project
-    const newProject: Project = {
-      path: folderPath,
-      name: path.basename(folderPath),
-      addedAt: Date.now()
-    };
-
-    projects.push(newProject);
-    saveProjects(projects);
-    return projects;
+    return loadProjectsFromFolder(projectFolder);
   });
 
-  // Handler: Remove a project
-  ipcMain.handle('projects:remove', async (_event, folderPath: string) => {
-    const projects = loadProjects();
-    const filtered = projects.filter(p => p.path !== folderPath);
-    saveProjects(filtered);
-    return filtered;
+  // Handler: Refresh projects (manual refresh trigger)
+  ipcMain.handle('projects:refresh', async () => {
+    const projectFolder = await getProjectFolder();
+
+    if (!projectFolder) {
+      return [];
+    }
+
+    return loadProjectsFromFolder(projectFolder);
   });
 
   // ============ PROJECT DETAIL IPC HANDLERS ============

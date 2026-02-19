@@ -73,30 +73,16 @@ export interface FileListOptions {
  */
 export interface ProjectManagementAPI {
   /**
-   * Open folder picker dialog
-   * @returns Promise resolving to selected folder path or null if cancelled
-   */
-  openFolderDialog(): Promise<string | null>;
-
-  /**
-   * Get all saved projects
+   * Get all projects from the configured project folder
    * @returns Promise resolving to array of projects
    */
   getProjects(): Promise<Project[]>;
 
   /**
-   * Add a new project
-   * @param folderPath - Full path to the project folder
-   * @returns Promise resolving to updated array of projects
+   * Refresh projects (manual refresh trigger)
+   * @returns Promise resolving to array of projects
    */
-  addProject(folderPath: string): Promise<Project[]>;
-
-  /**
-   * Remove a project
-   * @param folderPath - Full path to the project folder to remove
-   * @returns Promise resolving to updated array of projects
-   */
-  removeProject(folderPath: string): Promise<Project[]>;
+  refreshProjects(): Promise<Project[]>;
 
   /**
    * Get file tree for a project
@@ -134,4 +120,10 @@ export interface ProjectManagementAPI {
    * @param callback - Function to call when project files are updated
    */
   onProjectFileUpdated(callback: (data: { projectPath: string; filePath: string }) => void): void;
+
+  /**
+   * Listen for project list changes (when subfolders are added/removed)
+   * @param callback - Function to call when project list changes
+   */
+  onProjectsChanged(callback: () => void): void;
 }

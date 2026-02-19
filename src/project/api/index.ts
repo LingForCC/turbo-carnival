@@ -20,31 +20,17 @@ function getElectronAPI() {
  */
 const apiInstance: ProjectManagementAPI = {
   /**
-   * Open folder picker dialog
-   */
-  openFolderDialog: (): Promise<string | null> => {
-    return getElectronAPI().openFolderDialog();
-  },
-
-  /**
-   * Get all saved projects
+   * Get all projects from the configured project folder
    */
   getProjects: () => {
     return getElectronAPI().getProjects();
   },
 
   /**
-   * Add a new project
+   * Refresh projects (manual refresh trigger)
    */
-  addProject: (folderPath: string) => {
-    return getElectronAPI().addProject(folderPath);
-  },
-
-  /**
-   * Remove a project
-   */
-  removeProject: (folderPath: string) => {
-    return getElectronAPI().removeProject(folderPath);
+  refreshProjects: () => {
+    return getElectronAPI().refreshProjects();
   },
 
   /**
@@ -80,6 +66,13 @@ const apiInstance: ProjectManagementAPI = {
    */
   onProjectFileUpdated: (callback: (data: { projectPath: string; filePath: string }) => void) => {
     return getElectronAPI().onProjectFileUpdated(callback);
+  },
+
+  /**
+   * Listen for project list changes
+   */
+  onProjectsChanged: (callback: () => void) => {
+    return getElectronAPI().onProjectsChanged(callback);
   },
 };
 

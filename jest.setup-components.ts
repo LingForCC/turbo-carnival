@@ -22,10 +22,9 @@ const mockElectronAPI = {
   platform: 'darwin',
 
   // Project methods
-  openFolderDialog: jest.fn(),
   getProjects: jest.fn(),
-  addProject: jest.fn(),
-  removeProject: jest.fn(),
+  refreshProjects: jest.fn(),
+  onProjectsChanged: jest.fn(),
 
   // Agent methods
   getAgents: jest.fn(),

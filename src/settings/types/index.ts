@@ -8,6 +8,7 @@
  */
 export interface AppSettings {
   theme: 'light' | 'dark';  // Theme preference
+  projectFolder?: string;  // Single folder containing project subfolders
   notepadSaveLocation?: string;  // Quick notepad save location (optional)
   snippetSaveLocation?: string | null;  // Snippet save location (optional)
   clipboardHistorySaveLocation?: string;  // Clipboard history save location (optional)

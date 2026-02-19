@@ -20,6 +20,8 @@ import { registerSnippetShortcut, unregisterSnippetShortcut, closeSnippetWindow 
 import { registerClipboardHistoryIPCHandlers } from './clipboard-history/main/clipboard-history-management';
 import { registerClipboardHistoryShortcut, unregisterClipboardHistoryShortcut, closeClipboardHistoryWindow } from './clipboard-history/main/clipboard-history-window';
 import { startClipboardWatcher, stopClipboardWatcher } from './clipboard-history/main/clipboard-watcher';
+import { startProjectFolderWatcher, stopProjectFolderWatcher, updateWatcherFolder } from './project/main/project-folder-watcher';
+import { loadSettings, setOnProjectFolderChangedCallback } from './settings/main/settings-management';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -79,6 +81,17 @@ app.whenReady().then(async () => {
 
   // Register global shortcut for Clipboard History
   registerClipboardHistoryShortcut();
+
+  // Start project folder watcher if projectFolder is configured
+  const settings = loadSettings();
+  if (settings.projectFolder) {
+    startProjectFolderWatcher(settings.projectFolder, mainWindow);
+  }
+
+  // Set up callback for projectFolder changes
+  setOnProjectFolderChangedCallback((newFolder) => {
+    updateWatcherFolder(newFolder, mainWindow);
+  });
 
   app.on('activate', () => {
     // On macOS, re-create the main window when the dock icon is clicked
@@ -149,6 +162,8 @@ app.on('before-quit', async () => {
   closeClipboardHistoryWindow();
   // Stop clipboard watcher
   stopClipboardWatcher();
+  // Stop project folder watcher
+  stopProjectFolderWatcher();
   // Disconnect all MCP servers
   const { disconnectAllMCPServers } = await import('./tools/main/mcp-client');
   await disconnectAllMCPServers();

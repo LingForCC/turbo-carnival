@@ -1,15 +1,15 @@
 // Mocks are set up in jest.setup.ts
 import * as electron from 'electron';
 import {
-  getProjectsPath,
-  loadProjects,
-  saveProjects,
+  loadProjectsFromFolder,
 } from '../../../project/main/project-management';
 import { createMockProject } from '../../helpers/mocks';
 import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
 import type { Project } from '../../../project/types';
+import * as fs from 'fs';
+import * as path from 'path';
 
-describe('Project Management - Storage Helpers', () => {
+describe('Project Management - Folder-Based Loading', () => {
   // Mock app.getPath before each test
   beforeEach(() => {
     // Clear all mocks before each test
@@ -22,87 +22,92 @@ describe('Project Management - Storage Helpers', () => {
     clearMockFiles();
   });
 
-  describe('getProjectsPath', () => {
-    it('should return correct projects.json path', () => {
-      
-      const projectsPath = getProjectsPath();
-      expect(projectsPath).toBe('/mock/userdata/projects.json');
-
-    });
-  });
-
-  describe('saveProjects and loadProjects', () => {
-    it('should save and load projects successfully', () => {
-      const { cleanup } = setupMockFS({});
-
-      const projects: Project[] = [
-        createMockProject({ path: '/project1', name: 'project1' }),
-        createMockProject({ path: '/project2', name: 'project2' }),
-      ];
-
-      // Save projects
-      saveProjects(projects);
-
-      // Load projects
-      const loadedProjects = loadProjects();
-      expect(loadedProjects).toHaveLength(2);
-      expect(loadedProjects[0].path).toBe('/project1');
-      expect(loadedProjects[1].path).toBe('/project2');
-
-      cleanup();
-    });
-
-    it('should return empty array when projects.json does not exist', () => {
-      const { cleanup } = setupMockFS({});
-
-      const projects = loadProjects();
+  describe('loadProjectsFromFolder', () => {
+    it('should return empty array when folder does not exist', () => {
+      const projects = loadProjectsFromFolder('/nonexistent-folder');
       expect(projects).toEqual([]);
-
-      cleanup();
     });
 
-    it('should handle corrupted JSON gracefully', () => {
-      const mockFiles: Record<string, string> = {
-        '/mock/userdata/projects.json': 'invalid json{{{',
-      };
-      const { cleanup } = setupMockFS(mockFiles);
-
-      const projects = loadProjects();
+    it('should return empty array when folder is empty', () => {
+      // Create an empty folder by not adding any files under it
+      const projects = loadProjectsFromFolder('/empty-folder');
+      // The mock returns empty if no files exist under that path
       expect(projects).toEqual([]);
+    });
+
+    it('should load subfolders as projects', () => {
+      // Setup mock files to simulate folder structure
+      const { cleanup } = setupMockFS({
+        '/project-folder/project1/.gitkeep': '',
+        '/project-folder/project2/.gitkeep': '',
+        '/project-folder/file.txt': 'some content',
+      });
+
+      const projects = loadProjectsFromFolder('/project-folder');
+
+      // Should only include directories, not files
+      expect(projects).toHaveLength(2);
+      const names = projects.map(p => p.name).sort();
+      expect(names).toContain('project1');
+      expect(names).toContain('project2');
 
       cleanup();
     });
 
-    it('should handle missing projects property', () => {
-      const mockFiles: Record<string, string> = {
-        '/mock/userdata/projects.json': JSON.stringify({ wrongKey: [] }),
-      };
-      const { cleanup } = setupMockFS(mockFiles);
+    it('should exclude hidden folders starting with dot', () => {
+      const { cleanup } = setupMockFS({
+        '/project-folder/project1/.gitkeep': '',
+        '/project-folder/.git/config': '',
+        '/project-folder/.vscode/settings.json': '',
+        '/project-folder/project2/.gitkeep': '',
+      });
 
-      const projects = loadProjects();
+      const projects = loadProjectsFromFolder('/project-folder');
+
+      // Should exclude .git and .vscode
+      expect(projects).toHaveLength(2);
+      const names = projects.map(p => p.name).sort();
+      expect(names).toEqual(['project1', 'project2']);
+
+      cleanup();
+    });
+
+    it('should sort projects alphabetically', () => {
+      const { cleanup } = setupMockFS({
+        '/project-folder/zebra/.gitkeep': '',
+        '/project-folder/apple/.gitkeep': '',
+        '/project-folder/mango/.gitkeep': '',
+      });
+
+      const projects = loadProjectsFromFolder('/project-folder');
+
+      expect(projects[0].name).toBe('apple');
+      expect(projects[1].name).toBe('mango');
+      expect(projects[2].name).toBe('zebra');
+
+      cleanup();
+    });
+
+    it('should include full path for each project', () => {
+      const { cleanup } = setupMockFS({
+        '/parent-folder/my-project/.gitkeep': '',
+      });
+
+      const projects = loadProjectsFromFolder('/parent-folder');
+
+      expect(projects[0].path).toBe('/parent-folder/my-project');
+
+      cleanup();
+    });
+
+    it('should return empty array when projectFolder is empty string', () => {
+      const projects = loadProjectsFromFolder('');
       expect(projects).toEqual([]);
-
-      cleanup();
     });
 
-    it('should preserve project metadata', () => {
-      const { cleanup } = setupMockFS({});
-
-      const timestamp = Date.now();
-      const projects: Project[] = [
-        createMockProject({
-          path: '/test-project',
-          name: 'test-project',
-          addedAt: timestamp,
-        }),
-      ];
-
-      saveProjects(projects);
-      const loadedProjects = loadProjects();
-
-      expect(loadedProjects[0].addedAt).toBe(timestamp);
-
-      cleanup();
+    it('should return empty array when projectFolder is null', () => {
+      const projects = loadProjectsFromFolder(null as any);
+      expect(projects).toEqual([]);
     });
   });
 });

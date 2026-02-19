@@ -39,10 +39,9 @@ import type { ClipboardHistoryItem } from './clipboard-history-management';
 
 interface ElectronAPI {
   platform: string;
-  openFolderDialog: () => Promise<string | null>;
   getProjects: () => Promise<Project[]>;
-  addProject: (path: string) => Promise<Project[]>;
-  removeProject: (path: string) => Promise<Project[]>;
+  refreshProjects: () => Promise<Project[]>;
+  onProjectsChanged: (callback: () => void) => void;
 
   // Settings management
   getSettings: () => Promise<AppSettings>;

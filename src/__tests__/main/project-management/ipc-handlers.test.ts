@@ -1,15 +1,20 @@
 // Mocks are set up in jest.setup.ts
 import * as electron from 'electron';
 import * as path from 'path';
-import { registerProjectIPCHandlers } from '../../../project/main/project-management';
 import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
 import type { Project } from '../../../project/types';
+
+// Import and use the injectable getter
+import { registerProjectIPCHandlers, setProjectFolderGetter } from '../../../project/main/project-management';
 
 describe('Project Management - IPC Handlers', () => {
   let mockHandlers: Map<string, Function>;
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Set up mock project folder getter
+    setProjectFolderGetter(() => '/project-folder');
 
     // Set up mock handler storage
     mockHandlers = new Map();
@@ -28,155 +33,62 @@ describe('Project Management - IPC Handlers', () => {
     clearMockFiles();
   });
 
-  describe('projects:add', () => {
-    it('should prevent duplicate projects with same path', async () => {
-      const { cleanup } = setupMockFS({});
-
-      // Add initial project
-      const addHandler = mockHandlers.get('projects:add')!;
-      let projects = await addHandler(null, '/test-project');
-
-      expect(projects).toHaveLength(1);
-
-      // Try to add duplicate
-      projects = await addHandler(null, '/test-project');
-
-      expect(projects).toHaveLength(1); // Should not add duplicate
-
-      cleanup();
-    });
-
-    it('should create project with correct metadata', async () => {
-      const { cleanup } = setupMockFS({});
-
-      const addHandler = mockHandlers.get('projects:add')!;
-      const projects = await addHandler(null, '/my-cool-project');
-
-      expect(projects).toHaveLength(1);
-      expect(projects[0]).toMatchObject({
-        path: '/my-cool-project',
-        name: 'my-cool-project', // name from basename
+  describe('projects:get', () => {
+    it('should return projects from project folder', async () => {
+      const { cleanup } = setupMockFS({
+        '/project-folder/project1/.gitkeep': '',
+        '/project-folder/project2/.gitkeep': '',
       });
-      expect(projects[0].addedAt).toBeDefined();
-      expect(typeof projects[0].addedAt).toBe('number');
 
-      cleanup();
-    });
+      const handler = mockHandlers.get('projects:get')!;
+      const projects = await handler();
 
-    it('should save projects after adding', async () => {
-      const { cleanup } = setupMockFS({});
-
-      const addHandler = mockHandlers.get('projects:add')!;
-      await addHandler(null, '/test-project');
-
-      // Load projects to verify persistence
-      const getHandler = mockHandlers.get('projects:get')!;
-      const projects = await getHandler();
-
-      expect(projects).toHaveLength(1);
-      expect(projects[0].path).toBe('/test-project');
-
-      cleanup();
-    });
-
-    it('should return updated projects array', async () => {
-      const { cleanup } = setupMockFS({});
-
-      const addHandler = mockHandlers.get('projects:add')!;
-      let projects = await addHandler(null, '/project1');
-      expect(projects).toHaveLength(1);
-
-      projects = await addHandler(null, '/project2');
       expect(projects).toHaveLength(2);
+      const names = projects.map((p: Project) => p.name).sort();
+      expect(names).toEqual(['project1', 'project2']);
 
       cleanup();
     });
 
-    it('should allow projects with same name but different paths', async () => {
+    it('should return empty array when no projects', async () => {
       const { cleanup } = setupMockFS({});
 
-      const addHandler = mockHandlers.get('projects:add')!;
-      let projects = await addHandler(null, '/user1/project');
+      const handler = mockHandlers.get('projects:get')!;
+      const projects = await handler();
+
+      expect(projects).toEqual([]);
+
+      cleanup();
+    });
+
+    it('should exclude hidden folders', async () => {
+      const { cleanup } = setupMockFS({
+        '/project-folder/project1/.gitkeep': '',
+        '/project-folder/.git/config': '',
+        '/project-folder/.vscode/settings.json': '',
+      });
+
+      const handler = mockHandlers.get('projects:get')!;
+      const projects = await handler();
+
       expect(projects).toHaveLength(1);
-
-      projects = await addHandler(null, '/user2/project');
-      expect(projects).toHaveLength(2);
-
-      // Both should have same name but different paths
-      expect(projects[0].name).toBe('project');
-      expect(projects[1].name).toBe('project');
-      expect(projects[0].path).not.toBe(projects[1].path);
+      expect(projects[0].name).toBe('project1');
 
       cleanup();
     });
   });
 
-  describe('projects:remove', () => {
-    it('should remove project by path', async () => {
-      const { cleanup } = setupMockFS({});
+  describe('projects:refresh', () => {
+    it('should refresh projects from project folder', async () => {
+      const { cleanup } = setupMockFS({
+        '/project-folder/project1/.gitkeep': '',
+      });
 
-      const addHandler = mockHandlers.get('projects:add')!;
-      await addHandler(null, '/project1');
-      await addHandler(null, '/project2');
-      await addHandler(null, '/project3');
-
-      const removeHandler = mockHandlers.get('projects:remove')!;
-      const projects = await removeHandler(null, '/project2');
-
-      expect(projects).toHaveLength(2);
-      expect(projects.some((p: Project) => p.path === '/project1')).toBe(true);
-      expect(projects.some((p: Project) => p.path === '/project2')).toBe(false);
-      expect(projects.some((p: Project) => p.path === '/project3')).toBe(true);
-
-      cleanup();
-    });
-
-    it('should save projects after removal', async () => {
-      const { cleanup } = setupMockFS({});
-
-      const addHandler = mockHandlers.get('projects:add')!;
-      await addHandler(null, '/project1');
-      await addHandler(null, '/project2');
-
-      const removeHandler = mockHandlers.get('projects:remove')!;
-      await removeHandler(null, '/project1');
-
-      // Verify persistence
-      const getHandler = mockHandlers.get('projects:get')!;
-      const projects = await getHandler();
+      const handler = mockHandlers.get('projects:refresh')!;
+      const projects = await handler();
 
       expect(projects).toHaveLength(1);
-      expect(projects[0].path).toBe('/project2');
-
-      cleanup();
-    });
-
-    it('should return filtered projects array', async () => {
-      const { cleanup } = setupMockFS({});
-
-      const addHandler = mockHandlers.get('projects:add')!;
-      await addHandler(null, '/project1');
-      await addHandler(null, '/project2');
-
-      const removeHandler = mockHandlers.get('projects:remove')!;
-      const projects = await removeHandler(null, '/project1');
-
-      expect(projects).toHaveLength(1);
-      expect(projects[0].path).toBe('/project2');
-
-      cleanup();
-    });
-
-    it('should handle removing non-existent project without error', async () => {
-      const { cleanup } = setupMockFS({});
-
-      const addHandler = mockHandlers.get('projects:add')!;
-      await addHandler(null, '/project1');
-
-      const removeHandler = mockHandlers.get('projects:remove')!;
-      const projects = await removeHandler(null, '/non-existent');
-
-      expect(projects).toHaveLength(1); // Should still have project1
+      expect(projects[0].name).toBe('project1');
 
       cleanup();
     });

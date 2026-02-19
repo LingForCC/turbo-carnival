@@ -30,7 +30,7 @@ export class SettingsDialog extends HTMLElement {
       this.currentTheme = this.settings.theme === 'dark' ? 'dark' : 'light';
     } catch (error) {
       console.error('Failed to load settings:', error);
-      this.settings = { theme: 'light', notepadSaveLocation: '', snippetSaveLocation: '', clipboardHistorySaveLocation: '' };
+      this.settings = { theme: 'light', projectFolder: '', notepadSaveLocation: '', snippetSaveLocation: '', clipboardHistorySaveLocation: '' };
       this.currentTheme = 'light';
     }
   }
@@ -52,6 +52,7 @@ export class SettingsDialog extends HTMLElement {
       return;
     }
 
+    const projectFolder = this.settings.projectFolder || '';
     const notepadLocation = this.settings.notepadSaveLocation || '';
     const snippetLocation = this.settings.snippetSaveLocation || '';
     const clipboardHistoryLocation = this.settings.clipboardHistorySaveLocation || '';
@@ -102,7 +103,33 @@ export class SettingsDialog extends HTMLElement {
           <!-- Tab Content -->
           <div class="p-6 min-h-[200px]">
             <!-- General Tab -->
-            <div id="tab-general" class="tab-content ${this.currentTab === 'general' ? '' : 'hidden'}">
+            <div id="tab-general" class="tab-content ${this.currentTab === 'general' ? '' : 'hidden'} space-y-6">
+              <!-- Project Folder -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="project-folder">
+                  Project Folder
+                </label>
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    id="project-folder-input"
+                    readonly
+                    class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
+                    placeholder="Not configured"
+                    value="${this.escapeHtml(projectFolder)}"
+                  >
+                  <button
+                    id="browse-project-folder-btn"
+                    class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer border-0"
+                  >
+                    Browse...
+                  </button>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  All immediate subfolders will appear as projects in the sidebar.
+                </p>
+              </div>
+
               <!-- Theme Selection -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -328,6 +355,14 @@ export class SettingsDialog extends HTMLElement {
       (newBtn as HTMLElement).addEventListener('click', () => this.browseNotepadLocation());
     }
 
+    // Browse button for project folder
+    const browseProjectFolderBtn = this.querySelector('#browse-project-folder-btn');
+    if (browseProjectFolderBtn) {
+      const newBtn = browseProjectFolderBtn.cloneNode(true);
+      browseProjectFolderBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.browseProjectFolder());
+    }
+
     // Browse button for snippet location
     const browseSnippetBtn = this.querySelector('#browse-snippet-btn');
     if (browseSnippetBtn) {
@@ -399,6 +434,26 @@ export class SettingsDialog extends HTMLElement {
       htmlElement.classList.add('dark');
     } else {
       htmlElement.classList.remove('dark');
+    }
+  }
+
+  private async browseProjectFolder(): Promise<void> {
+    try {
+      // Use the settings API to open folder dialog
+      const location = await this.api.openFolderDialog();
+      if (location) {
+        // Update settings
+        await this.api.updateSettings({ projectFolder: location });
+        this.settings = { ...this.settings!, projectFolder: location };
+
+        // Update input field
+        const input = this.querySelector('#project-folder-input') as HTMLInputElement;
+        if (input) {
+          input.value = location;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to browse folder:', error);
     }
   }
 

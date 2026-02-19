@@ -169,3 +169,29 @@ conversation-panel > div {
 .dark .prose th {
   background-color: #1f2937;
 }
+
+/* Scrollbar styling for project panel and other scrollable areas */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+  background-color: #4b5563;
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background-color: #6b7280;
+}

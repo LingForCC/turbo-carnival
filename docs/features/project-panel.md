@@ -2,21 +2,33 @@
 
 ## Project Panel (Left Sidebar)
 
-The project panel is a collapsible left sidebar (264px wide when expanded) that manages local folder projects.
+The project panel is a collapsible left sidebar (264px wide when expanded) that displays projects as subfolders of a configured project folder.
 
 ### Features
 
-- **Add projects** - Opens native folder picker dialog via `openFolderDialog()`
-- **Remove projects** - Removes project from storage with confirmation
+- **Folder-based projects** - Projects are automatically loaded from a "Project Folder" configured in Settings > General
+- **Auto-detection** - All immediate subfolders of the project folder appear as projects
+- **Real-time updates** - Folder watcher detects add/remove/rename of subfolders and updates the list automatically
 - **Select projects** - Clicking a project emits `project-selected` event
 - **Collapsible** - Toggle button expands/collapses the panel
+- **Scrollable list** - Always-visible scrollbar (8px wide) when projects exceed panel height, with dark mode support
+
+### Project Loading
+
+Projects are loaded dynamically from the configured project folder:
+
+1. User configures a "Project Folder" in Settings > General
+2. App reads all immediate subfolders of that folder
+3. Each subfolder becomes a project (hidden folders starting with `.` are excluded)
+4. Projects are sorted alphabetically by name
+5. Folder watcher monitors for changes and sends `projects:changed` IPC event
 
 ### Project Data
 
 Each project contains:
 - `path` - Absolute path to project folder
 - `name` - Folder name
-- `addedAt` - Timestamp when added
+- `addedAt` - Folder modification timestamp (used for sorting)
 
 ### Event Flow
 
@@ -25,6 +37,15 @@ Each project contains:
 3. `app-container` catches event and forwards to:
    - `project-agent-dashboard` - Loads agents via IPC
    - `project-detail-panel` - Loads file tree via IPC
+
+### Folder Watcher
+
+The `project-folder-watcher.ts` module monitors the project folder for changes:
+
+- Uses Node's `fs.watch` with `recursive: false` (only immediate children)
+- Debounces rapid changes (500ms) to avoid excessive updates
+- Sends `projects:changed` IPC event to renderer when subfolders change
+- Handles errors gracefully (folder deleted, permissions issues)
 
 ## Project Detail Panel (Right Sidebar)
 
@@ -61,12 +82,13 @@ The project detail panel is a collapsible right sidebar (264px wide when expande
 
 ### File Tree Implementation
 
-**Helpers in `src/main/project-management.ts`:**
+**Helpers in `src/project/main/project-management.ts`:**
+- `loadProjectsFromFolder(projectFolder)` - Loads immediate subfolders as projects
 - `buildFileTree(dirPath, options, currentDepth)` - Recursive helper to build file tree
 - `isHidden(name)` - Filters files starting with '.'
 - `listFilesRecursive(dirPath, options, currentDepth)` - Lists files for @mention tagging
 
-**Component methods in `src/components/project-detail-panel.ts`:**
+**Component methods in `src/project/components/project-detail-panel.ts`:**
 - `renderTreeNode(node, depth)` - Recursive rendering with proper indentation
 - `toggleDirectory(path)` - Manages expanded/collapsed state via `Set<string>`
 - `escapeHtml(text)` - XSS prevention for all file/folder names
@@ -80,7 +102,8 @@ The project detail panel is a collapsible right sidebar (264px wide when expande
 
 ## Related Files
 
-- `src/components/project-panel.ts` - Project sidebar UI
-- `src/components/project-detail-panel.ts` - File tree UI
-- `src/main/project-management.ts` - File tree helpers and IPC handlers
-- IPC channel: `project:getFileTree`
+- `src/project/components/project-panel.ts` - Project sidebar UI
+- `src/project/components/project-detail-panel.ts` - File tree UI
+- `src/project/main/project-management.ts` - Project loading, file tree helpers, and IPC handlers
+- `src/project/main/project-folder-watcher.ts` - Folder watching for real-time updates
+- IPC channels: `projects:get`, `projects:refresh`, `projects:changed` (event), `project:getFileTree`

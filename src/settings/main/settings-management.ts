@@ -1,7 +1,17 @@
-import { ipcMain, app, dialog } from 'electron';
+import { ipcMain, app, dialog, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import type { AppSettings } from '../types';
+
+// Callback for projectFolder changes
+let onProjectFolderChangedCallback: ((newFolder: string | undefined) => void) | null = null;
+
+/**
+ * Register a callback to be called when projectFolder setting changes
+ */
+export function setOnProjectFolderChangedCallback(callback: (newFolder: string | undefined) => void): void {
+  onProjectFolderChangedCallback = callback;
+}
 
 // ============ SETTINGS STORAGE HELPERS ============
 
@@ -66,8 +76,17 @@ export function registerSettingsIPCHandlers(): void {
   });
 
   // Handler: Update settings (partial update supported)
-  ipcMain.handle('settings:update', async (_event, updates: Partial<AppSettings>) => {
+  ipcMain.handle('settings:update', async (event, updates: Partial<AppSettings>) => {
+    const oldSettings = loadSettings();
     const newSettings = updateSettingsFields(updates);
+
+    // Notify main process if projectFolder changed
+    if (oldSettings.projectFolder !== newSettings.projectFolder) {
+      if (onProjectFolderChangedCallback) {
+        onProjectFolderChangedCallback(newSettings.projectFolder);
+      }
+    }
+
     return newSettings;
   });
 

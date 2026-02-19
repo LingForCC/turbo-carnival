@@ -99,6 +99,17 @@ The app uses graceful degradation for errors:
 - No separate CSS files per component
 - Tailwind v4 uses the new `@import "tailwindcss";` syntax in styles.css
 
+### Scrollbar Styling
+
+Custom scrollbar styles are defined in `src/styles.css` for all elements with `overflow-y-auto`:
+
+- **Width**: 8px
+- **Light mode**: Gray scrollbar (`#d1d5db`) with darker hover state (`#9ca3af`)
+- **Dark mode**: Dark gray scrollbar (`#4b5563`) with lighter hover state (`#6b7280`)
+- **Track**: Transparent background
+
+This ensures scrollbars are always visible (unlike macOS default behavior) in scrollable panels like the project list.
+
 ## Common Tasks
 
 ### Adding a New Component
