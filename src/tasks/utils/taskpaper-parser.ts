@@ -416,9 +416,9 @@ export function addTaskToTree(
   projectPath: string,
   projectName: string
 ): string | null {
-  // Generate a unique ID
+  // Generate a unique ID consistent with parseTaskPaper format
   const taskCounter = countAllTasks(tasks) + 1;
-  const newTaskId = `${projectPath}-${taskCounter}-${Date.now()}`;
+  const newTaskId = `${projectPath}-${taskCounter}`;
 
   // Create the new task object
   const task: Task = {

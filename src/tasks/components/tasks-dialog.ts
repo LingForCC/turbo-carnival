@@ -514,7 +514,7 @@ export class TasksDialog extends HTMLElement {
     }
 
     // Shift+Cmd+N / Shift+Ctrl+N - add child task
-    if (isModKey && e.shiftKey && e.key === 'N' && this.selectedTaskId) {
+    if (isModKey && e.shiftKey && e.key.toLowerCase() === 'n' && this.selectedTaskId) {
       e.preventDefault();
       this.addChildTask();
       return;
@@ -690,7 +690,7 @@ export class TasksDialog extends HTMLElement {
         const input = this.querySelector('.task-edit-input') as HTMLInputElement;
         if (input) {
           input.focus();
-          input.select();
+          input.setSelectionRange(0, input.value.length);
         }
       });
     } catch (error) {
@@ -738,7 +738,7 @@ export class TasksDialog extends HTMLElement {
         const input = this.querySelector('.task-edit-input') as HTMLInputElement;
         if (input) {
           input.focus();
-          input.select();
+          input.setSelectionRange(0, input.value.length);
         }
       });
     } catch (error) {
