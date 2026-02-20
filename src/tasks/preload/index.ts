@@ -1,4 +1,5 @@
 import { ipcRenderer } from 'electron';
+import type { TaskUpdate, NewTask } from '../types';
 
 /**
  * Preload module - uses ipcRenderer directly
@@ -19,4 +20,12 @@ export const taskManagement = {
   // Toggle task done status
   toggleTaskDone: (projectPath: string, taskId: string) =>
     ipcRenderer.invoke('tasks:toggleDone', projectPath, taskId),
+
+  // Update task properties
+  updateTask: (projectPath: string, taskId: string, updates: TaskUpdate) =>
+    ipcRenderer.invoke('tasks:updateTask', projectPath, taskId, updates),
+
+  // Add a new task
+  addTask: (newTask: NewTask) =>
+    ipcRenderer.invoke('tasks:addTask', newTask),
 };

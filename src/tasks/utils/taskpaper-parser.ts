@@ -344,3 +344,115 @@ export function isTaskDueWithinDays(task: Task, days: number): boolean {
 
   return task.due >= today && task.due <= futureDate;
 }
+
+/**
+ * Find a task and its parent/ancestors in the tree
+ * Returns the task, its parent array, and index in that array
+ */
+export function findTaskAndParent(
+  tasks: Task[],
+  taskId: string,
+  parent: Task[] = tasks
+): { task: Task; parentTasks: Task[]; index: number } | null {
+  for (let i = 0; i < tasks.length; i++) {
+    if (tasks[i].id === taskId) {
+      return { task: tasks[i], parentTasks: parent, index: i };
+    }
+    const found = findTaskAndParent(tasks[i].children, taskId, tasks[i].children);
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * Update a task in the tree
+ * @param tasks - Task array to update
+ * @param taskId - ID of task to update
+ * @param updates - Properties to update
+ * @returns true if task was found and updated
+ */
+export function updateTaskInTree(
+  tasks: Task[],
+  taskId: string,
+  updates: { text?: string; defer?: Date | null; due?: Date | null; scheduled?: Date | null }
+): boolean {
+  for (const task of tasks) {
+    if (task.id === taskId) {
+      if (updates.text !== undefined) {
+        // Preserve the "- " prefix if not already present
+        task.text = updates.text.startsWith('- ') ? updates.text : `- ${updates.text}`;
+      }
+      if (updates.defer !== undefined) {
+        task.defer = updates.defer === null ? undefined : updates.defer;
+      }
+      if (updates.due !== undefined) {
+        task.due = updates.due === null ? undefined : updates.due;
+      }
+      if (updates.scheduled !== undefined) {
+        task.scheduled = updates.scheduled === null ? undefined : updates.scheduled;
+      }
+      return true;
+    }
+    if (updateTaskInTree(task.children, taskId, updates)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Add a new task to the tree
+ * @param tasks - Task array to modify
+ * @param newTask - New task data
+ * @param projectPath - Project path for ID generation
+ * @param projectName - Project name
+ * @returns ID of the newly created task, or null if failed
+ */
+export function addTaskToTree(
+  tasks: Task[],
+  newTask: { text: string; parentId?: string; afterTaskId?: string },
+  projectPath: string,
+  projectName: string
+): string | null {
+  // Generate a unique ID
+  const taskCounter = countAllTasks(tasks) + 1;
+  const newTaskId = `${projectPath}-${taskCounter}-${Date.now()}`;
+
+  // Create the new task object
+  const task: Task = {
+    id: newTaskId,
+    text: newTask.text.startsWith('- ') ? newTask.text : `- ${newTask.text}`,
+    projectPath,
+    projectName,
+    indent: 0,
+    done: false,
+    children: [],
+    lineNumber: 0 // Will be recalculated on serialization
+  };
+
+  if (newTask.parentId) {
+    // Add as child of parent
+    const parent = findTaskById(tasks, newTask.parentId);
+    if (parent) {
+      task.indent = parent.indent + 1;
+      parent.children.push(task);
+      return newTaskId;
+    }
+    return null;
+  } else if (newTask.afterTaskId) {
+    // Insert after sibling
+    const result = findTaskAndParent(tasks, newTask.afterTaskId);
+    if (result) {
+      task.indent = result.task.indent;
+      result.parentTasks.splice(result.index + 1, 0, task);
+      return newTaskId;
+    }
+    return null;
+  } else {
+    // Add as top-level task
+    tasks.push(task);
+    return newTaskId;
+  }
+}

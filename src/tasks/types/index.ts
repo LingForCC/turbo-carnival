@@ -56,6 +56,26 @@ export interface AllTasksData {
 }
 
 /**
+ * Task update payload for partial task updates
+ */
+export interface TaskUpdate {
+  text?: string;
+  defer?: Date | null;
+  due?: Date | null;
+  scheduled?: Date | null;
+}
+
+/**
+ * New task creation payload
+ */
+export interface NewTask {
+  text: string;
+  parentId?: string;      // Add as child of this task
+  afterTaskId?: string;   // Insert after this sibling
+  projectPath: string;
+}
+
+/**
  * Task Management API interface
  * Defines the contract for task management operations
  */
@@ -88,4 +108,20 @@ export interface TaskManagementAPI {
    * @returns Promise resolving to updated project tasks
    */
   toggleTaskDone(projectPath: string, taskId: string): Promise<ProjectTasks>;
+
+  /**
+   * Update task properties
+   * @param projectPath - Full path to the project folder
+   * @param taskId - Task ID to update
+   * @param updates - Partial task updates
+   * @returns Promise resolving to updated project tasks
+   */
+  updateTask(projectPath: string, taskId: string, updates: TaskUpdate): Promise<ProjectTasks>;
+
+  /**
+   * Add a new task
+   * @param newTask - New task data
+   * @returns Promise resolving to updated project tasks and new task ID
+   */
+  addTask(newTask: NewTask): Promise<{ projectTasks: ProjectTasks; newTaskId: string }>;
 }

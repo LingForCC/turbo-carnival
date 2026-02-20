@@ -13,9 +13,11 @@ import {
   serializeTaskPaper,
   toggleTaskDoneInTree,
   countAllTasks,
-  countIncompleteTasks
+  countIncompleteTasks,
+  updateTaskInTree,
+  addTaskToTree
 } from '../utils/taskpaper-parser';
-import type { Task, ProjectTasks, AllTasksData } from '../types';
+import type { Task, ProjectTasks, AllTasksData, TaskUpdate, NewTask } from '../types';
 
 /**
  * Read tasks.txt from a project folder
@@ -148,6 +150,69 @@ async function toggleTaskDone(projectPath: string, taskId: string): Promise<Proj
 }
 
 /**
+ * Update task properties
+ */
+async function updateTask(projectPath: string, taskId: string, updates: TaskUpdate): Promise<ProjectTasks> {
+  const projectName = path.basename(projectPath);
+  const { tasks, hasFile } = readTasksFile(projectPath, projectName);
+
+  if (!hasFile) {
+    throw new Error(`No tasks file found for project: ${projectPath}`);
+  }
+
+  const found = updateTaskInTree(tasks, taskId, updates);
+
+  if (!found) {
+    throw new Error(`Task not found: ${taskId}`);
+  }
+
+  // Save updated tasks back to file
+  saveTasksFile(projectPath, tasks);
+
+  return {
+    projectPath,
+    projectName,
+    tasks,
+    hasFile: true
+  };
+}
+
+/**
+ * Add a new task
+ */
+async function addNewTask(newTask: NewTask): Promise<{ projectTasks: ProjectTasks; newTaskId: string }> {
+  const projectName = path.basename(newTask.projectPath);
+  const { tasks, hasFile } = readTasksFile(newTask.projectPath, projectName);
+
+  // Create tasks file if it doesn't exist
+  if (!hasFile) {
+    // Ensure the directory exists
+    if (!fs.existsSync(newTask.projectPath)) {
+      throw new Error(`Project folder does not exist: ${newTask.projectPath}`);
+    }
+  }
+
+  const newTaskId = addTaskToTree(tasks, newTask, newTask.projectPath, projectName);
+
+  if (!newTaskId) {
+    throw new Error('Failed to add task');
+  }
+
+  // Save updated tasks back to file
+  saveTasksFile(newTask.projectPath, tasks);
+
+  return {
+    projectTasks: {
+      projectPath: newTask.projectPath,
+      projectName,
+      tasks,
+      hasFile: true
+    },
+    newTaskId
+  };
+}
+
+/**
  * Register all task-related IPC handlers
  */
 export function registerTaskIPCHandlers(): void {
@@ -169,5 +234,15 @@ export function registerTaskIPCHandlers(): void {
   // Handler: Toggle task done status
   ipcMain.handle('tasks:toggleDone', async (_event, projectPath: string, taskId: string) => {
     return await toggleTaskDone(projectPath, taskId);
+  });
+
+  // Handler: Update task properties
+  ipcMain.handle('tasks:updateTask', async (_event, projectPath: string, taskId: string, updates: TaskUpdate) => {
+    return await updateTask(projectPath, taskId, updates);
+  });
+
+  // Handler: Add a new task
+  ipcMain.handle('tasks:addTask', async (_event, newTask: NewTask) => {
+    return await addNewTask(newTask);
   });
 }

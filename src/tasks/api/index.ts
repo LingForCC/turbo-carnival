@@ -1,4 +1,4 @@
-import type { TaskManagementAPI, AllTasksData, ProjectTasks } from '../types';
+import type { TaskManagementAPI, AllTasksData, ProjectTasks, TaskUpdate, NewTask } from '../types';
 
 /**
  * Task Management API for Renderer Components
@@ -45,6 +45,20 @@ const apiInstance: TaskManagementAPI = {
    */
   toggleTaskDone: (projectPath: string, taskId: string): Promise<ProjectTasks> => {
     return getElectronAPI().toggleTaskDone(projectPath, taskId);
+  },
+
+  /**
+   * Update task properties
+   */
+  updateTask: (projectPath: string, taskId: string, updates: TaskUpdate): Promise<ProjectTasks> => {
+    return getElectronAPI().updateTask(projectPath, taskId, updates);
+  },
+
+  /**
+   * Add a new task
+   */
+  addTask: (newTask: NewTask): Promise<{ projectTasks: ProjectTasks; newTaskId: string }> => {
+    return getElectronAPI().addTask(newTask);
   },
 };
 

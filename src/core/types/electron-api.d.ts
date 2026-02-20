@@ -38,7 +38,7 @@ import type { SnippetFile } from './snippet-management';
 import type { ClipboardHistoryItem } from './clipboard-history-management';
 
 // Import task management types for use in ElectronAPI interface
-import type { AllTasksData, ProjectTasks } from '../../tasks/types';
+import type { AllTasksData, ProjectTasks, TaskUpdate, NewTask } from '../../tasks/types';
 
 interface ElectronAPI {
   platform: string;
@@ -311,6 +311,12 @@ interface ElectronAPI {
 
   // Toggle task done status
   toggleTaskDone: (projectPath: string, taskId: string) => Promise<ProjectTasks>;
+
+  // Update task properties
+  updateTask: (projectPath: string, taskId: string, updates: TaskUpdate) => Promise<ProjectTasks>;
+
+  // Add a new task
+  addTask: (newTask: NewTask) => Promise<{ projectTasks: ProjectTasks; newTaskId: string }>;
 }
 
 declare global {

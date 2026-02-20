@@ -21,9 +21,21 @@ export class TasksDialog extends HTMLElement {
   private expandedProjects: Set<string> = new Set();
   private expandedTasks: Set<string> = new Set();
 
+  // Task selection and editing state
+  private selectedTaskId: string | null = null;
+  private editingTaskId: string | null = null;
+  private editCursorPosition: number | null = null;
+  private datePickerTaskId: string | null = null;
+  private datePickerType: 'defer' | 'due' | 'scheduled' | null = null;
+
   async connectedCallback(): Promise<void> {
     await this.loadTasks();
     this.render();
+    this.attachGlobalListeners();
+  }
+
+  disconnectedCallback(): void {
+    this.removeGlobalListeners();
   }
 
   private async loadTasks(): Promise<void> {
@@ -101,7 +113,7 @@ export class TasksDialog extends HTMLElement {
           </div>
 
           <!-- Main Content Area: Tasks -->
-          <div class="flex-1 overflow-y-auto p-6">
+          <div class="flex-1 overflow-y-auto p-6" id="tasks-main-content">
             ${filteredProjects.length === 0 ? `
               <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
                 <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,10 +125,28 @@ export class TasksDialog extends HTMLElement {
             ` : this.renderTasksContent(filteredProjects)}
           </div>
         </div>
+
+        <!-- Keyboard Shortcuts Hint -->
+        <div class="flex-shrink-0 px-6 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div class="text-xs text-gray-500 dark:text-gray-400 flex gap-4">
+            <span><kbd class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">${this.isMac() ? 'Cmd' : 'Ctrl'}+N</kbd> New sibling</span>
+            <span><kbd class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Shift+${this.isMac() ? 'Cmd' : 'Ctrl'}+N</kbd> New child</span>
+            <span><kbd class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Enter</kbd> Edit</span>
+            <span><kbd class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Esc</kbd> Cancel</span>
+            <span><kbd class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Arrow Keys</kbd> Navigate</span>
+          </div>
+        </div>
       </div>
+
+      <!-- Date Picker Popover (rendered at root level for proper positioning) -->
+      ${this.datePickerTaskId && this.datePickerType ? this.renderDatePickerPopover() : ''}
     `;
 
     this.attachEventListeners();
+  }
+
+  private isMac(): boolean {
+    return navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   }
 
   private getFilteredProjects(): ProjectTasks[] {
@@ -253,7 +283,7 @@ export class TasksDialog extends HTMLElement {
           </div>
           ${isExpanded ? `
             <div class="tasks-list pl-7 space-y-1">
-              ${this.renderTasks(project.tasks, 0)}
+              ${this.renderTasks(project.tasks, 0, project.projectPath)}
             </div>
           ` : ''}
         </div>
@@ -261,11 +291,13 @@ export class TasksDialog extends HTMLElement {
     }).join('');
   }
 
-  private renderTasks(tasks: Task[], level: number): string {
+  private renderTasks(tasks: Task[], level: number, projectPath: string): string {
     return tasks.map(task => {
       const isExpanded = this.expandedTasks.has(task.id);
       const hasChildren = task.children.length > 0;
       const isDueSoon = isTaskDueWithinDays(task, 7);
+      const isSelected = this.selectedTaskId === task.id;
+      const isEditing = this.editingTaskId === task.id;
 
       // Calculate child task completion indicator from ORIGINAL task data
       // This ensures the indicator is not affected by filters
@@ -277,9 +309,11 @@ export class TasksDialog extends HTMLElement {
         childIndicator = `<span class="text-xs text-gray-400 dark:text-gray-500 ml-1">${doneChildCount}/${totalChildCount}</span>`;
       }
 
+      const taskText = task.text.replace(/^- /, '');
+
       return `
-        <div class="task-item ${task.done ? 'opacity-50' : ''} ${isDueSoon && !task.done ? 'bg-orange-50 dark:bg-orange-900/20 rounded px-2 py-1' : ''}" data-task-id="${this.escapeHtml(task.id)}">
-          <div class="flex items-start gap-2 py-1">
+        <div class="task-item group ${task.done ? 'opacity-50' : ''}" data-task-id="${this.escapeHtml(task.id)}" data-project-path="${this.escapeHtml(projectPath)}">
+          <div class="task-row flex items-start gap-2 py-1 ${isDueSoon && !task.done ? 'bg-orange-50 dark:bg-orange-900/20 rounded px-2 -mx-2' : ''} ${isSelected && !isEditing ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/30 rounded px-2 -mx-2' : ''}">
             ${hasChildren ? `
               <button class="task-toggle p-0 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer border-0 bg-transparent flex-shrink-0" data-task-toggle="${this.escapeHtml(task.id)}">
                 <svg class="w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -294,22 +328,107 @@ export class TasksDialog extends HTMLElement {
               ${task.done ? 'checked' : ''}
             >
             <div class="flex-1 min-w-0">
-              <span class="task-text text-sm ${task.done ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-200'}">
-                ${this.escapeHtml(task.text.replace(/^- /, ''))}
-              </span>${childIndicator}
-              ${task.due ? `<span class="text-xs text-gray-500 dark:text-gray-400 ml-2">due:${this.formatDate(task.due)}</span>` : ''}
-              ${task.scheduled ? `<span class="text-xs text-gray-500 dark:text-gray-400 ml-2">scheduled:${this.formatDate(task.scheduled)}</span>` : ''}
-              ${task.defer ? `<span class="text-xs text-gray-500 dark:text-gray-400 ml-2">defer:${this.formatDate(task.defer)}</span>` : ''}
+              ${isEditing ? `
+                <input
+                  type="text"
+                  class="task-edit-input w-full px-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-200"
+                  value="${this.escapeHtml(taskText)}"
+                  data-task-edit="${this.escapeHtml(task.id)}"
+                >
+              ` : `
+                <span class="task-text text-sm ${task.done ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-200'}" data-task-text="${this.escapeHtml(task.id)}">
+                  ${this.escapeHtml(taskText)}
+                </span>${childIndicator}
+                ${this.renderDateTags(task)}
+              `}
             </div>
           </div>
           ${hasChildren && isExpanded ? `
             <div class="tasks-children ml-6 mt-1 space-y-1">
-              ${this.renderTasks(task.children, level + 1)}
+              ${this.renderTasks(task.children, level + 1, projectPath)}
             </div>
           ` : ''}
         </div>
       `;
     }).join('');
+  }
+
+  private renderDateTags(task: Task): string {
+    const tags: string[] = [];
+
+    if (task.due) {
+      tags.push(this.renderDateTag(task, 'due'));
+    }
+    if (task.scheduled) {
+      tags.push(this.renderDateTag(task, 'scheduled'));
+    }
+    if (task.defer) {
+      tags.push(this.renderDateTag(task, 'defer'));
+    }
+
+    // Add buttons to add missing dates (visible on hover)
+    const missingTags: string[] = [];
+    if (!task.due) {
+      missingTags.push(`<button class="add-date-btn opacity-0 group-hover:opacity-100 text-xs text-gray-400 hover:text-blue-500 px-1" data-add-date="due" data-task-id="${this.escapeHtml(task.id)}">+due</button>`);
+    }
+    if (!task.scheduled) {
+      missingTags.push(`<button class="add-date-btn opacity-0 group-hover:opacity-100 text-xs text-gray-400 hover:text-blue-500 px-1" data-add-date="scheduled" data-task-id="${this.escapeHtml(task.id)}">+scheduled</button>`);
+    }
+    if (!task.defer) {
+      missingTags.push(`<button class="add-date-btn opacity-0 group-hover:opacity-100 text-xs text-gray-400 hover:text-blue-500 px-1" data-add-date="defer" data-task-id="${this.escapeHtml(task.id)}">+defer</button>`);
+    }
+
+    const allTags = tags.length > 0 ? tags.join('') : '';
+    const addButtons = missingTags.join('');
+
+    return `<span class="date-tags ml-2 flex items-center gap-1">${allTags}${addButtons}</span>`;
+  }
+
+  private renderDateTag(task: Task, type: 'defer' | 'due' | 'scheduled'): string {
+    const date = task[type];
+    if (!date) return '';
+
+    const dateStr = this.formatDate(date);
+    const colorClass = type === 'due' ? 'text-red-500 dark:text-red-400' :
+                       type === 'scheduled' ? 'text-green-500 dark:text-green-400' :
+                       'text-gray-500 dark:text-gray-400';
+
+    return `<button class="date-tag text-xs ${colorClass} hover:underline cursor-pointer bg-transparent border-0 p-0" data-date-tag="${type}" data-task-id="${this.escapeHtml(task.id)}">${type}:${dateStr}</button>`;
+  }
+
+  private renderDatePickerPopover(): string {
+    if (!this.datePickerTaskId || !this.datePickerType) return '';
+
+    // Get current date value
+    let currentDate = '';
+    const task = this.findOriginalTask(this.datePickerTaskId);
+    if (task && task[this.datePickerType]) {
+      currentDate = this.formatDate(task[this.datePickerType]!);
+    }
+
+    return `
+      <div class="date-picker-popover fixed inset-0 z-[100]" id="date-picker-overlay">
+        <div class="absolute bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 w-64" id="date-picker-panel">
+          <div class="flex flex-col gap-2">
+            <label class="text-sm text-gray-700 dark:text-gray-300 capitalize">${this.datePickerType} Date</label>
+            <input
+              type="date"
+              id="date-picker-input"
+              value="${currentDate}"
+              class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
+            >
+            <div class="flex gap-2 justify-end mt-2">
+              <button id="date-picker-clear" class="px-3 py-1 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                Clear
+              </button>
+              <button id="date-picker-save" class="px-3 py-1 text-sm bg-blue-500 text-white hover:bg-blue-600 rounded">
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -332,6 +451,370 @@ export class TasksDialog extends HTMLElement {
     return `${year}-${month}-${day}`;
   }
 
+  private attachGlobalListeners(): void {
+    // Use arrow functions to preserve 'this' context
+    this.handleKeyDown = this.handleKeyDown.bind(this);
+    document.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  private removeGlobalListeners(): void {
+    document.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  private handleKeyDown(e: KeyboardEvent): void {
+    // Ignore if focus is on input/textarea (except for Escape)
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
+
+    // Escape key - cancel editing or close date picker
+    if (e.key === 'Escape') {
+      if (this.datePickerTaskId) {
+        this.closeDatePicker();
+        return;
+      }
+      if (this.editingTaskId) {
+        this.cancelEditing();
+        return;
+      }
+      return;
+    }
+
+    // If editing, only handle specific keys
+    if (this.editingTaskId) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this.saveEditing();
+      }
+      return;
+    }
+
+    // Don't handle shortcuts if input is focused
+    if (isInputFocused) return;
+
+    // Enter key - start editing selected task
+    if (e.key === 'Enter' && this.selectedTaskId) {
+      e.preventDefault();
+      this.startEditing(this.selectedTaskId);
+      return;
+    }
+
+    // Arrow keys - navigate tasks
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.navigateTasks(e.key === 'ArrowDown' ? 1 : -1);
+      return;
+    }
+
+    // Cmd+N / Ctrl+N - add sibling task
+    const isModKey = this.isMac() ? e.metaKey : e.ctrlKey;
+    if (isModKey && e.key === 'n' && !e.shiftKey && this.selectedTaskId) {
+      e.preventDefault();
+      this.addSiblingTask();
+      return;
+    }
+
+    // Shift+Cmd+N / Shift+Ctrl+N - add child task
+    if (isModKey && e.shiftKey && e.key === 'N' && this.selectedTaskId) {
+      e.preventDefault();
+      this.addChildTask();
+      return;
+    }
+  }
+
+  private getVisibleTaskIds(): string[] {
+    const ids: string[] = [];
+
+    const collectIds = (tasks: Task[]) => {
+      for (const task of tasks) {
+        ids.push(task.id);
+        if (this.expandedTasks.has(task.id)) {
+          collectIds(task.children);
+        }
+      }
+    };
+
+    // Collect from all expanded projects
+    const filteredProjects = this.getFilteredProjects();
+    for (const project of filteredProjects) {
+      if (this.expandedProjects.has(project.projectPath)) {
+        collectIds(project.tasks);
+      }
+    }
+
+    return ids;
+  }
+
+  private navigateTasks(direction: number): void {
+    const visibleIds = this.getVisibleTaskIds();
+
+    if (visibleIds.length === 0) {
+      this.selectedTaskId = null;
+      this.render();
+      return;
+    }
+
+    if (!this.selectedTaskId) {
+      // Select first or last task depending on direction
+      this.selectedTaskId = direction > 0 ? visibleIds[0] : visibleIds[visibleIds.length - 1];
+    } else {
+      const currentIndex = visibleIds.indexOf(this.selectedTaskId);
+      if (currentIndex === -1) {
+        // Selected task not visible, select first
+        this.selectedTaskId = visibleIds[0];
+      } else {
+        const newIndex = currentIndex + direction;
+        if (newIndex >= 0 && newIndex < visibleIds.length) {
+          this.selectedTaskId = visibleIds[newIndex];
+        }
+      }
+    }
+
+    this.render();
+
+    // Scroll selected task into view
+    this.scrollToSelectedTask();
+  }
+
+  private scrollToSelectedTask(): void {
+    if (!this.selectedTaskId) return;
+
+    const taskElement = this.querySelector(`[data-task-id="${this.selectedTaskId}"]`);
+    if (taskElement) {
+      taskElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  private startEditing(taskId: string, cursorPosition?: number): void {
+    this.editingTaskId = taskId;
+    this.editCursorPosition = cursorPosition ?? null;
+    this.render();
+
+    // Focus the input and position cursor
+    requestAnimationFrame(() => {
+      const input = this.querySelector('.task-edit-input') as HTMLInputElement;
+      if (input) {
+        input.focus();
+        if (this.editCursorPosition !== null) {
+          // Clamp cursor position to valid range
+          const pos = Math.min(this.editCursorPosition, input.value.length);
+          input.setSelectionRange(pos, pos);
+        }
+      }
+    });
+  }
+
+  private cancelEditing(): void {
+    this.editingTaskId = null;
+    this.render();
+  }
+
+  private async saveEditing(): Promise<void> {
+    if (!this.editingTaskId) return;
+
+    const input = this.querySelector('.task-edit-input') as HTMLInputElement;
+    if (!input) return;
+
+    const newText = input.value.trim();
+    if (!newText) {
+      this.cancelEditing();
+      return;
+    }
+
+    // Find project path
+    const taskElement = this.querySelector(`[data-task-id="${this.editingTaskId}"]`);
+    const projectPath = taskElement?.getAttribute('data-project-path');
+
+    if (!projectPath) {
+      console.error('Could not find project path for task');
+      this.cancelEditing();
+      return;
+    }
+
+    try {
+      const updatedProject = await this.api.updateTask(projectPath, this.editingTaskId, { text: newText });
+
+      // Update local data
+      if (this.allTasksData) {
+        const projectIndex = this.allTasksData.projects.findIndex(p => p.projectPath === projectPath);
+        if (projectIndex !== -1) {
+          this.allTasksData.projects[projectIndex] = updatedProject;
+        }
+      }
+
+      this.editingTaskId = null;
+      this.render();
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      this.cancelEditing();
+    }
+  }
+
+  private async addSiblingTask(): Promise<void> {
+    if (!this.selectedTaskId || !this.allTasksData) return;
+
+    // Find the task and its project
+    let projectPath: string | undefined;
+    let task: Task | null = null;
+
+    for (const project of this.allTasksData.projects) {
+      const found = this.findTaskInTree(project.tasks, this.selectedTaskId);
+      if (found) {
+        projectPath = project.projectPath;
+        task = found;
+        break;
+      }
+    }
+
+    if (!projectPath || !task) return;
+
+    try {
+      const result = await this.api.addTask({
+        text: '- New task',
+        afterTaskId: this.selectedTaskId,
+        projectPath
+      });
+
+      // Update local data
+      const projectIndex = this.allTasksData.projects.findIndex(p => p.projectPath === projectPath);
+      if (projectIndex !== -1) {
+        this.allTasksData.projects[projectIndex] = result.projectTasks;
+      }
+
+      // Select and edit the new task
+      this.selectedTaskId = result.newTaskId;
+      this.editingTaskId = result.newTaskId;
+      this.render();
+
+      // Focus the input
+      requestAnimationFrame(() => {
+        const input = this.querySelector('.task-edit-input') as HTMLInputElement;
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      });
+    } catch (error) {
+      console.error('Failed to add sibling task:', error);
+    }
+  }
+
+  private async addChildTask(): Promise<void> {
+    if (!this.selectedTaskId || !this.allTasksData) return;
+
+    // Find the task and its project
+    let projectPath: string | undefined;
+
+    for (const project of this.allTasksData.projects) {
+      const found = this.findTaskInTree(project.tasks, this.selectedTaskId);
+      if (found) {
+        projectPath = project.projectPath;
+        break;
+      }
+    }
+
+    if (!projectPath) return;
+
+    try {
+      const result = await this.api.addTask({
+        text: '- New subtask',
+        parentId: this.selectedTaskId,
+        projectPath
+      });
+
+      // Update local data
+      const projectIndex = this.allTasksData.projects.findIndex(p => p.projectPath === projectPath);
+      if (projectIndex !== -1) {
+        this.allTasksData.projects[projectIndex] = result.projectTasks;
+      }
+
+      // Expand the parent task and select/edit the new task
+      this.expandedTasks.add(this.selectedTaskId);
+      this.selectedTaskId = result.newTaskId;
+      this.editingTaskId = result.newTaskId;
+      this.render();
+
+      // Focus the input
+      requestAnimationFrame(() => {
+        const input = this.querySelector('.task-edit-input') as HTMLInputElement;
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      });
+    } catch (error) {
+      console.error('Failed to add child task:', error);
+    }
+  }
+
+  private openDatePicker(taskId: string, type: 'defer' | 'due' | 'scheduled'): void {
+    this.datePickerTaskId = taskId;
+    this.datePickerType = type;
+    this.render();
+
+    // Position the popover near the clicked tag
+    requestAnimationFrame(() => {
+      const tagButton = this.querySelector(`[data-date-tag="${type}"][data-task-id="${taskId}"]`);
+      const panel = this.querySelector('#date-picker-panel') as HTMLElement;
+
+      if (tagButton && panel) {
+        const rect = tagButton.getBoundingClientRect();
+        panel.style.top = `${rect.bottom + 8}px`;
+        panel.style.left = `${Math.min(rect.left, window.innerWidth - 280)}px`;
+      }
+
+      // Focus the date input
+      const dateInput = this.querySelector('#date-picker-input') as HTMLInputElement;
+      if (dateInput) {
+        dateInput.focus();
+      }
+    });
+  }
+
+  private closeDatePicker(): void {
+    this.datePickerTaskId = null;
+    this.datePickerType = null;
+    this.render();
+  }
+
+  private async saveDatePicker(clear: boolean = false): Promise<void> {
+    if (!this.datePickerTaskId || !this.datePickerType || !this.allTasksData) return;
+
+    // Find project path
+    let projectPath: string | undefined;
+    for (const project of this.allTasksData.projects) {
+      if (this.findTaskInTree(project.tasks, this.datePickerTaskId)) {
+        projectPath = project.projectPath;
+        break;
+      }
+    }
+
+    if (!projectPath) return;
+
+    let dateValue: Date | null = null;
+    if (!clear) {
+      const input = this.querySelector('#date-picker-input') as HTMLInputElement;
+      if (input && input.value) {
+        const parts = input.value.split('-');
+        dateValue = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      }
+    }
+
+    try {
+      const updates = { [this.datePickerType]: dateValue };
+      const updatedProject = await this.api.updateTask(projectPath, this.datePickerTaskId, updates);
+
+      // Update local data
+      const projectIndex = this.allTasksData.projects.findIndex(p => p.projectPath === projectPath);
+      if (projectIndex !== -1) {
+        this.allTasksData.projects[projectIndex] = updatedProject;
+      }
+
+      this.closeDatePicker();
+    } catch (error) {
+      console.error('Failed to update task date:', error);
+    }
+  }
+
   private attachEventListeners(): void {
     // Close button
     const closeBtn = this.querySelector('#close-btn');
@@ -349,6 +832,7 @@ export class TasksDialog extends HTMLElement {
         const filter = target.dataset.filter as TaskFilter;
         if (filter) {
           this.currentFilter = filter;
+          this.selectedTaskId = null; // Clear selection on filter change
           this.render();
         }
       });
@@ -394,7 +878,37 @@ export class TasksDialog extends HTMLElement {
       });
     });
 
-    // Task toggles (for expanding/collapsing hierarchy)
+    // Task items - click to select (no clone-and-replace needed, just add listener)
+    const taskItems = this.querySelectorAll('.task-item');
+    taskItems.forEach(item => {
+      (item as HTMLElement).addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const taskId = target.dataset.taskId;
+
+        // Don't select if clicking on checkbox, toggle, or input
+        const clickTarget = e.target as HTMLElement;
+        if (clickTarget.closest('.task-checkbox') ||
+            clickTarget.closest('.task-toggle') ||
+            clickTarget.closest('.task-edit-input') ||
+            clickTarget.closest('.date-tag') ||
+            clickTarget.closest('.add-date-btn')) {
+          return;
+        }
+
+        // Don't select if click is from a nested child task item
+        const clickedTaskItem = clickTarget.closest('.task-item');
+        if (clickedTaskItem !== target) {
+          return;
+        }
+
+        if (taskId) {
+          this.selectedTaskId = taskId;
+          this.render();
+        }
+      });
+    });
+
+    // Task toggles (for expanding/collapsing hierarchy) - after task items
     const taskToggles = this.querySelectorAll('.task-toggle');
     taskToggles.forEach(toggle => {
       const newToggle = toggle.cloneNode(true);
@@ -422,6 +936,160 @@ export class TasksDialog extends HTMLElement {
         }
       });
     });
+
+    // Task text - double click to edit
+    const taskTexts = this.querySelectorAll('.task-text');
+    taskTexts.forEach(textEl => {
+      const newTextEl = textEl.cloneNode(true);
+      textEl.replaceWith(newTextEl);
+      (newTextEl as HTMLElement).addEventListener('dblclick', (e: MouseEvent) => {
+        e.stopPropagation();
+        const target = e.currentTarget as HTMLElement;
+        const taskId = target.dataset.taskText;
+        if (taskId) {
+          // Calculate cursor position based on click location
+          let cursorPos: number | undefined;
+
+          // Get the text node
+          const textNode = target.firstChild;
+          const text = target.textContent || '';
+
+          if (textNode && textNode.nodeType === Node.TEXT_NODE && text.length > 0) {
+            // Try caretRangeFromPoint
+            const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+            if (range) {
+              // Check if the range is within our target element
+              if (range.startContainer === textNode || target.contains(range.startContainer)) {
+                cursorPos = range.startOffset;
+              }
+            }
+
+            // Fallback: binary search to find closest character position
+            if (cursorPos === undefined || cursorPos < 0) {
+              const rect = target.getBoundingClientRect();
+              const clickX = e.clientX - rect.left;
+
+              // Binary search for the closest position
+              let left = 0;
+              let right = text.length;
+              let bestPos = 0;
+              let bestDistance = Infinity;
+
+              while (left <= right) {
+                const mid = Math.floor((left + right) / 2);
+                if (mid > text.length) break;
+
+                try {
+                  const testRange = document.createRange();
+                  testRange.setStart(textNode, mid);
+                  testRange.setEnd(textNode, mid);
+                  const charRect = testRange.getBoundingClientRect();
+                  const distance = Math.abs(charRect.left - clickX);
+
+                  if (distance < bestDistance) {
+                    bestDistance = distance;
+                    bestPos = mid;
+                  }
+
+                  if (charRect.left < clickX) {
+                    left = mid + 1;
+                  } else {
+                    right = mid - 1;
+                  }
+                } catch {
+                  break;
+                }
+              }
+
+              cursorPos = Math.max(0, Math.min(bestPos, text.length));
+            }
+          }
+
+          this.startEditing(taskId, cursorPos);
+        }
+      });
+    });
+
+    // Task edit input - blur to save
+    const editInputs = this.querySelectorAll('.task-edit-input');
+    editInputs.forEach(input => {
+      (input as HTMLElement).addEventListener('blur', () => {
+        this.saveEditing();
+      });
+    });
+
+    // Date tags - click to open date picker
+    const dateTags = this.querySelectorAll('.date-tag');
+    dateTags.forEach(tag => {
+      const newTag = tag.cloneNode(true);
+      tag.replaceWith(newTag);
+      (newTag as HTMLElement).addEventListener('click', (e) => {
+        e.stopPropagation();
+        const target = e.currentTarget as HTMLElement;
+        const taskId = target.dataset.taskId;
+        const type = target.dataset.dateTag as 'defer' | 'due' | 'scheduled';
+        if (taskId && type) {
+          this.openDatePicker(taskId, type);
+        }
+      });
+    });
+
+    // Add date buttons
+    const addDateBtns = this.querySelectorAll('.add-date-btn');
+    addDateBtns.forEach(btn => {
+      const newBtn = btn.cloneNode(true);
+      btn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', (e) => {
+        e.stopPropagation();
+        const target = e.currentTarget as HTMLElement;
+        const taskId = target.dataset.taskId;
+        const type = target.dataset.addDate as 'defer' | 'due' | 'scheduled';
+        if (taskId && type) {
+          this.openDatePicker(taskId, type);
+        }
+      });
+    });
+
+    // Date picker overlay - click to close
+    const datePickerOverlay = this.querySelector('#date-picker-overlay');
+    if (datePickerOverlay) {
+      (datePickerOverlay as HTMLElement).addEventListener('click', (e) => {
+        if (e.target === datePickerOverlay) {
+          this.closeDatePicker();
+        }
+      });
+    }
+
+    // Date picker clear button
+    const datePickerClear = this.querySelector('#date-picker-clear');
+    if (datePickerClear) {
+      const newBtn = datePickerClear.cloneNode(true);
+      datePickerClear.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => {
+        this.saveDatePicker(true);
+      });
+    }
+
+    // Date picker save button
+    const datePickerSave = this.querySelector('#date-picker-save');
+    if (datePickerSave) {
+      const newBtn = datePickerSave.cloneNode(true);
+      datePickerSave.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => {
+        this.saveDatePicker(false);
+      });
+    }
+
+    // Date picker input - Enter to save
+    const datePickerInput = this.querySelector('#date-picker-input');
+    if (datePickerInput) {
+      (datePickerInput as HTMLElement).addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.saveDatePicker(false);
+        }
+      });
+    }
   }
 
   private toggleProject(projectPath: string): void {
