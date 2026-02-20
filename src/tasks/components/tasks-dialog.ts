@@ -5,7 +5,8 @@ import {
   isTaskDueWithinDays,
   countAllTasks,
   countIncompleteTasks,
-  countDoneTasks
+  countDoneTasks,
+  hasTaskOrDescendantScheduledTodayOrEarlier
 } from '../utils/taskpaper-parser';
 import type { Task, AllTasksData, ProjectTasks, TaskFilter } from '../types';
 
@@ -224,13 +225,24 @@ export class TasksDialog extends HTMLElement {
   }
 
   private filterTodayTasks(tasks: Task[]): Task[] {
-    return tasks
-      .filter(t => isTaskToday(t))
-      .map(t => ({
-        ...t,
-        children: this.filterTodayTasks(t.children)
-      }))
-      .filter(t => !t.done && (t.children.length > 0 || t.text));
+    const result: Task[] = [];
+
+    for (const task of tasks) {
+      // Skip done tasks
+      if (task.done) continue;
+
+      // Check if this task or any of its descendants matches the today criteria
+      // (scheduled <= today OR due today)
+      if (hasTaskOrDescendantScheduledTodayOrEarlier(task)) {
+        // Include the task with recursively filtered children
+        result.push({
+          ...task,
+          children: this.filterTodayTasks(task.children)
+        });
+      }
+    }
+
+    return result;
   }
 
   private filterIncompleteTasks(tasks: Task[]): Task[] {

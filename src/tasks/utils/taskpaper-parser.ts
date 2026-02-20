@@ -333,6 +333,41 @@ export function isTaskToday(task: Task): boolean {
 }
 
 /**
+ * Check if a task or any of its descendants is scheduled for today or earlier
+ * This is used for the Today filter to show parent tasks when a child is scheduled
+ */
+export function hasTaskOrDescendantScheduledTodayOrEarlier(task: Task): boolean {
+  if (task.done) return false;
+
+  const today = getToday();
+
+  // Check if this task is scheduled for today or earlier
+  if (task.scheduled) {
+    const scheduledDate = new Date(task.scheduled.getFullYear(), task.scheduled.getMonth(), task.scheduled.getDate());
+    if (scheduledDate.getTime() <= today.getTime()) {
+      return true;
+    }
+  }
+
+  // Check if task is due today (still use exact match for due dates)
+  if (task.due) {
+    const dueDate = new Date(task.due.getFullYear(), task.due.getMonth(), task.due.getDate());
+    if (dueDate.getTime() === today.getTime()) {
+      return true;
+    }
+  }
+
+  // Recursively check children
+  for (const child of task.children) {
+    if (hasTaskOrDescendantScheduledTodayOrEarlier(child)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Check if a task is due within N days
  */
 export function isTaskDueWithinDays(task: Task, days: number): boolean {
