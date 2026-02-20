@@ -54,10 +54,19 @@ export class TasksDialog extends HTMLElement {
     }
   }
 
+  // Saved scroll position to restore after render
+  private savedScrollTop: number = 0;
+
   private render(): void {
     if (!this.allTasksData) {
       this.innerHTML = '<div class="flex items-center justify-center h-full"><div class="text-gray-500 dark:text-gray-400">Loading tasks...</div></div>';
       return;
+    }
+
+    // Save scroll position before re-rendering
+    const mainContent = this.querySelector('#tasks-main-content');
+    if (mainContent) {
+      this.savedScrollTop = mainContent.scrollTop;
     }
 
     // Filter projects based on current filter
@@ -144,6 +153,12 @@ export class TasksDialog extends HTMLElement {
     `;
 
     this.attachEventListeners();
+
+    // Restore scroll position after render
+    const newMainContent = this.querySelector('#tasks-main-content');
+    if (newMainContent && this.savedScrollTop > 0) {
+      newMainContent.scrollTop = this.savedScrollTop;
+    }
   }
 
   private isMac(): boolean {

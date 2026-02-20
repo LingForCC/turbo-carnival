@@ -241,19 +241,55 @@ export function findTaskById(tasks: Task[], id: string): Task | null {
 }
 
 /**
- * Toggle task done status in a task tree
+ * Set done status for a task and all its children recursively
  */
-export function toggleTaskDoneInTree(tasks: Task[], taskId: string): boolean {
+function setTaskAndChildrenDone(task: Task, done: boolean): void {
+  task.done = done;
+  for (const child of task.children) {
+    setTaskAndChildrenDone(child, done);
+  }
+}
+
+/**
+ * Helper function to toggle task with parent tracking
+ * @param tasks - The task list to search
+ * @param taskId - The task ID to toggle
+ * @param parentChain - Chain of parent tasks from root to immediate parent
+ * @returns true if task was found and toggled
+ */
+function toggleTaskDoneInTreeWithParents(
+  tasks: Task[],
+  taskId: string,
+  parentChain: Task[]
+): boolean {
   for (const task of tasks) {
     if (task.id === taskId) {
-      task.done = !task.done;
+      const newDoneStatus = !task.done;
+      setTaskAndChildrenDone(task, newDoneStatus);
+
+      // If marking as not done, mark all parents as not done too
+      if (!newDoneStatus) {
+        for (const parent of parentChain) {
+          parent.done = false;
+        }
+      }
       return true;
     }
-    if (toggleTaskDoneInTree(task.children, taskId)) {
+    // Search in children, adding this task to the parent chain
+    if (toggleTaskDoneInTreeWithParents(task.children, taskId, [...parentChain, task])) {
       return true;
     }
   }
   return false;
+}
+
+/**
+ * Toggle task done status in a task tree
+ * - When a parent is marked complete, all children are marked complete
+ * - When a child is marked not complete, all parents are marked not complete
+ */
+export function toggleTaskDoneInTree(tasks: Task[], taskId: string): boolean {
+  return toggleTaskDoneInTreeWithParents(tasks, taskId, []);
 }
 
 /**
