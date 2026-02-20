@@ -312,8 +312,8 @@ export class TasksDialog extends HTMLElement {
       const taskText = task.text.replace(/^- /, '');
 
       return `
-        <div class="task-item group ${task.done ? 'opacity-50' : ''}" data-task-id="${this.escapeHtml(task.id)}" data-project-path="${this.escapeHtml(projectPath)}">
-          <div class="task-row flex items-start gap-2 py-1 ${isDueSoon && !task.done ? 'bg-orange-50 dark:bg-orange-900/20 rounded px-2 -mx-2' : ''} ${isSelected && !isEditing ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/30 rounded px-2 -mx-2' : ''}">
+        <div class="task-item ${task.done ? 'opacity-50' : ''}" data-task-id="${this.escapeHtml(task.id)}" data-project-path="${this.escapeHtml(projectPath)}">
+          <div class="task-row group flex items-start gap-2 py-1 ${isDueSoon && !task.done ? 'bg-orange-50 dark:bg-orange-900/20 rounded px-2 -mx-2' : ''} ${isSelected && !isEditing ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/30 rounded px-2 -mx-2' : ''}">
             ${hasChildren ? `
               <button class="task-toggle p-0 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer border-0 bg-transparent flex-shrink-0" data-task-toggle="${this.escapeHtml(task.id)}">
                 <svg class="w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -751,13 +751,20 @@ export class TasksDialog extends HTMLElement {
     this.datePickerType = type;
     this.render();
 
-    // Position the popover near the clicked tag
+    // Position the popover near the clicked tag or add button
     requestAnimationFrame(() => {
-      const tagButton = this.querySelector(`[data-date-tag="${type}"][data-task-id="${taskId}"]`);
+      // First try to find the date tag button (for existing dates)
+      let anchorButton = this.querySelector(`[data-date-tag="${type}"][data-task-id="${taskId}"]`);
+
+      // If no date tag, look for the add button (for empty dates)
+      if (!anchorButton) {
+        anchorButton = this.querySelector(`[data-add-date="${type}"][data-task-id="${taskId}"]`);
+      }
+
       const panel = this.querySelector('#date-picker-panel') as HTMLElement;
 
-      if (tagButton && panel) {
-        const rect = tagButton.getBoundingClientRect();
+      if (anchorButton && panel) {
+        const rect = anchorButton.getBoundingClientRect();
         panel.style.top = `${rect.bottom + 8}px`;
         panel.style.left = `${Math.min(rect.left, window.innerWidth - 280)}px`;
       }
