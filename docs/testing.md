@@ -117,43 +117,66 @@ Located in `src/__tests__/helpers/`:
 
 ## Test Structure
 
-Tests are organized in `src/__tests__/` by feature:
+Tests are organized in `src/__tests__/` by **feature**, mirroring the source code structure. Each feature directory contains subdirectories for `main/` (main process tests) and `components/` (UI component tests).
 
-### `src/__tests__/main/project-management/`
+```
+src/__tests__/
+├── helpers/                    # Shared test utilities and mocks
+├── project/                    # Project management feature tests
+│   ├── main/
+│   └── components/
+├── agent/                      # Agent system feature tests
+│   └── components/
+├── conversation/               # Conversation system feature tests
+│   ├── components/
+│   └── transformers/
+└── settings/                   # Settings feature tests
+    ├── main/
+    └── components/
+```
+
+### `src/__tests__/project/`
+**Main process tests (`main/`):**
 - `projects.test.ts` - Storage helper tests (getProjectsPath, loadProjects, saveProjects)
 - `file-tree.test.ts` - File tree helper tests (isHidden, buildFileTree)
 - `file-listing.test.ts` - File listing helper tests (listFilesRecursive)
 - `ipc-handlers.test.ts` - IPC handler tests (projects:add, projects:remove, project:getFileTree, files:list, files:readContents)
 
-### `src/__tests__/main/agent-management/`
-- `agents.test.ts` - Storage helper tests (loadAgents, saveAgent, deleteAgent, sanitizeAgentName)
-- `ipc-handlers.test.ts` - IPC handler tests (agents:get, agents:add, agents:remove, agents:update)
+**Component tests (`components/`):**
+- `project-panel.test.ts` - Web Component UI tests (rendering, interactions, events, XSS prevention)
 
-### `src/__tests__/main/mcp-client/`
-- `mcp-client.test.ts` - MCP client unit tests (stdio and SSE connections, tool discovery)
-- `mcp-transport.test.ts` - Transport-specific tests (stdio vs SSE)
+### `src/__tests__/agent/`
+**Component tests (`components/`):**
+- `app-panel.test.ts` - Web Component UI tests for App-type agents (rendering, code view toggle, streaming, XSS prevention)
 
-### `src/__tests__/main/mcp-storage/`
-- `mcp-storage.test.ts` - MCP storage tests (CRUD operations, validation, connection testing)
+### `src/__tests__/conversation/`
+**Component tests (`components/`):**
+- `conversation-panel.test.ts` - Web Component UI tests (rendering, file tagging, message sending, streaming, tool calls, XSS prevention)
 
-### `src/__tests__/components/`
-- `conversation-panel/conversation-panel.test.ts` - Web Component UI tests (rendering, file tagging, message sending, streaming, tool calls, XSS prevention)
-- `project-panel/project-panel.test.ts` - Web Component UI tests (rendering, interactions, events, XSS prevention)
-- `app-panel/app-panel.test.ts` - Web Component UI tests for App-type agents (rendering, code view toggle, streaming, XSS prevention)
-- `tools-dialog/tools-dialog.test.ts` - Tools dialog UI tests with custom tools, MCP server management
-- `tool-test-dialog/tool-test-dialog.test.ts` - Tool testing UI tests for both custom and MCP tools
+**Transformer tests (`transformers/`):**
+- `openai-transformer.test.ts` - OpenAI message format transformer tests
+- `glm-transformer.test.ts` - GLM message format transformer tests
+
+### `src/__tests__/settings/`
+**Main process tests (`main/`):**
+- `settings.test.ts` - Settings storage and IPC handler tests
+
+**Component tests (`components/`):**
+- `settings-dialog.test.ts` - Settings dialog UI tests
 
 ### `src/__tests__/helpers/`
-- Shared test utilities and mocks
+- `file-system.ts` - Mock file system utilities
+- `component-testing.ts` - Web Component testing utilities
+- `mocks.ts` - Mock data factories for projects, agents, MCP servers, etc.
 
 ## Example Test
 
 ```typescript
-// src/__tests__/project-management/projects.test.ts
-import { getProjectsPath, loadProjects, saveProjects } from '../../main/project-management';
-import { createMockProject } from '../helpers/mocks';
-import { setupMockFS, clearMockFiles } from '../helpers/file-system';
-import type { Project } from '../../types/project-management';
+// src/__tests__/project/main/projects.test.ts
+import { getProjectsPath, loadProjects, saveProjects } from '../../../project/main/project-management';
+import { createMockProject } from '../../helpers/mocks';
+import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
+import type { Project } from '../../../project/types';
 
 describe('Project Management', () => {
   beforeEach(() => {
@@ -203,7 +226,9 @@ describe('Project Management', () => {
 
 ## Writing New Tests
 
-1. **Create test file** in appropriate `src/__tests__/` directory
+1. **Create test file** in appropriate `src/__tests__/` subdirectory, following the feature-based structure:
+   - Main process tests: `src/__tests__/{feature}/main/`
+   - Component tests: `src/__tests__/{feature}/components/`
 2. **Import dependencies** - the module being tested and test helpers
 3. **Setup mocks** - Use `setupMockFS()` for file system tests
 4. **Write tests** - Use `describe()` and `it()` blocks

@@ -21,6 +21,7 @@ Turbo Carnival is an Electron desktop application built with TypeScript, using W
 - Quick AI conversation with global shortcut (Option+Q)
 - Snippets manager with global shortcut (Option+S), inline name editing, and keyboard navigation
 - Clipboard history with global shortcut (Shift+Cmd+V / Shift+Ctrl+V), auto-monitoring, text and image support
+- Task management with TaskPaper format, hierarchical tasks, multi-project support, and smart filtering
 
 ## Build and Development Commands
 
@@ -107,6 +108,7 @@ The documentation has been split into focused modules for better performance:
 - **[docs/features/quick-ai.md](docs/features/quick-ai.md)** - Quick AI conversation with global shortcut
 - **[docs/features/snippets.md](docs/features/snippets.md)** - Snippets manager with global shortcut, inline name editing, and keyboard navigation
 - **[docs/features/clipboard-history.md](docs/features/clipboard-history.md)** - Clipboard history with global shortcut, auto-monitoring, text and image support
+- **[docs/features/tasks.md](docs/features/tasks.md)** - Task management with TaskPaper format, hierarchical tasks, multi-project support, and smart filtering
 
 ### Development
 - **[docs/development.md](docs/development.md)** - Development notes, security, styling, common tasks, debugging tips
@@ -205,6 +207,14 @@ src/
     ├── api/
     └── types/
 
+├── tasks/               # Task management feature
+│   ├── main/task-management.ts
+│   ├── components/tasks-dialog.ts
+│   ├── utils/taskpaper-parser.ts
+│   ├── preload/
+│   ├── api/
+│   └── types/
+
 e2e/                    # E2E tests with Playwright MCP
 ├── scenarios/          # Test scenario documentation
 └── README.md           # E2E testing overview
@@ -248,6 +258,7 @@ test-user-data/         # Test fixtures (isolated environment via TURBO_CARNIVAL
 - `src/clipboard-history/main/clipboard-watcher.ts` - Clipboard monitoring with content hash comparison
 - `src/clipboard-history/main/clipboard-history-management.ts` - Clipboard history file operations, IPC handlers
 - `src/clipboard-history/main/clipboard-history-window.ts` - Clipboard history window lifecycle, global shortcut registration
+- `src/tasks/main/task-management.ts` - Task CRUD, TaskPaper parsing, filtering, completion handling
 
 ### Preload Modules (by feature)
 - `src/preload.ts` - Main preload script, exposes `window.electronAPI` via contextBridge
@@ -261,6 +272,7 @@ test-user-data/         # Test fixtures (isolated environment via TURBO_CARNIVAL
 - `src/quick-ai/preload/quick-ai-management.ts` - Quick AI management functions for preload
 - `src/snippets/preload/snippet-management.ts` - Snippet management functions for preload
 - `src/clipboard-history/preload/clipboard-history-management.ts` - Clipboard history management functions for preload
+- `src/tasks/preload/index.ts` - Task management functions for preload
 
 ### Renderer API Layer (by feature)
 - `src/project/api/index.ts` - Renderer-safe project management API
@@ -281,6 +293,8 @@ test-user-data/         # Test fixtures (isolated environment via TURBO_CARNIVAL
 - `src/snippets/types/index.ts` - Snippet management type definitions
 - `src/clipboard-history/api/index.ts` - Renderer-safe clipboard history management API
 - `src/clipboard-history/types/index.ts` - Clipboard history type definitions
+- `src/tasks/api/index.ts` - Renderer-safe task management API
+- `src/tasks/types/index.ts` - Task management type definitions (Task, TaskFilter, etc.)
 
 ### UI Components (Web Components)
 - `src/core/app-container.ts` - Root layout, event forwarding
@@ -305,6 +319,7 @@ test-user-data/         # Test fixtures (isolated environment via TURBO_CARNIVAL
 - `src/quick-ai/components/quick-ai-window.ts` - Standalone Quick AI window
 - `src/snippets/components/snippet-window.ts` - Standalone snippet window
 - `src/clipboard-history/components/clipboard-history-window.ts` - Standalone clipboard history window
+- `src/tasks/components/tasks-dialog.ts` - Tasks management dialog with hierarchical view
 
 ### Transformers
 - `src/conversation/transformers/openai-transformer.ts` - Transforms OpenAI native message format to ChatMessage format
@@ -329,6 +344,7 @@ test-user-data/         # Test fixtures (isolated environment via TURBO_CARNIVAL
 - `quick-ai:*` - Quick AI operations
 - `snippets:*` - Snippet operations
 - `clipboard-history:*` - Clipboard history operations
+- `tasks:*` - Task CRUD and management operations
 
 ### Storage Locations
 - `app.getPath('userData')/projects.json` - Project list
@@ -340,6 +356,7 @@ test-user-data/         # Test fixtures (isolated environment via TURBO_CARNIVAL
 - `{notepadSaveLocation}/` - Notepad files (.txt format)
 - `{snippetSaveLocation}/` - Snippet files (.txt format)
 - `{clipboardHistorySaveLocation}/` - Clipboard history files
+- `{projectFolder}/tasks.txt` - TaskPaper format tasks per project
 - `{projectFolder}/agent-{name}.json` - Agent files
 
 ## Common Workflows
