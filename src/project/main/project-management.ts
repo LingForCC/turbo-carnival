@@ -25,7 +25,7 @@ export function setProjectFolderGetter(getter: () => string | undefined | Promis
 /**
  * Get the project folder from settings
  */
-async function getProjectFolder(): Promise<string | undefined> {
+export async function getProjectFolder(): Promise<string | undefined> {
   return await _getProjectFolder();
 }
 

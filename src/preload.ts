@@ -9,6 +9,7 @@ import { agentTemplateManagement } from './agent/preload/agent-template-manageme
 import { quickAIManagement } from './quick-ai/preload/quick-ai-management';
 import { snippetManagement } from './snippets/preload/snippet-management';
 import { clipboardHistoryManagement } from './clipboard-history/preload/clipboard-history-management';
+import { taskManagement } from './tasks/preload';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -43,4 +44,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Clipboard History management
   ...clipboardHistoryManagement,
+
+  // Task management
+  ...taskManagement,
 });

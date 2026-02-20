@@ -6,6 +6,7 @@ import '../llm/components/model-config-dialog';
 import '../agent/components/agent-template-dialog';
 import '../settings/components/settings-dialog';
 import '../agent/components/app-panel';
+import '../tasks/components/tasks-dialog';
 import { getSettingsManagementAPI } from '../settings/api';
 import type { SettingsManagementAPI } from '../settings/types';
 
@@ -79,6 +80,12 @@ export class AppContainer extends HTMLElement {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Templates</span>
+          </button>
+          <button id="tasks-btn" class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer border-0 bg-transparent">
+            <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+            </svg>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Tasks</span>
           </button>
         </div>
       </header>
@@ -177,6 +184,14 @@ export class AppContainer extends HTMLElement {
       const newBtn = templatesBtn.cloneNode(true);
       templatesBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.openTemplatesDialog());
+    }
+
+    // Tasks button
+    const tasksBtn = this.querySelector('#tasks-btn');
+    if (tasksBtn) {
+      const newBtn = tasksBtn.cloneNode(true);
+      tasksBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.openTasksDialog());
     }
 
     // Listen for panel toggle events from child components
@@ -386,6 +401,15 @@ export class AppContainer extends HTMLElement {
     document.body.appendChild(dialog);
 
     dialog.addEventListener('agent-template-dialog-close', () => {
+      dialog.remove();
+    });
+  }
+
+  private openTasksDialog(): void {
+    const dialog = document.createElement('tasks-dialog');
+    document.body.appendChild(dialog);
+
+    dialog.addEventListener('tasks-dialog-close', () => {
       dialog.remove();
     });
   }

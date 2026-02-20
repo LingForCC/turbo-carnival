@@ -37,6 +37,9 @@ import type { SnippetFile } from './snippet-management';
 // Import clipboard history types for use in ElectronAPI interface
 import type { ClipboardHistoryItem } from './clipboard-history-management';
 
+// Import task management types for use in ElectronAPI interface
+import type { AllTasksData, ProjectTasks } from '../../tasks/types';
+
 interface ElectronAPI {
   platform: string;
   getProjects: () => Promise<Project[]>;
@@ -294,6 +297,20 @@ interface ElectronAPI {
 
   // Listen for clipboard history window shown event
   onClipboardHistoryWindowShown: (callback: () => void) => () => void;
+
+  // ============ TASK MANAGEMENT METHODS ============
+
+  // Get all tasks from all projects
+  getAllTasks: () => Promise<AllTasksData>;
+
+  // Get tasks for a specific project
+  getProjectTasks: (projectPath: string) => Promise<ProjectTasks>;
+
+  // Save tasks content to a project
+  saveTasks: (projectPath: string, content: string) => Promise<void>;
+
+  // Toggle task done status
+  toggleTaskDone: (projectPath: string, taskId: string) => Promise<ProjectTasks>;
 }
 
 declare global {

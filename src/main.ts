@@ -22,6 +22,7 @@ import { registerClipboardHistoryShortcut, unregisterClipboardHistoryShortcut, c
 import { startClipboardWatcher, stopClipboardWatcher } from './clipboard-history/main/clipboard-watcher';
 import { startProjectFolderWatcher, stopProjectFolderWatcher, updateWatcherFolder } from './project/main/project-folder-watcher';
 import { loadSettings, setOnProjectFolderChangedCallback } from './settings/main/settings-management';
+import { registerTaskIPCHandlers } from './tasks/main/task-management';
 import { logStorageConfig } from './core/storage-resolver';
 
 
@@ -145,6 +146,9 @@ function registerIPCHandlers(): void {
 
   // ============ CLIPBOARD HISTORY IPC HANDLERS ============
   registerClipboardHistoryIPCHandlers();
+
+  // ============ TASK IPC HANDLERS ============
+  registerTaskIPCHandlers();
 }
 
 // Quit when all windows are closed, except on macOS
