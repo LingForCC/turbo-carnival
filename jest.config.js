@@ -5,10 +5,10 @@ module.exports = {
   // Use projects to separate main process and component tests
   projects: [
     {
-      // Main process tests (existing tests)
+      // Main process tests (feature-based structure)
       displayName: 'main-process',
       testMatch: [
-        '<rootDir>/src/__tests__/main/**/*.test.ts',
+        '<rootDir>/src/__tests__/**/main/**/*.test.ts',
       ],
       testEnvironment: 'node',
       preset: 'ts-jest',
@@ -25,9 +25,9 @@ module.exports = {
       verbose: true,
     },
     {
-      // Web component tests (new tests)
+      // Web component tests (feature-based structure)
       displayName: 'web-components',
-      testMatch: ['<rootDir>/src/__tests__/components/**/*.test.ts'],
+      testMatch: ['<rootDir>/src/__tests__/**/components/**/*.test.ts', '<rootDir>/src/__tests__/**/transformers/**/*.test.ts'],
       testEnvironment: '<rootDir>/jest-happy-dom-env.js',
       testEnvironmentOptions: {
         url: 'http://localhost:3000/',
