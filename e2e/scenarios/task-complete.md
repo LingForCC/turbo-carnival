@@ -2,7 +2,7 @@
 
 ## Goal
 
-Verify that users can toggle task completion status and that completion cascades correctly between parent and child tasks.
+Verify that users can toggle task completion status, that completion cascades correctly between parent and child tasks, and that the completion date is recorded and displayed.
 
 ## Prerequisites
 
@@ -44,6 +44,19 @@ The following test data must exist in `test-user-data/Projects/` before running 
 - [ ] Clicking the checkbox again uncompletes the task
 - [ ] Uncompleted task shows an unchecked checkbox and normal text
 
+### Completion Date Recording
+- [ ] When a task is marked complete, a "done:YYYY-MM-DD" tag appears showing today's date
+- [ ] The done date tag is displayed in purple/magenta color (read-only indicator)
+- [ ] The done date tag is NOT clickable (no date picker popover)
+- [ ] When a task is uncompleted, the done date tag disappears
+- [ ] The done date persists when closing and reopening the tasks dialog
+- [ ] The done date is stored in the tasks.txt file as `@done(YYYY-MM-DD)` format
+
+### Completion Date Cascade with Parent/Child
+- [ ] When completing a parent task, all children get the same done date (today)
+- [ ] When uncompleting a child task (which also uncompletes parent), done dates are cleared from affected tasks
+- [ ] When uncompleting a parent, all children have their done dates cleared
+
 ### Completing a Parent Task (Cascade to Children)
 - [ ] Clicking a parent task's checkbox marks the parent as complete
 - [ ] All child tasks are automatically marked as complete when parent is completed
@@ -74,3 +87,4 @@ The following test data must exist in `test-user-data/Projects/` before running 
 - [ ] Completed tasks show visual strikethrough and reduced opacity
 - [ ] Checkbox state accurately reflects completion status
 - [ ] Changes are immediately visible without needing to refresh
+- [ ] Done date is displayed in purple/magenta color to distinguish from editable date tags

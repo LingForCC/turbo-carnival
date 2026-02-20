@@ -383,6 +383,11 @@ export class TasksDialog extends HTMLElement {
   private renderDateTags(task: Task): string {
     const tags: string[] = [];
 
+    // Show done date first if task is completed (read-only)
+    if (task.done && task.doneDate) {
+      tags.push(this.renderDoneDateTag(task.doneDate));
+    }
+
     if (task.due) {
       tags.push(this.renderDateTag(task, 'due'));
     }
@@ -393,22 +398,29 @@ export class TasksDialog extends HTMLElement {
       tags.push(this.renderDateTag(task, 'defer'));
     }
 
-    // Add buttons to add missing dates (visible on hover)
+    // Add buttons to add missing dates (visible on hover) - only for incomplete tasks
     const missingTags: string[] = [];
-    if (!task.due) {
-      missingTags.push(`<button class="add-date-btn opacity-0 group-hover:opacity-100 text-xs text-gray-400 hover:text-blue-500 px-1" data-add-date="due" data-task-id="${this.escapeHtml(task.id)}">+due</button>`);
-    }
-    if (!task.scheduled) {
-      missingTags.push(`<button class="add-date-btn opacity-0 group-hover:opacity-100 text-xs text-gray-400 hover:text-blue-500 px-1" data-add-date="scheduled" data-task-id="${this.escapeHtml(task.id)}">+scheduled</button>`);
-    }
-    if (!task.defer) {
-      missingTags.push(`<button class="add-date-btn opacity-0 group-hover:opacity-100 text-xs text-gray-400 hover:text-blue-500 px-1" data-add-date="defer" data-task-id="${this.escapeHtml(task.id)}">+defer</button>`);
+    if (!task.done) {
+      if (!task.due) {
+        missingTags.push(`<button class="add-date-btn opacity-0 group-hover:opacity-100 text-xs text-gray-400 hover:text-blue-500 px-1" data-add-date="due" data-task-id="${this.escapeHtml(task.id)}">+due</button>`);
+      }
+      if (!task.scheduled) {
+        missingTags.push(`<button class="add-date-btn opacity-0 group-hover:opacity-100 text-xs text-gray-400 hover:text-blue-500 px-1" data-add-date="scheduled" data-task-id="${this.escapeHtml(task.id)}">+scheduled</button>`);
+      }
+      if (!task.defer) {
+        missingTags.push(`<button class="add-date-btn opacity-0 group-hover:opacity-100 text-xs text-gray-400 hover:text-blue-500 px-1" data-add-date="defer" data-task-id="${this.escapeHtml(task.id)}">+defer</button>`);
+      }
     }
 
     const allTags = tags.length > 0 ? tags.join('') : '';
     const addButtons = missingTags.join('');
 
     return `<span class="date-tags ml-2 flex items-center gap-1">${allTags}${addButtons}</span>`;
+  }
+
+  private renderDoneDateTag(date: Date): string {
+    const dateStr = this.formatDate(date);
+    return `<span class="date-tag text-xs text-purple-500 dark:text-purple-400">done:${dateStr}</span>`;
   }
 
   private renderDateTag(task: Task, type: 'defer' | 'due' | 'scheduled'): string {

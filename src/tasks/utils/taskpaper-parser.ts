@@ -38,7 +38,7 @@ export function parseTaskPaper(
     const taskText = line.trim();
 
     // Parse tags from the task text
-    const { text, done, defer, due, scheduled } = parseTaskTags(taskText);
+    const { text, done, doneDate, defer, due, scheduled } = parseTaskTags(taskText);
 
     const task: Task = {
       id: `${projectPath}-${++taskCounter}`,
@@ -47,6 +47,7 @@ export function parseTaskPaper(
       projectName,
       indent,
       done,
+      doneDate,
       defer,
       due,
       scheduled,
@@ -74,24 +75,40 @@ export function parseTaskPaper(
 }
 
 /**
+ * Get today's date at midnight
+ */
+function getToday(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+/**
  * Parse tags from a task text
- * Supports: @done, @defer(YYYY-MM-DD), @due(YYYY-MM-DD), @scheduled(YYYY-MM-DD)
+ * Supports: @done, @done(YYYY-MM-DD), @defer(YYYY-MM-DD), @due(YYYY-MM-DD), @scheduled(YYYY-MM-DD)
  */
 export function parseTaskTags(taskText: string): {
   text: string;
   done: boolean;
+  doneDate?: Date;
   defer?: Date;
   due?: Date;
   scheduled?: Date;
 } {
   let text = taskText;
   let done = false;
+  let doneDate: Date | undefined;
   let defer: Date | undefined;
   let due: Date | undefined;
   let scheduled: Date | undefined;
 
-  // Check for @done tag
-  if (text.includes('@done')) {
+  // Check for @done(date) tag first (with date)
+  const doneDateMatch = text.match(/@done\(([^)]+)\)/);
+  if (doneDateMatch) {
+    done = true;
+    doneDate = parseDate(doneDateMatch[1]);
+    text = text.replace(/@done\([^)]+\)/g, '').trim();
+  } else if (text.includes('@done')) {
+    // Check for @done tag without date
     done = true;
     text = text.replace(/@done/g, '').trim();
   }
@@ -125,7 +142,7 @@ export function parseTaskTags(taskText: string): {
     text = '- ' + text;
   }
 
-  return { text, done, defer, due, scheduled };
+  return { text, done, doneDate, defer, due, scheduled };
 }
 
 /**
@@ -168,14 +185,6 @@ export function parseDate(dateStr: string): Date | undefined {
 }
 
 /**
- * Get today's date at midnight
- */
-function getToday(): Date {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
-
-/**
  * Format a date to YYYY-MM-DD string
  */
 export function formatDate(date: Date): string {
@@ -197,7 +206,11 @@ export function serializeTaskPaper(tasks: Task[]): string {
 
     // Add tags
     if (task.done) {
-      line += ' @done';
+      if (task.doneDate) {
+        line += ` @done(${formatDate(task.doneDate)})`;
+      } else {
+        line += ' @done';
+      }
     }
     if (task.defer) {
       line += ` @defer(${formatDate(task.defer)})`;
@@ -245,6 +258,13 @@ export function findTaskById(tasks: Task[], id: string): Task | null {
  */
 function setTaskAndChildrenDone(task: Task, done: boolean): void {
   task.done = done;
+  if (done) {
+    // Set done date to today when marking complete
+    task.doneDate = getToday();
+  } else {
+    // Clear done date when marking not complete
+    task.doneDate = undefined;
+  }
   for (const child of task.children) {
     setTaskAndChildrenDone(child, done);
   }

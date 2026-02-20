@@ -13,6 +13,7 @@ export interface Task {
   projectName: string;  // Name of the project
   indent: number;       // Indentation level (0-based)
   done: boolean;        // Whether task is completed
+  doneDate?: Date;      // Date when task was completed (read-only, auto-set)
   defer?: Date;         // Defer date (task not available before this)
   due?: Date;           // Due date
   scheduled?: Date;     // Scheduled date
