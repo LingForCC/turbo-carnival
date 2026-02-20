@@ -34,6 +34,9 @@ npm run preview      # Preview Vite production build
 npm run test:no-coverage  # Run tests without coverage (fastest)
 npm test                 # Run tests with coverage report
 npm run test:watch       # Run tests in watch mode
+
+# E2E Testing
+# Use /e2e-test skill with a scenario file or description
 ```
 
 **After any code change, run tests for affected modules.**
@@ -110,6 +113,7 @@ The documentation has been split into focused modules for better performance:
 
 ### Testing
 - **[docs/testing.md](docs/testing.md)** - Jest configuration, mocking patterns, test helpers, web component automation testing
+- **E2E Testing** - Use `/e2e-test` skill with a scenario file (e.g., `e2e/scenarios/tasks-view.md`)
 
 ## Project Structure
 
@@ -200,6 +204,14 @@ src/
     ├── preload/
     ├── api/
     └── types/
+
+e2e/                    # E2E tests with Playwright MCP
+├── scenarios/          # Test scenario documentation
+└── README.md           # E2E testing overview
+
+test-user-data/         # Test fixtures (isolated environment via TURBO_CARNIVAL_TEST_DATA_DIR)
+├── Projects/           # Sample projects for E2E tests
+└── settings.json       # Test app settings
 ```
 
 ## Quick Reference

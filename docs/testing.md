@@ -1,6 +1,17 @@
 # Testing
 
-The project uses **Jest** with **ts-jest** for testing TypeScript code.
+The project uses multiple testing approaches:
+
+- **Jest** with **ts-jest** for unit and component tests (this document)
+- **Playwright MCP** for End-to-End (E2E) tests - use `/e2e-test` skill
+
+## Test Types Overview
+
+| Type | Tool | Location | Purpose |
+|------|------|----------|---------|
+| Unit Tests | Jest | `src/__tests__/` | Test isolated functions and modules |
+| Component Tests | Jest + Happy DOM | `src/__tests__/components/` | Test Web Components rendering |
+| E2E Tests | Playwright MCP | `e2e/` | Test complete user flows |
 
 ## Test Commands
 
@@ -483,3 +494,23 @@ describe('ProjectPanel Web Component', () => {
 5. **XSS testing is critical**: Always test that user input is properly escaped
 6. **Event bubbling**: Verify events bubble correctly by listening on `document`
 7. **Clone-and-replace pattern**: Tests verify that duplicate listeners are prevented
+
+## E2E Testing with Playwright MCP
+
+For testing complete user flows in the running Electron application, use the `/e2e-test` skill.
+
+### When to Use E2E Tests
+
+- Validating critical user journeys
+- Testing feature integrations
+- Verifying UI behavior in real environment
+- Bug reproduction and verification
+
+### Usage
+
+```
+/e2e-test e2e/scenarios/tasks-view.md
+/e2e-test test the tasks view feature
+```
+
+The skill handles app startup, test execution, and cleanup automatically.
