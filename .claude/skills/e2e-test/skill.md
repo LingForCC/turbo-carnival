@@ -24,7 +24,7 @@ Examples:
 Before starting any test:
 
 1. **Ensure app is NOT running** - Playwright MCP will launch it automatically
-2. **Verify build exists**: Check that `dist-renderer/` directory exists. If not, run:
+2. **Build the application**: Always run a fresh build to ensure latest code:
    ```bash
    npm run build
    ```

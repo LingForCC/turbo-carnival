@@ -47,7 +47,7 @@ The following test data must exist in `test-user-data/Projects/` before running 
 - [ ] Task appears with the new text after saving
 
 ### Adding a Child Task
-- [ ] Pressing Shift+Cmd+N (Mac) or Shift+Ctrl+N (Windows/Linux) with a task selected creates a new child task
+- [ ] Pressing Shift+Cmd+] (Mac) or Shift+Ctrl+] (Windows/Linux) with a task selected creates a new child task
 - [ ] New child task appears as a subtask (indented) of the selected task
 - [ ] New child task text field defaults to "New subtask"
 - [ ] New child task input is automatically focused and text is selected

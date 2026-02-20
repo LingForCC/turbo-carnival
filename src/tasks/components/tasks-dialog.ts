@@ -130,7 +130,7 @@ export class TasksDialog extends HTMLElement {
         <div class="flex-shrink-0 px-6 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
           <div class="text-xs text-gray-500 dark:text-gray-400 flex gap-4">
             <span><kbd class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">${this.isMac() ? 'Cmd' : 'Ctrl'}+N</kbd> New sibling</span>
-            <span><kbd class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Shift+${this.isMac() ? 'Cmd' : 'Ctrl'}+N</kbd> New child</span>
+            <span><kbd class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Shift+${this.isMac() ? 'Cmd' : 'Ctrl'}+]</kbd> New child</span>
             <span><kbd class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Enter</kbd> Edit</span>
             <span><kbd class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Esc</kbd> Cancel</span>
             <span><kbd class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Arrow Keys</kbd> Navigate</span>
@@ -513,8 +513,8 @@ export class TasksDialog extends HTMLElement {
       return;
     }
 
-    // Shift+Cmd+N / Shift+Ctrl+N - add child task
-    if (isModKey && e.shiftKey && e.key.toLowerCase() === 'n' && this.selectedTaskId) {
+    // Shift+Cmd+] / Shift+Ctrl+] - add child task
+    if (isModKey && e.shiftKey && e.key === ']' && this.selectedTaskId) {
       e.preventDefault();
       this.addChildTask();
       return;
