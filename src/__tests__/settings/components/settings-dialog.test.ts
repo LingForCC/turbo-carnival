@@ -10,16 +10,20 @@ interface SettingsDialog extends HTMLElement {
 }
 
 describe('SettingsDialog Web Component', () => {
+  // Helper to setup common mocks
+  const setupMocks = (settings: { theme: 'light' | 'dark'; notepadSaveLocation: string } = { theme: 'light', notepadSaveLocation: '' }) => {
+    mockElectronAPI('getSettings', jest.fn().mockResolvedValue(settings));
+    mockElectronAPI('getProviders', jest.fn().mockResolvedValue([]));
+    mockElectronAPI('getModelConfigs', jest.fn().mockResolvedValue([]));
+  };
+
   afterEach(() => {
     jest.clearAllMocks();
   });
 
   describe('Rendering', () => {
     it('should render with correct initial structure', async () => {
-      mockElectronAPI('getSettings', jest.fn().mockResolvedValue({
-        theme: 'light',
-        notepadSaveLocation: '/some/path'
-      }));
+      setupMocks({ theme: 'light', notepadSaveLocation: '/some/path' });
 
       const { element, cleanup } = mountComponent<SettingsDialog>('settings-dialog');
 
@@ -34,10 +38,7 @@ describe('SettingsDialog Web Component', () => {
     });
 
     it('should render light theme as selected when settings have light theme', async () => {
-      mockElectronAPI('getSettings', jest.fn().mockResolvedValue({
-        theme: 'light',
-        notepadSaveLocation: ''
-      }));
+      setupMocks({ theme: 'light', notepadSaveLocation: '' });
 
       const { element, cleanup } = mountComponent<SettingsDialog>('settings-dialog');
 
@@ -53,10 +54,7 @@ describe('SettingsDialog Web Component', () => {
     });
 
     it('should render dark theme as selected when settings have dark theme', async () => {
-      mockElectronAPI('getSettings', jest.fn().mockResolvedValue({
-        theme: 'dark',
-        notepadSaveLocation: ''
-      }));
+      setupMocks({ theme: 'dark', notepadSaveLocation: '' });
 
       const { element, cleanup } = mountComponent<SettingsDialog>('settings-dialog');
 
@@ -72,10 +70,7 @@ describe('SettingsDialog Web Component', () => {
     });
 
     it('should render with notepad location', async () => {
-      mockElectronAPI('getSettings', jest.fn().mockResolvedValue({
-        theme: 'light',
-        notepadSaveLocation: '/Users/test/notepad'
-      }));
+      setupMocks({ theme: 'light', notepadSaveLocation: '/Users/test/notepad' });
 
       const { element, cleanup } = mountComponent<SettingsDialog>('settings-dialog');
 
@@ -95,10 +90,7 @@ describe('SettingsDialog Web Component', () => {
         notepadSaveLocation: ''
       });
 
-      mockElectronAPI('getSettings', jest.fn().mockResolvedValue({
-        theme: 'dark',
-        notepadSaveLocation: ''
-      }));
+      setupMocks({ theme: 'dark', notepadSaveLocation: '' });
       mockElectronAPI('updateSettings', updateSettingsMock);
 
       const { element, cleanup } = mountComponent<SettingsDialog>('settings-dialog');
@@ -117,10 +109,7 @@ describe('SettingsDialog Web Component', () => {
     });
 
     it('should apply theme directly to DOM when theme is updated', async () => {
-      mockElectronAPI('getSettings', jest.fn().mockResolvedValue({
-        theme: 'light',
-        notepadSaveLocation: ''
-      }));
+      setupMocks({ theme: 'light', notepadSaveLocation: '' });
       mockElectronAPI('updateSettings', jest.fn().mockResolvedValue({
         theme: 'dark',
         notepadSaveLocation: ''
@@ -148,10 +137,7 @@ describe('SettingsDialog Web Component', () => {
 
   describe('Close Behavior', () => {
     it('should close and dispatch settings-dialog-close event when close button clicked', async () => {
-      mockElectronAPI('getSettings', jest.fn().mockResolvedValue({
-        theme: 'light',
-        notepadSaveLocation: ''
-      }));
+      setupMocks({ theme: 'light', notepadSaveLocation: '' });
 
       const { element, cleanup } = mountComponent<SettingsDialog>('settings-dialog');
 
@@ -171,10 +157,7 @@ describe('SettingsDialog Web Component', () => {
     });
 
     it('should close and dispatch settings-dialog-close event when cancel button clicked', async () => {
-      mockElectronAPI('getSettings', jest.fn().mockResolvedValue({
-        theme: 'light',
-        notepadSaveLocation: ''
-      }));
+      setupMocks({ theme: 'light', notepadSaveLocation: '' });
 
       const { element, cleanup } = mountComponent<SettingsDialog>('settings-dialog');
 

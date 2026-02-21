@@ -9,6 +9,7 @@ module.exports = {
       displayName: 'main-process',
       testMatch: [
         '<rootDir>/src/__tests__/**/main/**/*.test.ts',
+        '<rootDir>/src/__tests__/**/utils/**/*.test.ts',
       ],
       testEnvironment: 'node',
       preset: 'ts-jest',

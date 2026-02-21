@@ -49,6 +49,15 @@ const mockElectronAPI = {
   // Chat methods
   sendChatMessage: jest.fn(),
   streamChatMessage: jest.fn(),
+
+  // Settings methods
+  getSettings: jest.fn().mockResolvedValue({ theme: 'light' }),
+  updateSettings: jest.fn().mockResolvedValue({ theme: 'light' }),
+  openFolderDialog: jest.fn().mockResolvedValue(null),
+
+  // LLM Provider methods
+  getProviders: jest.fn().mockResolvedValue([]),
+  getModelConfigs: jest.fn().mockResolvedValue([]),
 };
 
 Object.defineProperty(window, 'electronAPI', {

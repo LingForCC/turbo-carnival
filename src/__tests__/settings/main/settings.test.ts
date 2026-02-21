@@ -8,8 +8,8 @@ import {
 import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
 import type { AppSettings } from '../../../settings/types';
 
-// Dev mode uses a separate directory
-const STORAGE_DIR = '/mock/turbo-carnival-dev';
+// Mock app.getPath returns '/mock/userdata' for userData
+const STORAGE_DIR = '/mock/userdata';
 
 describe('Settings Management - Storage Helpers', () => {
   // Mock app.getPath before each test
