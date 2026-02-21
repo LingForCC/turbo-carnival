@@ -35,7 +35,7 @@ export class AssistantMessage extends HTMLElement {
   /**
    * Set the save handler from parent component
    */
-  public setSaveHandler(handler: SaveHandler): void {
+  public setSaveHandler(handler: SaveHandler | null): void {
     this.saveHandler = handler;
   }
 
@@ -47,7 +47,7 @@ export class AssistantMessage extends HTMLElement {
   static createWithHandlers(
     content: string,
     reasoning: string,
-    saveHandler: SaveHandler
+    saveHandler: SaveHandler | null
   ): AssistantMessage {
     const element = document.createElement('assistant-message') as AssistantMessage;
     element.setAttribute('content', content);

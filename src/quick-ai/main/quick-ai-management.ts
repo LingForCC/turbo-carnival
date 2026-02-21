@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import type { Agent } from '../types/agent-management';
+import type { Agent } from '../../agent/types';
 import { loadSettings } from '../../settings/main/settings-management';
 import { getProviderById } from '../../llm/main/provider-management';
 import { getModelConfigById } from '../../llm/main/model-config-management';

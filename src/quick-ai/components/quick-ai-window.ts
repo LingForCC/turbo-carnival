@@ -5,7 +5,8 @@ import { AssistantMessage } from '../../conversation/components/assistant-messag
 import { ToolCallMessage } from '../../conversation/components/tool-call-message';
 import type { QuickAIManagementAPI } from '../types';
 import type { SettingsManagementAPI } from '../../settings/types';
-import type { ToolCallEvent, ToolCallData } from '../../tools/types';
+import type { ToolCallEvent } from '../../tools/types';
+import type { ToolCallData } from '../../conversation/components/conversation-panel';
 
 /**
  * QuickAIWindow - Quick AI Conversation Web Component

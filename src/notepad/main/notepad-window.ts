@@ -78,11 +78,9 @@ export function showNotepadWindow(): void {
     notepadWindow.show();
     notepadWindow.focus();
   } else {
-    createNotepadWindow();
-    if (notepadWindow) {
-      notepadWindow.show();
-      notepadWindow.focus();
-    }
+    const window = createNotepadWindow();
+    window.show();
+    window.focus();
   }
 }
 

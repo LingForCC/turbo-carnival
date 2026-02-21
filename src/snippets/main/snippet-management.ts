@@ -233,7 +233,7 @@ export function registerSnippetIPCHandlers(): void {
   // Handler: Get list of snippet files
   ipcMain.handle('snippets:getFiles', async () => {
     const settings = loadSettings();
-    const dir = getSnippetDir(settings.snippetSaveLocation);
+    const dir = getSnippetDir(settings.snippetSaveLocation ?? undefined);
 
     if (!dir) {
       // Throw error that renderer should handle
@@ -246,7 +246,7 @@ export function registerSnippetIPCHandlers(): void {
   // Handler: Read snippet file content
   ipcMain.handle('snippets:readFile', async (_event, fileName: string) => {
     const settings = loadSettings();
-    const dir = getSnippetDir(settings.snippetSaveLocation);
+    const dir = getSnippetDir(settings.snippetSaveLocation ?? undefined);
 
     if (!dir) {
       throw new Error(ERROR_SNIPPET_NO_LOCATION);
@@ -258,7 +258,7 @@ export function registerSnippetIPCHandlers(): void {
   // Handler: Create new snippet file
   ipcMain.handle('snippets:createFile', async (_event, name: string, content: string) => {
     const settings = loadSettings();
-    const dir = getSnippetDir(settings.snippetSaveLocation);
+    const dir = getSnippetDir(settings.snippetSaveLocation ?? undefined);
 
     if (!dir) {
       // Throw error that renderer should handle
@@ -271,7 +271,7 @@ export function registerSnippetIPCHandlers(): void {
   // Handler: Save snippet content
   ipcMain.handle('snippets:saveContent', async (_event, fileName: string, content: string) => {
     const settings = loadSettings();
-    const dir = getSnippetDir(settings.snippetSaveLocation);
+    const dir = getSnippetDir(settings.snippetSaveLocation ?? undefined);
 
     if (!dir) {
       throw new Error(ERROR_SNIPPET_NO_LOCATION);
@@ -283,7 +283,7 @@ export function registerSnippetIPCHandlers(): void {
   // Handler: Rename snippet file
   ipcMain.handle('snippets:renameFile', async (_event, oldName: string, newName: string) => {
     const settings = loadSettings();
-    const dir = getSnippetDir(settings.snippetSaveLocation);
+    const dir = getSnippetDir(settings.snippetSaveLocation ?? undefined);
 
     if (!dir) {
       throw new Error(ERROR_SNIPPET_NO_LOCATION);
@@ -298,7 +298,7 @@ export function registerSnippetIPCHandlers(): void {
   // Handler: Delete snippet file
   ipcMain.handle('snippets:deleteFile', async (_event, fileName: string) => {
     const settings = loadSettings();
-    const dir = getSnippetDir(settings.snippetSaveLocation);
+    const dir = getSnippetDir(settings.snippetSaveLocation ?? undefined);
 
     if (!dir) {
       throw new Error(ERROR_SNIPPET_NO_LOCATION);

@@ -89,10 +89,8 @@ export function showSnippetWindow(): void {
   if (snippetWindow) {
     snippetWindow.show();
   } else {
-    createSnippetWindow();
-    if (snippetWindow) {
-      snippetWindow.show();
-    }
+    const window = createSnippetWindow();
+    window.show();
   }
 }
 

@@ -133,7 +133,7 @@ export class ToolTestDialog extends HTMLElement {
     switch (schema.type) {
       case 'string':
         // Use textarea for long strings or if hint suggests it
-        const useTextarea = schema.minLength > 100 || description?.toLowerCase().includes('text') || description?.toLowerCase().includes('content');
+        const useTextarea = (schema.minLength ?? 0) > 100 || description?.toLowerCase().includes('text') || description?.toLowerCase().includes('content');
         return `
           <div class="${indent}">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="${fieldId}">
@@ -185,10 +185,10 @@ export class ToolTestDialog extends HTMLElement {
         `;
 
       case 'array':
-        return this.generateArrayField(propertyName, schema, isRequired, description, indent);
+        return this.generateArrayField(propertyName, schema, isRequired ?? false, description, indent);
 
       case 'object':
-        return this.generateObjectField(propertyName, schema, isRequired, description, indent, depth);
+        return this.generateObjectField(propertyName, schema, isRequired ?? false, description, indent, depth);
 
       default:
         // Fallback to text input
@@ -404,7 +404,9 @@ export class ToolTestDialog extends HTMLElement {
   private buildParametersFromForm(formData: FormData): Record<string, any> {
     const parameters: Record<string, any> = {};
 
-    for (const [key, value] of formData.entries()) {
+    // Use Array.from to convert FormData entries to an array
+    const entries = Array.from(formData.entries());
+    for (const [key, value] of entries) {
       // Check if this is an array item (e.g., "tags[0]")
       const arrayMatch = key.match(/^(\w+)\[(\d+)\]$/);
       if (arrayMatch) {
@@ -448,7 +450,7 @@ export class ToolTestDialog extends HTMLElement {
       // Try to find in nested properties
       const parts = key.split('.');
       if (parts.length > 1) {
-        let nestedSchema = this.tool.parameters.properties[parts[0]];
+        let nestedSchema: JSONSchema | undefined = this.tool.parameters.properties[parts[0]];
         for (let i = 1; i < parts.length - 1; i++) {
           nestedSchema = nestedSchema?.properties?.[parts[i]];
         }

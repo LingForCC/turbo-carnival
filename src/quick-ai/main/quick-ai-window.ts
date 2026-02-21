@@ -80,11 +80,9 @@ export function showQuickAIWindow(): void {
     quickAIWindow.show();
     quickAIWindow.focus();
   } else {
-    createQuickAIWindow();
-    if (quickAIWindow) {
-      quickAIWindow.show();
-      quickAIWindow.focus();
-    }
+    const window = createQuickAIWindow();
+    window.show();
+    window.focus();
   }
 }
 

@@ -1,6 +1,6 @@
 import { ipcRenderer } from 'electron';
 import type { Agent } from '../types';
-import type { ToolCallEvent } from '../types/tool-management';
+import type { ToolCallEvent } from '../../tools/types';
 
 /**
  * Preload module - uses ipcRenderer directly

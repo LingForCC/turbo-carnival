@@ -811,7 +811,7 @@ export class ToolsDialog extends HTMLElement {
         parameters,
         returns,
         timeout: parseInt(formData.get('timeout') as string) || 30000,
-        environment: (formData.get('environment') as string) || 'node',
+        environment: (formData.get('environment') as 'node' | 'browser') || 'node',
         enabled: (formData.get('enabled') as string) === 'on',
         createdAt: this.editingTool?.createdAt || Date.now(),
         updatedAt: this.editingToolIndex >= 0 ? Date.now() : undefined

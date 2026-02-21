@@ -415,7 +415,7 @@ export class AgentFormDialog extends HTMLElement {
     if (tempSpan) tempSpan.textContent = modelConfig.temperature !== undefined ? modelConfig.temperature.toString() : 'N/A';
 
     const maxTokensSpan = this.querySelector('#detail-max-tokens');
-    if (maxTokensSpan) maxTokensSpan.textContent = modelConfig.maxTokens || 'N/A';
+    if (maxTokensSpan) maxTokensSpan.textContent = modelConfig.maxTokens !== undefined ? String(modelConfig.maxTokens) : 'N/A';
 
     const topPSpan = this.querySelector('#detail-top-p');
     if (topPSpan) topPSpan.textContent = modelConfig.topP !== undefined ? modelConfig.topP.toString() : 'N/A';
