@@ -15,6 +15,9 @@ describe('SettingsDialog Web Component', () => {
     mockElectronAPI('getSettings', jest.fn().mockResolvedValue(settings));
     mockElectronAPI('getProviders', jest.fn().mockResolvedValue([]));
     mockElectronAPI('getModelConfigs', jest.fn().mockResolvedValue([]));
+    // Mock tools API calls for the tools-settings-panel
+    mockElectronAPI('getTools', jest.fn().mockResolvedValue([]));
+    mockElectronAPI('getMCPServers', jest.fn().mockResolvedValue([]));
   };
 
   afterEach(() => {

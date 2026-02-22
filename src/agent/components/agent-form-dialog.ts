@@ -3,6 +3,7 @@ import type { ModelConfig } from '../../llm/types';
 import type { AgentTemplate } from '../types';
 import { getProviderManagementAPI } from '../../llm/api';
 import { getAgentTemplateManagementAPI } from '../api';
+import '../../settings/components/settings-dialog';
 
 /**
  * AgentFormDialog Web Component
@@ -434,10 +435,11 @@ export class AgentFormDialog extends HTMLElement {
   }
 
   private openModelConfigDialog(): void {
-    const dialog = document.createElement('model-config-dialog');
+    const dialog = document.createElement('settings-dialog') as HTMLElement;
+    dialog.dataset.tab = 'ai';
     document.body.appendChild(dialog);
 
-    dialog.addEventListener('model-config-dialog-close', async () => {
+    dialog.addEventListener('settings-dialog-close', async () => {
       dialog.remove();
       // Reload model configs when dialog closes
       await this.loadModelConfigs();

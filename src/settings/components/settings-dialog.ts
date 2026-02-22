@@ -2,8 +2,10 @@ import { getSettingsManagementAPI } from '../api';
 import { getProviderManagementAPI } from '../../llm/api';
 import type { AppSettings } from '../types';
 import type { LLMProvider, ModelConfig } from '../../llm/types';
+import './tools-settings-panel';
+import './ai-settings-panel';
 
-type SettingsTab = 'general' | 'notepad' | 'snippets' | 'clipboard-history' | 'quick-ai';
+type SettingsTab = 'general' | 'ai' | 'tools' | 'notepad' | 'snippets' | 'clipboard-history' | 'quick-ai';
 
 /**
  * SettingsDialog Web Component
@@ -12,11 +14,17 @@ type SettingsTab = 'general' | 'notepad' | 'snippets' | 'clipboard-history' | 'q
 export class SettingsDialog extends HTMLElement {
   private settings: AppSettings | null = null;
   private currentTheme: 'light' | 'dark' = 'light';
-  private currentTab: SettingsTab = 'general';
+  private currentTab: SettingsTab;
   private api = getSettingsManagementAPI();
   private providerApi = getProviderManagementAPI();
   private providers: LLMProvider[] = [];
   private modelConfigs: ModelConfig[] = [];
+
+  constructor() {
+    super();
+    // Check if a specific tab was requested via data attribute
+    this.currentTab = (this.dataset.tab as SettingsTab) || 'general';
+  }
 
   async connectedCallback(): Promise<void> {
     await this.loadSettings();
@@ -62,10 +70,10 @@ export class SettingsDialog extends HTMLElement {
     this.innerHTML = `
       <!-- Backdrop -->
       <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <!-- Dialog -->
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-lg w-full">
+        <!-- Dialog - Larger size with fixed dimensions -->
+        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-[900px] max-w-[95vw] h-[80vh] max-h-[80vh] flex flex-col">
           <!-- Header -->
-          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
             <div>
               <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 m-0">App Settings</h2>
               <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-0">
@@ -80,10 +88,16 @@ export class SettingsDialog extends HTMLElement {
           </div>
 
           <!-- Tab Navigation -->
-          <div class="px-6 pt-4 border-b border-gray-200 dark:border-gray-700">
-            <nav class="flex gap-1 -mb-px">
+          <div class="px-6 pt-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <nav class="flex gap-1 -mb-px flex-wrap">
               <button data-tab="general" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${this.currentTab === 'general' ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300'}">
                 General
+              </button>
+              <button data-tab="ai" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${this.currentTab === 'ai' ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300'}">
+                AI
+              </button>
+              <button data-tab="tools" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${this.currentTab === 'tools' ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300'}">
+                Tools
               </button>
               <button data-tab="notepad" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${this.currentTab === 'notepad' ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300'}">
                 Notepad
@@ -100,8 +114,8 @@ export class SettingsDialog extends HTMLElement {
             </nav>
           </div>
 
-          <!-- Tab Content -->
-          <div class="p-6 min-h-[200px]">
+          <!-- Tab Content - Scrollable -->
+          <div class="flex-1 overflow-y-auto p-6">
             <!-- General Tab -->
             <div id="tab-general" class="tab-content ${this.currentTab === 'general' ? '' : 'hidden'} space-y-6">
               <!-- Project Folder -->
@@ -161,6 +175,16 @@ export class SettingsDialog extends HTMLElement {
                   Choose between light and dark appearance for the application.
                 </p>
               </div>
+            </div>
+
+            <!-- AI Tab -->
+            <div id="tab-ai" class="tab-content ${this.currentTab === 'ai' ? '' : 'hidden'}">
+              <ai-settings-panel></ai-settings-panel>
+            </div>
+
+            <!-- Tools Tab -->
+            <div id="tab-tools" class="tab-content ${this.currentTab === 'tools' ? '' : 'hidden'}">
+              <tools-settings-panel></tools-settings-panel>
             </div>
 
             <!-- Notepad Tab -->
@@ -290,7 +314,7 @@ export class SettingsDialog extends HTMLElement {
           </div>
 
           <!-- Footer -->
-          <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+          <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 flex-shrink-0">
             <button
               id="cancel-btn"
               class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer border-0 text-sm font-medium"
@@ -572,8 +596,11 @@ export class SettingsDialog extends HTMLElement {
 customElements.define('settings-dialog', SettingsDialog);
 
 // Factory function to create and open the dialog
-export function openSettingsDialog(): SettingsDialog {
+export function openSettingsDialog(tab?: string): SettingsDialog {
   const dialog = document.createElement('settings-dialog') as SettingsDialog;
+  if (tab) {
+    dialog.dataset.tab = tab;
+  }
   document.body.appendChild(dialog);
   return dialog;
 }
