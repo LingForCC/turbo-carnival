@@ -47,18 +47,40 @@ target.dispatchEvent(new CustomEvent('event-name', {
 }));
 ```
 
+### Using the Renderer API Layer
+
+When creating renderer components that need API access:
+
+```typescript
+// Import the API getter function and types from the feature module
+import { getProjectManagementAPI } from '../project/api';
+import type { ProjectManagementAPI, Project } from '../project/types';
+
+export class MyComponent extends HTMLElement {
+  private api: ProjectManagementAPI;
+
+  constructor() {
+    super();
+    this.api = getProjectManagementAPI();
+  }
+
+  async loadProjects() {
+    const projects = await this.api.getProjects();
+    // ... rest of implementation
+  }
+}
+```
+
+**Benefits:**
+- Type safety through interface types
+- Easy to mock in tests
+- No direct dependency on `window.electronAPI`
+- Prevents bundling Electron APIs into renderer code
+
 ## Environment Details
 
 ### Context Isolation
 The app uses `contextIsolation: true` and `nodeIntegration: false` for security. All communication between main and renderer goes through the preload script's `contextBridge.exposeInMainWorld()`.
-
-### Dev Mode Detection
-In `src/main.ts:16-17`, development mode is detected via:
-```javascript
-const isDev = process.env.NODE_ENV === 'development' ||
-              (!app.isPackaged && !fs.existsSync(path.join(__dirname, '../dist-renderer/index.html')));
-```
-When in dev, the app loads from `http://localhost:5173` (Vite dev server) and opens DevTools automatically.
 
 ### Hot Module Replacement
 Vite's HMR automatically reloads the renderer when files change. The main process and preload script also restart automatically on changes during development.
@@ -90,99 +112,6 @@ The app uses graceful degradation for errors:
 - Main process validates all inputs and throws descriptive errors
 - Chat operations validate API key existence before attempting API calls
 - Chat errors (timeouts, API failures) display user-friendly messages
-
-## Styling
-
-- **Tailwind CSS v4** with PostCSS - See `postcss.config.js` and `src/styles.css`
-- Import in renderer: `import './styles.css'`
-- All styling uses utility classes directly in component templates
-- No separate CSS files per component
-- Tailwind v4 uses the new `@import "tailwindcss";` syntax in styles.css
-
-### Scrollbar Styling
-
-Custom scrollbar styles are defined in `src/styles.css` for all elements with `overflow-y-auto`:
-
-- **Width**: 8px
-- **Light mode**: Gray scrollbar (`#d1d5db`) with darker hover state (`#9ca3af`)
-- **Dark mode**: Dark gray scrollbar (`#4b5563`) with lighter hover state (`#6b7280`)
-- **Track**: Transparent background
-
-This ensures scrollbars are always visible (unlike macOS default behavior) in scrollable panels like the project list.
-
-## Common Tasks
-
-### Adding a New Component
-
-1. Create TypeScript class extending `HTMLElement`
-2. Implement `connectedCallback()`, `render()`, and `attachEventListeners()`
-3. Use clone-and-replace pattern for event listeners
-4. Emit custom events for parent communication
-5. Import and register in renderer or parent component
-6. **Write automation tests** in `src/__tests__/components/` (see testing.md)
-7. **Update documentation**:
-   - Add component to "UI Components" section in CLAUDE.md
-   - Document any new events or patterns in relevant feature docs
-
-### Adding a New Main Process Module
-
-1. Create file in `src/main/` (e.g., `src/main/feature-name.ts`)
-2. Export storage helpers and a `registerFeatureIPCHandlers()` function
-3. Import and call registration function in `src/main.ts`
-4. If needed, import functions from other modules
-5. **Write tests** for storage helpers and IPC handlers
-6. **Update documentation**:
-   - Add module to "Module Organization" section in docs/architecture.md
-   - Document IPC channels in relevant IPC sections
-   - Add module to "Main Process Modules" in CLAUDE.md
-
-### Documentation Maintenance
-
-**Always update documentation after code changes when:**
-- Adding new modules, components, or features
-- Modifying IPC channels or storage locations
-- Changing critical patterns or best practices
-- Updating test structure or configuration
-
-**Key files to update:**
-- **CLAUDE.md** - Quick reference for modules, components, IPC channels
-- **docs/architecture.md** - Module organization, IPC channels, storage
-- **docs/features/[feature].md** - Feature-specific implementation details
-- **docs/testing.md** - Test structure and testing patterns
-
-For detailed guidance, see "Documentation Maintenance" in CLAUDE.md.
-
-### Adding IPC Handler
-
-1. Add handler in appropriate module's `register*IPCHandlers()` function
-2. Expose method in preload script via `contextBridge`
-3. Use in renderer via `window.electronAPI.methodName()`
-4. Handle errors gracefully
-5. Document in architecture.md
-
-## Agent Configuration
-
-Agents are stored as `agent-{sanitized-name}.json` files in project folders:
-
-```json
-{
-  "name": "Chat Assistant",
-  "type": "chat",
-  "description": "Helpful assistant",
-  "config": {
-    "modelId": "gpt4-default",
-    "providerId": "openai-main"
-  },
-  "prompts": {
-    "system": "You are a helpful assistant.",
-    "user": ""
-  },
-  "history": [],
-  "settings": {}
-}
-```
-
-Agents reference providers and model configurations via `config.providerId` and `config.modelId`.
 
 ## Debugging Tips
 
