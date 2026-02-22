@@ -16,9 +16,29 @@ function getElectronAPI() {
 }
 
 /**
+ * Extended Settings Management API with feature settings support
+ */
+export interface ExtendedSettingsManagementAPI extends SettingsManagementAPI {
+  /**
+   * Get settings for a specific feature
+   * @param featureId - The feature identifier
+   * @returns Promise resolving to the feature's settings
+   */
+  getFeatureSettings<T = Record<string, any>>(featureId: string): Promise<T>;
+
+  /**
+   * Update settings for a specific feature
+   * @param featureId - The feature identifier
+   * @param updates - Partial updates to the feature's settings
+   * @returns Promise resolving to the updated app settings
+   */
+  updateFeatureSettings<T = Record<string, any>>(featureId: string, updates: Partial<T>): Promise<AppSettings>;
+}
+
+/**
  * Settings Management API implementation for renderer components
  */
-const apiInstance: SettingsManagementAPI = {
+const apiInstance: ExtendedSettingsManagementAPI = {
   /**
    * Get all settings
    */
@@ -34,6 +54,20 @@ const apiInstance: SettingsManagementAPI = {
   },
 
   /**
+   * Get settings for a specific feature
+   */
+  getFeatureSettings: <T = Record<string, any>>(featureId: string): Promise<T> => {
+    return getElectronAPI().getFeatureSettings(featureId) as Promise<T>;
+  },
+
+  /**
+   * Update settings for a specific feature
+   */
+  updateFeatureSettings: <T = Record<string, any>>(featureId: string, updates: Partial<T>): Promise<AppSettings> => {
+    return getElectronAPI().updateFeatureSettings(featureId, updates as Record<string, any>);
+  },
+
+  /**
    * Open folder picker dialog
    */
   openFolderDialog: (): Promise<string | null> => {
@@ -43,9 +77,9 @@ const apiInstance: SettingsManagementAPI = {
 
 /**
  * Get the SettingsManagementAPI instance
- * Returns a singleton instance that implements SettingsManagementAPI interface
+ * Returns a singleton instance that implements ExtendedSettingsManagementAPI interface
  */
-export function getSettingsManagementAPI(): SettingsManagementAPI {
+export function getSettingsManagementAPI(): ExtendedSettingsManagementAPI {
   return apiInstance;
 }
 

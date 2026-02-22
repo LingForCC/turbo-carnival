@@ -2,6 +2,7 @@ import { ipcMain, dialog } from 'electron';
 import * as fs from 'fs';
 import { getStoragePath } from '../../core/storage-resolver';
 import type { AppSettings } from '../types';
+import { getFeatureDefaults, getFeatureRegistration } from './settings-registry';
 
 // Callback for projectFolder changes
 let onProjectFolderChangedCallback: ((newFolder: string | undefined) => void) | null = null;
@@ -31,14 +32,34 @@ export function loadSettings(): AppSettings {
   if (fs.existsSync(settingsPath)) {
     try {
       const data = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-      return data.settings || { theme: 'light', snippetSaveLocation: null };
+      const settings = data.settings || { theme: 'light', snippetSaveLocation: null };
+      // Merge feature defaults with loaded settings
+      return mergeFeatureDefaults(settings);
     } catch (error) {
       console.error('Failed to load settings:', error);
-      return { theme: 'light', snippetSaveLocation: null };
+      return mergeFeatureDefaults({ theme: 'light', snippetSaveLocation: null });
     }
   }
-  // Return default settings
-  return { theme: 'light', snippetSaveLocation: null };
+  // Return default settings with feature defaults
+  return mergeFeatureDefaults({ theme: 'light', snippetSaveLocation: null });
+}
+
+/**
+ * Merge feature defaults with loaded settings
+ * Ensures new features get their defaults even if not in saved settings
+ */
+function mergeFeatureDefaults(settings: AppSettings): AppSettings {
+  const featureDefaults = getFeatureDefaults();
+  const existingFeatures = settings.features || {};
+
+  // Merge defaults with existing feature settings
+  const mergedFeatures = { ...featureDefaults, ...existingFeatures };
+
+  // Only add features if there are any
+  if (Object.keys(mergedFeatures).length > 0) {
+    return { ...settings, features: mergedFeatures };
+  }
+  return settings;
 }
 
 /**
@@ -60,6 +81,53 @@ export function saveSettings(settings: AppSettings): void {
 export function updateSettingsFields(updates: Partial<AppSettings>): AppSettings {
   const currentSettings = loadSettings();
   const newSettings = { ...currentSettings, ...updates };
+  saveSettings(newSettings);
+  return newSettings;
+}
+
+/**
+ * Get settings for a specific feature
+ * @param featureId - The feature identifier
+ * @returns The feature's settings or empty object if not found
+ */
+export function getFeatureSettings<T = any>(featureId: string): T {
+  const settings = loadSettings();
+  const registration = getFeatureRegistration(featureId);
+
+  if (!registration) {
+    console.warn(`Feature "${featureId}" is not registered. Returning empty settings.`);
+    return {} as T;
+  }
+
+  const featureSettings = settings.features?.[featureId];
+  return { ...registration.defaults, ...featureSettings } as T;
+}
+
+/**
+ * Update settings for a specific feature
+ * @param featureId - The feature identifier
+ * @param updates - Partial updates to the feature's settings
+ * @returns The updated app settings
+ */
+export function updateFeatureSettings<T = any>(featureId: string, updates: Partial<T>): AppSettings {
+  const currentSettings = loadSettings();
+  const registration = getFeatureRegistration(featureId);
+
+  if (!registration) {
+    console.warn(`Feature "${featureId}" is not registered. Settings will still be saved.`);
+  }
+
+  const currentFeatureSettings = currentSettings.features?.[featureId] || {};
+  const newFeatureSettings = { ...currentFeatureSettings, ...updates };
+
+  const newSettings: AppSettings = {
+    ...currentSettings,
+    features: {
+      ...currentSettings.features,
+      [featureId]: newFeatureSettings,
+    },
+  };
+
   saveSettings(newSettings);
   return newSettings;
 }
@@ -88,6 +156,16 @@ export function registerSettingsIPCHandlers(): void {
     }
 
     return newSettings;
+  });
+
+  // Handler: Get settings for a specific feature
+  ipcMain.handle('settings:getFeature', (event, featureId: string) => {
+    return getFeatureSettings(featureId);
+  });
+
+  // Handler: Update settings for a specific feature
+  ipcMain.handle('settings:updateFeature', (event, featureId: string, updates: Record<string, any>) => {
+    return updateFeatureSettings(featureId, updates);
   });
 
   // Handler: Open folder picker dialog

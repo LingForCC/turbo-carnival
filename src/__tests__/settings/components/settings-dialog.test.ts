@@ -18,6 +18,9 @@ describe('SettingsDialog Web Component', () => {
     // Mock tools API calls for the tools-settings-panel
     mockElectronAPI('getTools', jest.fn().mockResolvedValue([]));
     mockElectronAPI('getMCPServers', jest.fn().mockResolvedValue([]));
+    // Mock feature settings API
+    mockElectronAPI('getFeatureSettings', jest.fn().mockResolvedValue({}));
+    mockElectronAPI('updateFeatureSettings', jest.fn().mockResolvedValue(settings));
   };
 
   afterEach(() => {
@@ -72,15 +75,19 @@ describe('SettingsDialog Web Component', () => {
       cleanup();
     });
 
-    it('should render with notepad location', async () => {
-      setupMocks({ theme: 'light', notepadSaveLocation: '/Users/test/notepad' });
+    it('should render core tabs (General, AI, Tools)', async () => {
+      setupMocks({ theme: 'light', notepadSaveLocation: '' });
 
       const { element, cleanup } = mountComponent<SettingsDialog>('settings-dialog');
 
       await waitForAsync();
 
-      const input = element.querySelector('#notepad-location-input') as HTMLInputElement;
-      expect(input.value).toBe('/Users/test/notepad');
+      const tabButtons = element.querySelectorAll('.tab-btn');
+      const tabLabels = Array.from(tabButtons).map(btn => btn.textContent?.trim());
+
+      expect(tabLabels).toContain('General');
+      expect(tabLabels).toContain('AI');
+      expect(tabLabels).toContain('Tools');
 
       cleanup();
     });

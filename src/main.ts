@@ -24,6 +24,7 @@ import { startProjectFolderWatcher, stopProjectFolderWatcher, updateWatcherFolde
 import { loadSettings, setOnProjectFolderChangedCallback } from './settings/main/settings-management';
 import { registerTaskIPCHandlers } from './tasks/main/task-management';
 import { logStorageConfig } from './core/storage-resolver';
+import { registerFeatureSettings } from './settings/main/settings-registry';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -68,6 +69,17 @@ app.whenReady().then(async () => {
 
   // Register IPC handlers
   registerIPCHandlers();
+
+  // Register feature settings
+  registerFeatureSettings({
+    featureId: 'notepad',
+    displayName: 'Notepad',
+    order: 50,
+    defaults: {
+      saveLocation: ''
+    },
+    panelTagName: 'notepad-settings-panel'
+  });
 
   // Initialize MCP servers (connect to all saved servers and cache tools)
   await initializeMCPServers();

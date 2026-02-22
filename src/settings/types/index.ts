@@ -3,6 +3,9 @@
  * Contains all types and interfaces related to settings functionality
  */
 
+// Re-export registry types
+export type { FeatureSettingsSchema, FeatureSettingsRegistration } from './settings-registry';
+
 /**
  * App settings for user preferences
  */
@@ -14,6 +17,8 @@ export interface AppSettings {
   clipboardHistorySaveLocation?: string;  // Clipboard history save location (optional)
   defaultModelConfigId?: string;  // Default model config for Quick AI
   defaultProviderId?: string;  // Default provider for Quick AI
+  /** Feature-specific settings stored as key-value pairs */
+  features?: Record<string, any>;
 }
 
 /**

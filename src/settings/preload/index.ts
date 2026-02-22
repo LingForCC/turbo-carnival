@@ -12,6 +12,14 @@ export const settingsManagement = {
   updateSettings: (updates: Record<string, any>) =>
     ipcRenderer.invoke('settings:update', updates),
 
+  // Get settings for a specific feature
+  getFeatureSettings: (featureId: string) =>
+    ipcRenderer.invoke('settings:getFeature', featureId),
+
+  // Update settings for a specific feature
+  updateFeatureSettings: (featureId: string, updates: Record<string, any>) =>
+    ipcRenderer.invoke('settings:updateFeature', featureId, updates),
+
   // Open folder picker dialog
   openFolderDialog: () => ipcRenderer.invoke('settings:openFolderDialog'),
 };

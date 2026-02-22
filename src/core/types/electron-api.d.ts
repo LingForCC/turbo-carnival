@@ -49,6 +49,8 @@ interface ElectronAPI {
   // Settings management
   getSettings: () => Promise<AppSettings>;
   updateSettings: (settings: Record<string, any>) => Promise<AppSettings>;
+  getFeatureSettings: (featureId: string) => Promise<Record<string, any>>;
+  updateFeatureSettings: (featureId: string, updates: Record<string, any>) => Promise<AppSettings>;
   openFolderDialog: () => Promise<string | null>;
 
   // Agent-related methods
