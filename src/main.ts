@@ -81,6 +81,37 @@ app.whenReady().then(async () => {
     panelTagName: 'notepad-settings-panel'
   });
 
+  registerFeatureSettings({
+    featureId: 'snippets',
+    displayName: 'Snippets',
+    order: 60,
+    defaults: {
+      saveLocation: ''
+    },
+    panelTagName: 'snippet-settings-panel'
+  });
+
+  registerFeatureSettings({
+    featureId: 'clipboard-history',
+    displayName: 'Clipboard',
+    order: 70,
+    defaults: {
+      saveLocation: ''
+    },
+    panelTagName: 'clipboard-history-settings-panel'
+  });
+
+  registerFeatureSettings({
+    featureId: 'quick-ai',
+    displayName: 'Quick AI',
+    order: 80,
+    defaults: {
+      defaultProviderId: undefined,
+      defaultModelConfigId: undefined
+    },
+    panelTagName: 'quick-ai-settings-panel'
+  });
+
   // Initialize MCP servers (connect to all saved servers and cache tools)
   await initializeMCPServers();
 

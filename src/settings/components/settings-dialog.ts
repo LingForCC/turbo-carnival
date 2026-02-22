@@ -1,7 +1,5 @@
 import { getSettingsManagementAPI } from '../api';
-import { getProviderManagementAPI } from '../../llm/api';
 import type { AppSettings } from '../types';
-import type { LLMProvider, ModelConfig } from '../../llm/types';
 import type { FeatureSettingsRegistration } from '../types';
 import './tools-settings-panel';
 import './ai-settings-panel';
@@ -16,27 +14,6 @@ const CORE_TABS: Array<{ id: CoreSettingsTab; displayName: string; order: number
   { id: 'ai', displayName: 'AI', order: 10 },
   { id: 'tools', displayName: 'Tools', order: 20 },
 ];
-
-/**
- * Get registered feature tabs from the main process
- * This will be populated by features that register their settings
- */
-async function getFeatureRegistrations(): Promise<FeatureSettingsRegistration[]> {
-  try {
-    // Get all settings which includes feature defaults
-    const api = getSettingsManagementAPI();
-    const settings = await api.getSettings();
-
-    // Check for registered features in settings
-    // Features register themselves in the main process
-    // For now, we'll return an empty array and rely on features
-    // to import and register themselves
-    return [];
-  } catch (error) {
-    console.error('Failed to get feature registrations:', error);
-    return [];
-  }
-}
 
 // Module-level storage for feature registrations (set from renderer side)
 let featureRegistrations: FeatureSettingsRegistration[] = [];
@@ -64,16 +41,13 @@ function getRegisteredFeatureTabs(): FeatureSettingsRegistration[] {
 
 /**
  * SettingsDialog Web Component
- * Modal dialog for app settings including notepad configuration
+ * Modal dialog for app settings
  */
 export class SettingsDialog extends HTMLElement {
   private settings: AppSettings | null = null;
   private currentTheme: 'light' | 'dark' = 'light';
   private currentTab: SettingsTab;
   private api = getSettingsManagementAPI();
-  private providerApi = getProviderManagementAPI();
-  private providers: LLMProvider[] = [];
-  private modelConfigs: ModelConfig[] = [];
 
   constructor() {
     super();
@@ -83,7 +57,6 @@ export class SettingsDialog extends HTMLElement {
 
   async connectedCallback(): Promise<void> {
     await this.loadSettings();
-    await this.loadProviders();
     this.render();
   }
 
@@ -93,19 +66,8 @@ export class SettingsDialog extends HTMLElement {
       this.currentTheme = this.settings.theme === 'dark' ? 'dark' : 'light';
     } catch (error) {
       console.error('Failed to load settings:', error);
-      this.settings = { theme: 'light', projectFolder: '', notepadSaveLocation: '', snippetSaveLocation: '', clipboardHistorySaveLocation: '' };
+      this.settings = { theme: 'light' };
       this.currentTheme = 'light';
-    }
-  }
-
-  private async loadProviders(): Promise<void> {
-    try {
-      this.providers = await this.providerApi.getProviders();
-      this.modelConfigs = await this.providerApi.getModelConfigs();
-    } catch (error) {
-      console.error('Failed to load providers:', error);
-      this.providers = [];
-      this.modelConfigs = [];
     }
   }
 
@@ -123,8 +85,6 @@ export class SettingsDialog extends HTMLElement {
     ].sort((a, b) => a.order - b.order);
 
     const projectFolder = this.settings.projectFolder || '';
-    const defaultProviderId = this.settings.defaultProviderId || '';
-    const defaultModelConfigId = this.settings.defaultModelConfigId || '';
 
     // Generate tab buttons
     const tabButtonsHtml = allTabs.map(tab => {
@@ -236,47 +196,6 @@ export class SettingsDialog extends HTMLElement {
               <tools-settings-panel></tools-settings-panel>
             </div>
 
-            <!-- Quick AI Tab (legacy, shown for backwards compatibility) -->
-            <div id="tab-quick-ai" class="tab-content ${this.currentTab === 'quick-ai' ? '' : 'hidden'} space-y-6">
-              <!-- Quick AI Default Provider -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="default-provider">
-                  Default Provider
-                </label>
-                <select
-                  id="default-provider-select"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
-                >
-                  <option value="">-- Select Provider --</option>
-                  ${this.providers.map(provider =>
-                    `<option value="${this.escapeHtml(provider.id)}" ${defaultProviderId === provider.id ? 'selected' : ''}>${this.escapeHtml(provider.name)}</option>`
-                  ).join('')}
-                </select>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  Default LLM provider for Quick AI conversations (Option+Q).
-                </p>
-              </div>
-
-              <!-- Quick AI Default Model Config -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="default-model">
-                  Default Model
-                </label>
-                <select
-                  id="default-model-select"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
-                >
-                  <option value="">-- Select Model --</option>
-                  ${this.modelConfigs.map(model =>
-                    `<option value="${this.escapeHtml(model.id)}" ${defaultModelConfigId === model.id ? 'selected' : ''}>${this.escapeHtml(model.name)}</option>`
-                  ).join('')}
-                </select>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  Default model configuration for Quick AI conversations.
-                </p>
-              </div>
-            </div>
-
             <!-- Feature-specific tab containers will be rendered here -->
             ${this.renderFeatureTabs(featureTabs)}
           </div>
@@ -380,24 +299,6 @@ export class SettingsDialog extends HTMLElement {
       browseProjectFolderBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.browseProjectFolder());
     }
-
-    // Default provider dropdown
-    const providerSelect = this.querySelector('#default-provider-select');
-    if (providerSelect) {
-      (providerSelect as HTMLSelectElement).addEventListener('change', (e) => {
-        const target = e.target as HTMLSelectElement;
-        this.handleProviderChange(target.value);
-      });
-    }
-
-    // Default model config dropdown
-    const modelSelect = this.querySelector('#default-model-select');
-    if (modelSelect) {
-      (modelSelect as HTMLSelectElement).addEventListener('change', (e) => {
-        const target = e.target as HTMLSelectElement;
-        this.handleModelConfigChange(target.value);
-      });
-    }
   }
 
   private switchTab(tab: SettingsTab): void {
@@ -456,43 +357,6 @@ export class SettingsDialog extends HTMLElement {
       }
     } catch (error) {
       console.error('Failed to browse folder:', error);
-    }
-  }
-
-  private async handleProviderChange(providerId: string): Promise<void> {
-    try {
-      // Clear model config selection if provider changes
-      await this.api.updateSettings({
-        defaultProviderId: providerId || undefined,
-        defaultModelConfigId: undefined
-      });
-      this.settings = {
-        ...this.settings!,
-        defaultProviderId: providerId || undefined,
-        defaultModelConfigId: undefined
-      };
-
-      // Reset model config dropdown
-      const modelSelect = this.querySelector('#default-model-select') as HTMLSelectElement;
-      if (modelSelect) {
-        modelSelect.value = '';
-      }
-    } catch (error) {
-      console.error('Failed to update provider:', error);
-    }
-  }
-
-  private async handleModelConfigChange(modelConfigId: string): Promise<void> {
-    try {
-      await this.api.updateSettings({
-        defaultModelConfigId: modelConfigId || undefined
-      });
-      this.settings = {
-        ...this.settings!,
-        defaultModelConfigId: modelConfigId || undefined
-      };
-    } catch (error) {
-      console.error('Failed to update model config:', error);
     }
   }
 
