@@ -1,7 +1,6 @@
 import '../project/components/project-detail-panel';
 import '../settings/components/settings-dialog';
 import '../settings/components/tools-settings-panel';
-import '../settings/components/ai-settings-panel';
 import '../agent/components/agent-template-dialog';
 import '../agent/components/app-panel';
 import '../tasks/components/tasks-dialog';

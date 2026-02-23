@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { getDefaultBaseURL } from '../provider-management';
+import { getDefaultBaseURL } from '../llm-settings';
 import type { ModelConfig, LLMProvider } from '../../types';
 import type { Tool } from '../../../tools/types';
 import type { Agent } from '../../../agent/types';

@@ -1,5 +1,5 @@
 import type { Agent } from '../types';
-import type { ModelConfig } from '../../llm/types';
+import type { ModelConfig, LLMProvider } from '../../llm/types';
 import type { AgentTemplate } from '../types';
 import { getProviderManagementAPI } from '../../llm/api';
 import { getAgentTemplateManagementAPI } from '../api';
@@ -354,7 +354,7 @@ export class AgentFormDialog extends HTMLElement {
       // Populate options
       select.innerHTML = `
         <option value="">No provider selected</option>
-        ${providers.map(provider => `
+        ${providers.map((provider: LLMProvider) => `
           <option value="${this.escapeHtml(provider.id)}" ${provider.id === currentValue ? 'selected' : ''} class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
             ${this.escapeHtml(provider.name)} (${provider.type.toUpperCase()})
           </option>

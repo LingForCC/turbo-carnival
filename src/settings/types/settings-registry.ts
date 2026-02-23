@@ -25,4 +25,10 @@ export interface FeatureSettingsSchema<T = any> {
 export interface FeatureSettingsRegistration<T = any> extends FeatureSettingsSchema<T> {
   /** Tag name of the Web Component that renders the settings panel */
   panelTagName: string;
+  /**
+   * Optional parent tab ID to register this feature as a child tab within a parent tab.
+   * When specified, this feature will appear as a sub-tab within the parent tab's content area.
+   * Use this to group related features under a common parent tab (e.g., 'llm-providers' and 'llm-model-configs' under 'ai').
+   */
+  parentTab?: string;
 }

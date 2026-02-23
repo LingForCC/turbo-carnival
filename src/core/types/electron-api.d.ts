@@ -13,9 +13,6 @@ import type {
 // Import agent management types for use in ElectronAPI interface
 import type { Agent } from './agent-management';
 
-// Import provider management types for use in ElectronAPI interface
-import type { LLMProvider, ModelConfig } from './provider-management';
-
 // Import tool management types for use in ElectronAPI interface
 import type { Tool, ToolExecutionRequest, ToolExecutionResult, ToolCallEvent, MCPServerConfig } from './tool-management';
 
@@ -58,20 +55,6 @@ interface ElectronAPI {
   addAgent: (projectPath: string, agent: Agent) => Promise<Agent[]>;
   removeAgent: (projectPath: string, agentName: string) => Promise<Agent[]>;
   updateAgent: (projectPath: string, agentName: string, agent: Agent) => Promise<Agent>;
-
-  // LLM Provider management
-  getProviders: () => Promise<LLMProvider[]>;
-  addProvider: (provider: LLMProvider) => Promise<LLMProvider[]>;
-  updateProvider: (id: string, provider: LLMProvider) => Promise<LLMProvider[]>;
-  removeProvider: (id: string) => Promise<LLMProvider[]>;
-  getProviderById: (id: string) => Promise<LLMProvider>;
-
-  // Model Config management
-  getModelConfigs: () => Promise<ModelConfig[]>;
-  addModelConfig: (config: ModelConfig) => Promise<ModelConfig[]>;
-  updateModelConfig: (id: string, config: ModelConfig) => Promise<ModelConfig[]>;
-  removeModelConfig: (id: string) => Promise<ModelConfig[]>;
-  getModelConfigById: (id: string) => Promise<ModelConfig>;
 
   // Tool management
   getTools: () => Promise<Tool[]>;

@@ -1,7 +1,6 @@
 import { contextBridge } from 'electron';
 import { projectManagement } from './project/preload';
 import { agentManagement } from './agent/preload/agent-management';
-import { providerManagement } from './llm/preload';
 import { toolManagement } from './tools/preload';
 import { settingsManagement } from './settings/preload';
 import { notepadManagement } from './notepad/preload/notepad-management';
@@ -20,8 +19,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ...projectManagement,
 
   ...agentManagement,
-
-  ...providerManagement,
 
   ...toolManagement,
 

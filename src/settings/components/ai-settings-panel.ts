@@ -1,4 +1,4 @@
-import type { LLMProvider, LLMProviderType, ModelConfig } from '../../llm/types';
+import type { LLMProviderSettings, LLMProviderType, LLMModelSettings } from '../../llm/types';
 import { getProviderManagementAPI } from '../../llm/api';
 
 /**
@@ -6,19 +6,19 @@ import { getProviderManagementAPI } from '../../llm/api';
  * Panel for managing LLM providers and model configurations within Settings Dialog
  */
 export class AISettingsPanel extends HTMLElement {
-  private providers: LLMProvider[] = [];
-  private modelConfigs: ModelConfig[] = [];
+  private providers: LLMProviderSettings[] = [];
+  private modelConfigs: LLMModelSettings[] = [];
   private api = getProviderManagementAPI();
   private activeTab: 'providers' | 'models' = 'providers';
   private isLoading = true;
 
   // Provider form state
   private providerMode: 'list' | 'add' | 'edit' = 'list';
-  private editingProvider?: LLMProvider;
+  private editingProvider?: LLMProviderSettings;
 
   // Model config form state
   private modelConfigMode: 'list' | 'add' | 'edit' = 'list';
-  private editingModelConfig?: ModelConfig;
+  private editingModelConfig?: LLMModelSettings;
 
   async connectedCallback(): Promise<void> {
     this.renderLoading();
@@ -633,7 +633,7 @@ export class AISettingsPanel extends HTMLElement {
     const form = event.target as HTMLFormElement;
     const formData = new FormData(form);
 
-    const newProvider: LLMProvider = {
+    const newProvider: LLMProviderSettings = {
       id: formData.get('id') as string,
       type: formData.get('type') as LLMProviderType,
       name: formData.get('name') as string,
@@ -712,7 +712,7 @@ export class AISettingsPanel extends HTMLElement {
       }
     }
 
-    const newModelConfig: ModelConfig = {
+    const newModelConfig: LLMModelSettings = {
       id: formData.get('id') as string,
       name: formData.get('name') as string,
       model: formData.get('model') as string,

@@ -1,8 +1,7 @@
 import { ipcMain } from 'electron';
 import type { Agent } from '../types';
 import { loadAgents, saveAgent } from './agent-management';
-import { getProviderById } from '../../llm/main/provider-management';
-import { getModelConfigById } from '../../llm/main/model-config-management';
+import { getProviderById, getModelConfigById } from '../../llm/main/llm-settings';
 import { streamLLM } from '../../llm/main/streaming';
 
 // ============ SYSTEM PROMPT GENERATION ============

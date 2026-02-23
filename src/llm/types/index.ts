@@ -10,6 +10,7 @@ export type LLMProviderType = 'openai' | 'glm' | 'azure' | 'custom';
 
 /**
  * LLM Provider configuration
+ * Represents a single provider with its credentials and settings
  */
 export interface LLMProvider {
   id: string;                    // Unique identifier (e.g., "openai-main")
@@ -38,78 +39,21 @@ export interface ModelConfig {
 }
 
 /**
- * Provider Management API interface
- * Defines the contract for provider and model configuration operations
- * Used by renderer components to interact with provider management functionality
+ * LLM Provider Feature Settings
+ * Stored in feature settings under 'llm-providers'
  */
-export interface ProviderManagementAPI {
-  /**
-   * Get all providers
-   * @returns Promise resolving to array of providers
-   */
-  getProviders(): Promise<LLMProvider[]>;
-
-  /**
-   * Add a new provider
-   * @param provider - Provider configuration to add
-   * @returns Promise resolving to updated array of providers
-   */
-  addProvider(provider: LLMProvider): Promise<LLMProvider[]>;
-
-  /**
-   * Update an existing provider
-   * @param id - Provider ID to update
-   * @param provider - Updated provider configuration
-   * @returns Promise resolving to updated array of providers
-   */
-  updateProvider(id: string, provider: LLMProvider): Promise<LLMProvider[]>;
-
-  /**
-   * Remove a provider
-   * @param id - Provider ID to remove
-   * @returns Promise resolving to updated array of providers
-   */
-  removeProvider(id: string): Promise<LLMProvider[]>;
-
-  /**
-   * Get provider by ID
-   * @param id - Provider ID
-   * @returns Promise resolving to provider
-   */
-  getProviderById(id: string): Promise<LLMProvider>;
-
-  /**
-   * Get all model configs
-   * @returns Promise resolving to array of model configs
-   */
-  getModelConfigs(): Promise<ModelConfig[]>;
-
-  /**
-   * Add a new model config
-   * @param config - Model configuration to add
-   * @returns Promise resolving to updated array of model configs
-   */
-  addModelConfig(config: ModelConfig): Promise<ModelConfig[]>;
-
-  /**
-   * Update an existing model config
-   * @param id - Model config ID to update
-   * @param config - Updated model configuration
-   * @returns Promise resolving to updated array of model configs
-   */
-  updateModelConfig(id: string, config: ModelConfig): Promise<ModelConfig[]>;
-
-  /**
-   * Remove a model config
-   * @param id - Model config ID to remove
-   * @returns Promise resolving to updated array of model configs
-   */
-  removeModelConfig(id: string): Promise<ModelConfig[]>;
-
-  /**
-   * Get model config by ID
-   * @param id - Model config ID
-   * @returns Promise resolving to model config
-   */
-  getModelConfigById(id: string): Promise<ModelConfig>;
+export interface LLMProviderFeatureSettings {
+  providers: LLMProvider[];
 }
+
+/**
+ * LLM Model Feature Settings
+ * Stored in feature settings under 'llm-model-configs'
+ */
+export interface LLMModelFeatureSettings {
+  modelConfigs: ModelConfig[];
+}
+
+// Type aliases for settings registration
+export type LLMProviderSettings = LLMProvider;
+export type LLMModelSettings = ModelConfig;

@@ -1,4 +1,4 @@
-import type { LLMProvider, LLMProviderType } from '../types';
+import type { LLMProviderSettings, LLMProviderType } from '../types';
 import { getProviderManagementAPI } from '../api';
 
 /**
@@ -6,10 +6,10 @@ import { getProviderManagementAPI } from '../api';
  * Modal dialog for managing LLM providers
  */
 export class ProviderDialog extends HTMLElement {
-  private providers: LLMProvider[] = [];
+  private providers: LLMProviderSettings[] = [];
   private api = getProviderManagementAPI();
   private mode: 'list' | 'add' | 'edit' = 'list';
-  private editingProvider?: LLMProvider;
+  private editingProvider?: LLMProviderSettings;
 
   constructor() {
     super();
@@ -330,7 +330,7 @@ export class ProviderDialog extends HTMLElement {
     const form = event.target as HTMLFormElement;
     const formData = new FormData(form);
 
-    const newProvider: LLMProvider = {
+    const newProvider: LLMProviderSettings = {
       id: formData.get('id') as string,
       type: formData.get('type') as LLMProviderType,
       name: formData.get('name') as string,

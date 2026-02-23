@@ -3,8 +3,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import type { Agent } from './agent/types';
 import { registerAgentIPCHandlers, loadAgents, saveAgent } from './agent/main/agent-management';
-import { registerProviderIPCHandlers } from './llm/main/provider-management';
-import { registerModelConfigIPCHandlers } from './llm/main/model-config-management';
 import { registerToolIPCHandlers, initializeMCPServers } from './tools/main/tool-management';
 import { registerProjectIPCHandlers } from './project/main/project-management';
 import { registerChatAgentIPCHandlers } from './agent/main/chat-agent-management';
@@ -29,6 +27,7 @@ import type { NotepadSettings } from './notepad/components/notepad-settings-pane
 import type { SnippetSettings } from './snippets/components/snippet-settings-panel';
 import type { ClipboardHistorySettings } from './clipboard-history/components/clipboard-history-settings-panel';
 import type { QuickAISettings } from './quick-ai/components/quick-ai-settings-panel';
+import type { LLMProviderFeatureSettings, LLMModelFeatureSettings } from './llm/types';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -116,6 +115,30 @@ app.whenReady().then(async () => {
     panelTagName: 'quick-ai-settings-panel'
   });
 
+  // Register LLM child tab features under 'ai' parent tab
+  // Providers and Model Configs are stored as part of feature settings
+  registerFeatureSettings<LLMProviderFeatureSettings>({
+    featureId: 'llm-providers',
+    displayName: 'Providers',
+    order: 10,
+    defaults: {
+      providers: []
+    },
+    panelTagName: 'llm-providers-settings-panel',
+    parentTab: 'ai'
+  });
+
+  registerFeatureSettings<LLMModelFeatureSettings>({
+    featureId: 'llm-model-configs',
+    displayName: 'Model Configs',
+    order: 20,
+    defaults: {
+      modelConfigs: []
+    },
+    panelTagName: 'llm-model-configs-settings-panel',
+    parentTab: 'ai'
+  });
+
   // Initialize MCP servers (connect to all saved servers and cache tools)
   await initializeMCPServers();
 
@@ -160,12 +183,6 @@ function registerIPCHandlers(): void {
 
   // ============ AGENT IPC HANDLERS ============
   registerAgentIPCHandlers();
-
-  // ============ PROVIDER IPC HANDLERS ============
-  registerProviderIPCHandlers();
-
-  // ============ MODEL CONFIG IPC HANDLERS ============
-  registerModelConfigIPCHandlers();
 
   // ============ TOOL IPC HANDLERS ============
   registerToolIPCHandlers();

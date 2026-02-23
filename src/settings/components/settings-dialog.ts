@@ -1,14 +1,15 @@
 import { getSettingsManagementAPI } from '../api';
 import type { AppSettings } from '../types';
 import type { FeatureSettingsRegistration } from '../types';
+// Core panels - only General is truly core, others are registered dynamically
 import './tools-settings-panel';
-import './ai-settings-panel';
 
-// Core tabs that are always present
+// Core tabs that are always present in the navigation
+// Content for these tabs is provided by registered child panels
 type CoreSettingsTab = 'general' | 'ai' | 'tools';
 type SettingsTab = CoreSettingsTab | string; // Core tabs plus dynamic feature tabs
 
-// Core tab definitions with order
+// Core tab definitions with order - defines navigation structure only
 const CORE_TABS: Array<{ id: CoreSettingsTab; displayName: string; order: number }> = [
   { id: 'general', displayName: 'General', order: 0 },
   { id: 'ai', displayName: 'AI', order: 10 },
@@ -33,10 +34,26 @@ export function registerFeatureSettingsRenderer<T = any>(registration: FeatureSe
 }
 
 /**
- * Get all registered feature tabs
+ * Get all registered feature tabs (only top-level tabs, excluding child tabs)
  */
 function getRegisteredFeatureTabs(): FeatureSettingsRegistration[] {
-  return featureRegistrations;
+  return featureRegistrations.filter(r => !r.parentTab);
+}
+
+/**
+ * Get child tabs for a specific parent tab
+ */
+function getChildTabs(parentTabId: string): FeatureSettingsRegistration[] {
+  return featureRegistrations
+    .filter(r => r.parentTab === parentTabId)
+    .sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
+}
+
+/**
+ * Check if a tab has child tabs
+ */
+function hasChildTabs(tabId: string): boolean {
+  return featureRegistrations.some(r => r.parentTab === tabId);
 }
 
 /**
@@ -47,12 +64,15 @@ export class SettingsDialog extends HTMLElement {
   private settings: AppSettings | null = null;
   private currentTheme: 'light' | 'dark' = 'light';
   private currentTab: SettingsTab;
+  private currentChildTab: string | null = null; // Track active child tab within parent
   private api = getSettingsManagementAPI();
 
   constructor() {
     super();
     // Check if a specific tab was requested via data attribute
     this.currentTab = (this.dataset.tab as SettingsTab) || 'general';
+    // Check if a specific child tab was requested
+    this.currentChildTab = this.dataset.childTab || null;
   }
 
   async connectedCallback(): Promise<void> {
@@ -77,7 +97,7 @@ export class SettingsDialog extends HTMLElement {
       return;
     }
 
-    // Build combined tab list (core + feature tabs)
+    // Build combined tab list (core + feature tabs, excluding child tabs)
     const featureTabs = getRegisteredFeatureTabs();
     const allTabs = [
       ...CORE_TABS.map(t => ({ id: t.id, displayName: t.displayName, order: t.order, isFeature: false })),
@@ -86,9 +106,16 @@ export class SettingsDialog extends HTMLElement {
 
     const projectFolder = this.settings.projectFolder || '';
 
+    // Auto-select first child tab if current tab has children but no child selected
+    const childTabs = getChildTabs(this.currentTab);
+    if (childTabs.length > 0 && !this.currentChildTab) {
+      this.currentChildTab = childTabs[0].featureId;
+    }
+
     // Generate tab buttons
     const tabButtonsHtml = allTabs.map(tab => {
       const isActive = this.currentTab === tab.id;
+      const hasChildren = hasChildTabs(tab.id);
       return `
         <button data-tab="${tab.id}" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300'}">
           ${this.escapeHtml(tab.displayName)}
@@ -186,9 +213,9 @@ export class SettingsDialog extends HTMLElement {
               </div>
             </div>
 
-            <!-- AI Tab -->
+            <!-- AI Tab - content provided by registered child panels -->
             <div id="tab-ai" class="tab-content ${this.currentTab === 'ai' ? '' : 'hidden'}">
-              <ai-settings-panel></ai-settings-panel>
+              ${this.currentTab === 'ai' ? this.renderTabWithChildren('ai') : ''}
             </div>
 
             <!-- Tools Tab -->
@@ -218,11 +245,67 @@ export class SettingsDialog extends HTMLElement {
   }
 
   /**
+   * Render a tab that has child tabs
+   */
+  private renderTabWithChildren(parentTabId: string): string {
+    const childTabs = getChildTabs(parentTabId);
+
+    if (childTabs.length === 0) {
+      // No child tabs registered for this parent tab
+      return '<div class="text-gray-500 dark:text-gray-400 text-center py-8">No settings available</div>';
+    }
+
+    // Render child tab navigation and content containers
+    const childTabButtonsHtml = childTabs.map(tab => {
+      const isActive = this.currentChildTab === tab.featureId;
+      return `
+        <button data-child-tab="${tab.featureId}" data-parent-tab="${parentTabId}" class="child-tab-btn px-4 py-2 text-sm font-medium rounded-t-lg cursor-pointer border-0 ${isActive ? 'bg-blue-500 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}">
+          ${this.escapeHtml(tab.displayName)}
+        </button>
+      `;
+    }).join('');
+
+    const childTabContainersHtml = childTabs.map(tab => {
+      const isActive = this.currentChildTab === tab.featureId;
+      return `
+        <div id="child-tab-${tab.featureId}" class="child-tab-content ${isActive ? '' : 'hidden'}" data-feature-id="${tab.featureId}" data-parent-tab="${parentTabId}">
+          <!-- Child panel will be inserted here -->
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="child-tabs-container">
+        <!-- Child Tab Navigation -->
+        <div class="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4">
+          ${childTabButtonsHtml}
+        </div>
+        <!-- Child Tab Content -->
+        <div class="child-tabs-content">
+          ${childTabContainersHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
    * Render feature tab containers
    */
   private renderFeatureTabs(featureTabs: FeatureSettingsRegistration[]): string {
     return featureTabs.map(tab => {
       const isActive = this.currentTab === tab.featureId;
+      const childTabs = getChildTabs(tab.featureId);
+
+      // If this feature tab has child tabs, render them
+      if (childTabs.length > 0) {
+        return `
+          <div id="tab-${tab.featureId}" class="tab-content ${isActive ? '' : 'hidden'}" data-feature-id="${tab.featureId}">
+            ${isActive ? this.renderTabWithChildren(tab.featureId) : ''}
+          </div>
+        `;
+      }
+
+      // Regular feature tab without children
       return `
         <div id="tab-${tab.featureId}" class="tab-content ${isActive ? '' : 'hidden'}" data-feature-id="${tab.featureId}">
           <!-- Feature panel will be inserted here -->
@@ -235,10 +318,45 @@ export class SettingsDialog extends HTMLElement {
    * Initialize feature panel components after render
    */
   private initializeFeaturePanels(featureTabs: FeatureSettingsRegistration[]): void {
+    // Initialize top-level feature panels (without children)
     featureTabs.forEach(tab => {
-      const container = this.querySelector(`#tab-${tab.featureId}`);
+      const childTabs = getChildTabs(tab.featureId);
+      if (childTabs.length > 0) {
+        // This tab has children, initialize child panels
+        this.initializeChildPanels(tab.featureId);
+      } else {
+        // Regular feature tab without children
+        const container = this.querySelector(`#tab-${tab.featureId}`);
+        if (container && !container.querySelector(tab.panelTagName)) {
+          // Create the feature panel element
+          const panel = document.createElement(tab.panelTagName);
+          // Pass settings via a property or data attribute
+          if ('settings' in panel) {
+            (panel as any).settings = this.settings?.features?.[tab.featureId] || {};
+          }
+          panel.setAttribute('data-settings', JSON.stringify(this.settings?.features?.[tab.featureId] || {}));
+          container.appendChild(panel);
+        }
+      }
+    });
+
+    // Initialize child panels for core tabs (like 'ai')
+    CORE_TABS.forEach(coreTab => {
+      if (hasChildTabs(coreTab.id)) {
+        this.initializeChildPanels(coreTab.id);
+      }
+    });
+  }
+
+  /**
+   * Initialize child panel components for a parent tab
+   */
+  private initializeChildPanels(parentTabId: string): void {
+    const childTabs = getChildTabs(parentTabId);
+    childTabs.forEach(tab => {
+      const container = this.querySelector(`#child-tab-${tab.featureId}`);
       if (container && !container.querySelector(tab.panelTagName)) {
-        // Create the feature panel element
+        // Create the child panel element
         const panel = document.createElement(tab.panelTagName);
         // Pass settings via a property or data attribute
         if ('settings' in panel) {
@@ -279,6 +397,18 @@ export class SettingsDialog extends HTMLElement {
       });
     });
 
+    // Child tab buttons
+    const childTabBtns = this.querySelectorAll('.child-tab-btn');
+    childTabBtns.forEach(btn => {
+      (btn as HTMLElement).addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const childTab = target.dataset.childTab;
+        if (childTab) {
+          this.switchChildTab(childTab);
+        }
+      });
+    });
+
     // Theme radio buttons
     const themeRadios = this.querySelectorAll('input[name="theme"]');
     themeRadios.forEach(radio => {
@@ -303,6 +433,21 @@ export class SettingsDialog extends HTMLElement {
 
   private switchTab(tab: SettingsTab): void {
     this.currentTab = tab;
+    // Reset child tab when switching parent tabs
+    const childTabs = getChildTabs(tab);
+    if (childTabs.length > 0) {
+      this.currentChildTab = childTabs[0].featureId;
+    } else {
+      this.currentChildTab = null;
+    }
+    this.render();
+  }
+
+  /**
+   * Switch between child tabs within a parent tab
+   */
+  private switchChildTab(childTabId: string): void {
+    this.currentChildTab = childTabId;
     this.render();
   }
 
@@ -378,10 +523,13 @@ export class SettingsDialog extends HTMLElement {
 customElements.define('settings-dialog', SettingsDialog);
 
 // Factory function to create and open the dialog
-export function openSettingsDialog(tab?: string): SettingsDialog {
+export function openSettingsDialog(tab?: string, childTab?: string): SettingsDialog {
   const dialog = document.createElement('settings-dialog') as SettingsDialog;
   if (tab) {
     dialog.dataset.tab = tab;
+  }
+  if (childTab) {
+    dialog.dataset.childTab = childTab;
   }
   document.body.appendChild(dialog);
   return dialog;

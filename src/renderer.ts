@@ -20,6 +20,9 @@ import './snippets/components/snippet-settings-panel';
 import './clipboard-history/components/clipboard-history-settings-panel';
 import './quick-ai/components/quick-ai-settings-panel';
 
+// Import LLM settings panels - they register as child tabs under 'ai'
+import './llm/components';
+
 // Import browser tool executor
 import { executeToolInBrowser } from './tools/browser/browser-tool-executor';
 

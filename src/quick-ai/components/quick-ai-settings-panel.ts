@@ -1,7 +1,7 @@
 import { getSettingsManagementAPI } from '../../settings/api';
 import { getProviderManagementAPI } from '../../llm/api';
 import { registerFeatureSettingsRenderer } from '../../settings/components/settings-dialog';
-import type { LLMProvider, ModelConfig } from '../../llm/types';
+import type { LLMProviderSettings, LLMModelSettings } from '../../llm/types';
 
 /**
  * Quick AI Settings Interface
@@ -19,8 +19,8 @@ export class QuickAISettingsPanel extends HTMLElement {
   private settings: QuickAISettings = {};
   private api = getSettingsManagementAPI();
   private providerApi = getProviderManagementAPI();
-  private providers: LLMProvider[] = [];
-  private modelConfigs: ModelConfig[] = [];
+  private providers: LLMProviderSettings[] = [];
+  private modelConfigs: LLMModelSettings[] = [];
 
   constructor() {
     super();

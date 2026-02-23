@@ -42,12 +42,16 @@ class FeatureSettingsRegistry {
 
   /**
    * Get all default values for registered features
+   * Note: Excludes child tabs (features with parentTab) as they don't have their own settings
    * @returns Object mapping feature IDs to their default settings
    */
   getAllDefaults(): Record<string, any> {
     const defaults: Record<string, any> = {};
     this.registrations.forEach((registration, featureId) => {
-      defaults[featureId] = registration.defaults;
+      // Skip child tabs - they don't have their own settings section
+      if (!registration.parentTab) {
+        defaults[featureId] = registration.defaults;
+      }
     });
     return defaults;
   }
