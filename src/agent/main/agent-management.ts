@@ -68,18 +68,32 @@ export function loadAgents(projectPath: string): Agent[] {
     console.error(`Failed to read project folder ${projectPath}:`, error);
   }
 
-  // Sort agents by name
-  return agents.sort((a, b) => a.name.localeCompare(b.name));
+  // Sort agents by updatedAt (latest first), then by name as fallback
+  return agents.sort((a, b) => {
+    // If both have updatedAt, sort by date descending
+    if (a.updatedAt && b.updatedAt) {
+      return b.updatedAt.localeCompare(a.updatedAt);
+    }
+    // If only one has updatedAt, prioritize it
+    if (a.updatedAt) return -1;
+    if (b.updatedAt) return 1;
+    // Fallback to name sorting
+    return a.name.localeCompare(b.name);
+  });
 }
 
 /**
  * Save an agent to a file in the project folder
+ * Automatically updates the updatedAt timestamp
  */
 export function saveAgent(projectPath: string, agent: Agent): void {
   // Verify project folder exists
   if (!fs.existsSync(projectPath)) {
     throw new Error(`Project folder does not exist: ${projectPath}`);
   }
+
+  // Update timestamp
+  agent.updatedAt = new Date().toISOString();
 
   const filePath = getAgentFilePath(projectPath, agent.name);
 
@@ -173,8 +187,9 @@ export function registerAgentIPCHandlers(): void {
       deleteAgent(projectPath, agentName);
     }
 
-    // Save updated agent
-    saveAgent(projectPath, updatedAgent);
-    return updatedAgent;
+    // Save updated agent (saveAgent will set updatedAt)
+    const savedAgent = { ...updatedAgent };
+    saveAgent(projectPath, savedAgent);
+    return savedAgent;
   });
 }

@@ -14,6 +14,7 @@ export interface Agent {
   prompts: AgentPrompts;           // System and user prompts
   history: any[];                  // Conversation history (flexible type to support different message formats)
   settings: AgentSettings;         // Additional settings
+  updatedAt?: string;              // ISO timestamp of last update
 }
 
 /**
