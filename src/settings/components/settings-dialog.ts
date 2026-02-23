@@ -22,7 +22,7 @@ let featureRegistrations: FeatureSettingsRegistration[] = [];
  * Register feature settings from the renderer side
  * Called by features when their settings panel component is loaded
  */
-export function registerFeatureSettingsRenderer(registration: FeatureSettingsRegistration): void {
+export function registerFeatureSettingsRenderer<T = any>(registration: FeatureSettingsRegistration<T>): void {
   // Check if already registered
   if (featureRegistrations.some(r => r.featureId === registration.featureId)) {
     return;

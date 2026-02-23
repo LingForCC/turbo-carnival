@@ -127,7 +127,7 @@ export class NotepadSettingsPanel extends HTMLElement {
 customElements.define('notepad-settings-panel', NotepadSettingsPanel);
 
 // Register feature settings with the settings dialog
-registerFeatureSettingsRenderer({
+registerFeatureSettingsRenderer<NotepadSettings>({
   featureId: 'notepad',
   displayName: 'Notepad',
   order: 50,

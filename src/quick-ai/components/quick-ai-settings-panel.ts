@@ -187,7 +187,7 @@ export class QuickAISettingsPanel extends HTMLElement {
 customElements.define('quick-ai-settings-panel', QuickAISettingsPanel);
 
 // Register feature settings with the settings dialog
-registerFeatureSettingsRenderer({
+registerFeatureSettingsRenderer<QuickAISettings>({
   featureId: 'quick-ai',
   displayName: 'Quick AI',
   order: 80,

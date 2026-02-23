@@ -25,6 +25,10 @@ import { loadSettings, setOnProjectFolderChangedCallback } from './settings/main
 import { registerTaskIPCHandlers } from './tasks/main/task-management';
 import { logStorageConfig } from './core/storage-resolver';
 import { registerFeatureSettings } from './settings/main/settings-registry';
+import type { NotepadSettings } from './notepad/components/notepad-settings-panel';
+import type { SnippetSettings } from './snippets/components/snippet-settings-panel';
+import type { ClipboardHistorySettings } from './clipboard-history/components/clipboard-history-settings-panel';
+import type { QuickAISettings } from './quick-ai/components/quick-ai-settings-panel';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -71,7 +75,7 @@ app.whenReady().then(async () => {
   registerIPCHandlers();
 
   // Register feature settings
-  registerFeatureSettings({
+  registerFeatureSettings<NotepadSettings>({
     featureId: 'notepad',
     displayName: 'Notepad',
     order: 50,
@@ -81,7 +85,7 @@ app.whenReady().then(async () => {
     panelTagName: 'notepad-settings-panel'
   });
 
-  registerFeatureSettings({
+  registerFeatureSettings<SnippetSettings>({
     featureId: 'snippets',
     displayName: 'Snippets',
     order: 60,
@@ -91,7 +95,7 @@ app.whenReady().then(async () => {
     panelTagName: 'snippet-settings-panel'
   });
 
-  registerFeatureSettings({
+  registerFeatureSettings<ClipboardHistorySettings>({
     featureId: 'clipboard-history',
     displayName: 'Clipboard',
     order: 70,
@@ -101,7 +105,7 @@ app.whenReady().then(async () => {
     panelTagName: 'clipboard-history-settings-panel'
   });
 
-  registerFeatureSettings({
+  registerFeatureSettings<QuickAISettings>({
     featureId: 'quick-ai',
     displayName: 'Quick AI',
     order: 80,

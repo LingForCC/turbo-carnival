@@ -127,7 +127,7 @@ export class SnippetSettingsPanel extends HTMLElement {
 customElements.define('snippet-settings-panel', SnippetSettingsPanel);
 
 // Register feature settings with the settings dialog
-registerFeatureSettingsRenderer({
+registerFeatureSettingsRenderer<SnippetSettings>({
   featureId: 'snippets',
   displayName: 'Snippets',
   order: 60,

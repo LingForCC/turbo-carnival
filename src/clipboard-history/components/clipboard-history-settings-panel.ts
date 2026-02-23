@@ -127,7 +127,7 @@ export class ClipboardHistorySettingsPanel extends HTMLElement {
 customElements.define('clipboard-history-settings-panel', ClipboardHistorySettingsPanel);
 
 // Register feature settings with the settings dialog
-registerFeatureSettingsRenderer({
+registerFeatureSettingsRenderer<ClipboardHistorySettings>({
   featureId: 'clipboard-history',
   displayName: 'Clipboard',
   order: 70,
