@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
 import type { Agent } from '../../agent/types';
-import { loadSettings } from '../../settings/main/settings-management';
+import type { QuickAISettings } from '../types';
+import { getFeatureSettings } from '../../settings/main/settings-management';
 import { getProviderById } from '../../llm/main/provider-management';
 import { getModelConfigById } from '../../llm/main/model-config-management';
 import { loadTools } from '../../tools/main/tool-management';
@@ -39,7 +40,7 @@ function resetQuickAIAgent(): void {
  * Checks if default provider and model config are configured
  */
 function validateQuickAISettings(): { valid: boolean; error?: string } {
-  const settings = loadSettings();
+  const settings = getFeatureSettings<QuickAISettings>('quick-ai');
 
   if (!settings.defaultProviderId) {
     return {
@@ -107,7 +108,7 @@ export function registerQuickAIPCHandlers(): void {
       throw new Error(validation.error);
     }
 
-    const settings = loadSettings();
+    const settings = getFeatureSettings<QuickAISettings>('quick-ai');
     const providerId = settings.defaultProviderId!;
     const modelConfigId = settings.defaultModelConfigId!;
 

@@ -145,12 +145,6 @@ export class QuickAISettingsPanel extends HTMLElement {
         defaultModelConfigId: undefined
       });
 
-      // Also update legacy settings for backwards compatibility
-      await this.api.updateSettings({
-        defaultProviderId: providerId || undefined,
-        defaultModelConfigId: undefined
-      });
-
       this.settings = {
         ...this.settings,
         defaultProviderId: providerId || undefined,
@@ -171,11 +165,6 @@ export class QuickAISettingsPanel extends HTMLElement {
     try {
       // Update feature settings
       await this.api.updateFeatureSettings<QuickAISettings>('quick-ai', {
-        defaultModelConfigId: modelConfigId || undefined
-      });
-
-      // Also update legacy settings for backwards compatibility
-      await this.api.updateSettings({
         defaultModelConfigId: modelConfigId || undefined
       });
 

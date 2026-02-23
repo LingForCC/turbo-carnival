@@ -4,6 +4,14 @@
  */
 
 /**
+ * Notepad Settings Interface
+ * Settings stored in settings.features.notepad
+ */
+export interface NotepadSettings {
+  saveLocation?: string;
+}
+
+/**
  * Notepad file metadata
  */
 export interface NotepadFile {

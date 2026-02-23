@@ -1,8 +1,8 @@
 import { ipcMain, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { NotepadFile } from '../types';
-import { loadSettings } from '../../settings/main/settings-management';
+import type { NotepadFile, NotepadSettings } from '../types';
+import { getFeatureSettings } from '../../settings/main/settings-management';
 
 // ============ CONSTANTS ============
 
@@ -196,8 +196,8 @@ export function deleteNotepadFile(filePath: string): void {
 export function registerNotepadIPCHandlers(): void {
   // Handler: Get list of notepad files
   ipcMain.handle('notepad:getFiles', async () => {
-    const settings = loadSettings();
-    const dir = getNotepadDir(settings.notepadSaveLocation);
+    const settings = getFeatureSettings<NotepadSettings>('notepad');
+    const dir = getNotepadDir(settings.saveLocation);
 
     if (!dir) {
       // Throw error that renderer should handle
@@ -214,8 +214,8 @@ export function registerNotepadIPCHandlers(): void {
 
   // Handler: Create new notepad file
   ipcMain.handle('notepad:createFile', async () => {
-    const settings = loadSettings();
-    const dir = getNotepadDir(settings.notepadSaveLocation);
+    const settings = getFeatureSettings<NotepadSettings>('notepad');
+    const dir = getNotepadDir(settings.saveLocation);
 
     if (!dir) {
       // Throw error that renderer should handle

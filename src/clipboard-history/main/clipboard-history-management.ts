@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { ClipboardHistoryItem } from '../types';
-import { loadSettings } from '../../settings/main/settings-management';
+import type { ClipboardHistoryItem, ClipboardHistorySettings } from '../types';
+import { getFeatureSettings } from '../../settings/main/settings-management';
 
 // ============ CONSTANTS ============
 
@@ -19,9 +19,9 @@ const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'];
  * @returns The clipboard history directory path, or null if not configured
  */
 export function getClipboardHistoryDir(): string | null {
-  const settings = loadSettings();
-  if (settings.clipboardHistorySaveLocation && fs.existsSync(settings.clipboardHistorySaveLocation)) {
-    return settings.clipboardHistorySaveLocation;
+  const settings = getFeatureSettings<ClipboardHistorySettings>('clipboard-history');
+  if (settings.saveLocation && fs.existsSync(settings.saveLocation)) {
+    return settings.saveLocation;
   }
   return null;
 }

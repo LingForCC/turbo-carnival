@@ -53,7 +53,7 @@ describe('Settings Management - Storage Helpers', () => {
       const { cleanup } = setupMockFS({});
 
       const settings = loadSettings();
-      expect(settings).toEqual({ theme: 'light', snippetSaveLocation: null });
+      expect(settings).toEqual({ theme: 'light' });
 
       cleanup();
     });
@@ -65,7 +65,7 @@ describe('Settings Management - Storage Helpers', () => {
       const { cleanup } = setupMockFS(mockFiles);
 
       const settings = loadSettings();
-      expect(settings).toEqual({ theme: 'light', snippetSaveLocation: null });
+      expect(settings).toEqual({ theme: 'light' });
 
       cleanup();
     });
@@ -77,7 +77,7 @@ describe('Settings Management - Storage Helpers', () => {
       const { cleanup } = setupMockFS(mockFiles);
 
       const settings = loadSettings();
-      expect(settings).toEqual({ theme: 'light', snippetSaveLocation: null });
+      expect(settings).toEqual({ theme: 'light' });
 
       cleanup();
     });
@@ -88,11 +88,11 @@ describe('Settings Management - Storage Helpers', () => {
       const { cleanup } = setupMockFS({});
 
       const updated = updateSettingsFields({ theme: 'dark' });
-      expect(updated).toEqual({ theme: 'dark', snippetSaveLocation: null });
+      expect(updated).toEqual({ theme: 'dark' });
 
       // Verify it was saved
       const loaded = loadSettings();
-      expect(loaded).toEqual({ theme: 'dark', snippetSaveLocation: null });
+      expect(loaded).toEqual({ theme: 'dark' });
 
       cleanup();
     });
@@ -100,17 +100,17 @@ describe('Settings Management - Storage Helpers', () => {
     it('should merge with existing settings', () => {
       const mockFiles: Record<string, string> = {
         [`${STORAGE_DIR}/settings.json`]: JSON.stringify({
-          settings: { theme: 'light', snippetSaveLocation: '/some/path' }
+          settings: { theme: 'light', projectFolder: '/some/path' }
         }),
       };
       const { cleanup } = setupMockFS(mockFiles);
 
       const updated = updateSettingsFields({ theme: 'dark' });
-      expect(updated).toEqual({ theme: 'dark', snippetSaveLocation: '/some/path' });
+      expect(updated).toEqual({ theme: 'dark', projectFolder: '/some/path' });
 
       // Verify it was saved
       const loaded = loadSettings();
-      expect(loaded).toEqual({ theme: 'dark', snippetSaveLocation: '/some/path' });
+      expect(loaded).toEqual({ theme: 'dark', projectFolder: '/some/path' });
 
       cleanup();
     });
@@ -119,14 +119,35 @@ describe('Settings Management - Storage Helpers', () => {
       // This test verifies that partial updates preserve existing fields
       const mockFiles: Record<string, string> = {
         [`${STORAGE_DIR}/settings.json`]: JSON.stringify({
-          settings: { theme: 'light', snippetSaveLocation: '/test/path' }
+          settings: { theme: 'light', projectFolder: '/test/path' }
         }),
       };
       const { cleanup } = setupMockFS(mockFiles);
 
       // Update only theme field
       const updated = updateSettingsFields({ theme: 'dark' });
-      expect(updated).toEqual({ theme: 'dark', snippetSaveLocation: '/test/path' });
+      expect(updated).toEqual({ theme: 'dark', projectFolder: '/test/path' });
+
+      cleanup();
+    });
+
+    it('should handle feature settings', () => {
+      const mockFiles: Record<string, string> = {
+        [`${STORAGE_DIR}/settings.json`]: JSON.stringify({
+          settings: {
+            theme: 'light',
+            features: {
+              notepad: { saveLocation: '/notepad/path' }
+            }
+          }
+        }),
+      };
+      const { cleanup } = setupMockFS(mockFiles);
+
+      // Update theme field, should preserve features
+      const updated = updateSettingsFields({ theme: 'dark' });
+      expect(updated.theme).toBe('dark');
+      expect(updated.features?.notepad).toEqual({ saveLocation: '/notepad/path' });
 
       cleanup();
     });

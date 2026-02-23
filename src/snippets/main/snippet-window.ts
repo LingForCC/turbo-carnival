@@ -1,6 +1,7 @@
 import { BrowserWindow, globalShortcut, app, ipcMain, dialog } from 'electron';
 import * as path from 'path';
-import { loadSettings } from '../../settings/main/settings-management';
+import { getFeatureSettings } from '../../settings/main/settings-management';
+import type { SnippetSettings } from '../types';
 
 // Global reference to the snippet window
 let snippetWindow: BrowserWindow | null = null;
@@ -77,8 +78,8 @@ export function createSnippetWindow(): BrowserWindow {
  */
 export function showSnippetWindow(): void {
   // Check if save location is configured
-  const settings = loadSettings();
-  if (!settings.snippetSaveLocation) {
+  const settings = getFeatureSettings<SnippetSettings>('snippets');
+  if (!settings.saveLocation) {
     dialog.showErrorBox(
       'Snippet Save Location Not Configured',
       'Please configure the snippet save location in Settings before using snippets.'

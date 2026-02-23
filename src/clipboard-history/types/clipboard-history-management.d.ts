@@ -4,6 +4,14 @@
  */
 
 /**
+ * Clipboard History Settings Interface
+ * Settings stored in settings.features['clipboard-history']
+ */
+export interface ClipboardHistorySettings {
+  saveLocation?: string;
+}
+
+/**
  * Clipboard history item
  */
 export interface ClipboardHistoryItem {

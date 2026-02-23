@@ -1,6 +1,7 @@
 import { BrowserWindow, globalShortcut, app, ipcMain, dialog } from 'electron';
 import * as path from 'path';
-import { loadSettings } from '../../settings/main/settings-management';
+import { getFeatureSettings } from '../../settings/main/settings-management';
+import type { ClipboardHistorySettings } from '../types';
 
 // Global reference to the clipboard history window
 let clipboardHistoryWindow: BrowserWindow | null = null;
@@ -90,8 +91,8 @@ export function createClipboardHistoryWindow(): BrowserWindow {
  */
 export function showClipboardHistoryWindow(): void {
   // Check if save location is configured
-  const settings = loadSettings();
-  if (!settings.clipboardHistorySaveLocation) {
+  const settings = getFeatureSettings<ClipboardHistorySettings>('clipboard-history');
+  if (!settings.saveLocation) {
     dialog.showErrorBox(
       'Clipboard History Save Location Not Configured',
       'Please configure the clipboard history save location in Settings before using clipboard history.'

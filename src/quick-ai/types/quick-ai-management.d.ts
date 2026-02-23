@@ -8,6 +8,15 @@ import type { Agent } from './agent-management';
 import type { ToolCallEvent } from './tool-management';
 
 /**
+ * Quick AI Settings Interface
+ * Settings stored in settings.features['quick-ai']
+ */
+export interface QuickAISettings {
+  defaultProviderId?: string;
+  defaultModelConfigId?: string;
+}
+
+/**
  * Settings validation result
  */
 export interface QuickAISettingsValidation {

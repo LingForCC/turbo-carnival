@@ -4,6 +4,14 @@
  */
 
 /**
+ * Snippet Settings Interface
+ * Settings stored in settings.features.snippets
+ */
+export interface SnippetSettings {
+  saveLocation?: string;
+}
+
+/**
  * Snippet file metadata
  */
 export interface SnippetFile {

@@ -32,16 +32,16 @@ export function loadSettings(): AppSettings {
   if (fs.existsSync(settingsPath)) {
     try {
       const data = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-      const settings = data.settings || { theme: 'light', snippetSaveLocation: null };
+      const settings = data.settings || { theme: 'light' };
       // Merge feature defaults with loaded settings
       return mergeFeatureDefaults(settings);
     } catch (error) {
       console.error('Failed to load settings:', error);
-      return mergeFeatureDefaults({ theme: 'light', snippetSaveLocation: null });
+      return mergeFeatureDefaults({ theme: 'light' });
     }
   }
   // Return default settings with feature defaults
-  return mergeFeatureDefaults({ theme: 'light', snippetSaveLocation: null });
+  return mergeFeatureDefaults({ theme: 'light' });
 }
 
 /**

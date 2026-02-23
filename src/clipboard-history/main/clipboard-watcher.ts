@@ -2,7 +2,8 @@ import { clipboard, nativeImage } from 'electron';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { loadSettings } from '../../settings/main/settings-management';
+import { getFeatureSettings } from '../../settings/main/settings-management';
+import type { ClipboardHistorySettings } from '../types';
 
 // Interval for checking clipboard (ms)
 const CLIPBOARD_CHECK_INTERVAL = 500;
@@ -35,9 +36,9 @@ function hashContent(content: string | Buffer): string {
  * @returns The clipboard history directory path, or null if not configured
  */
 function getClipboardHistoryDir(): string | null {
-  const settings = loadSettings();
-  if (settings.clipboardHistorySaveLocation && fs.existsSync(settings.clipboardHistorySaveLocation)) {
-    return settings.clipboardHistorySaveLocation;
+  const settings = getFeatureSettings<ClipboardHistorySettings>('clipboard-history');
+  if (settings.saveLocation && fs.existsSync(settings.saveLocation)) {
+    return settings.saveLocation;
   }
   return null;
 }

@@ -12,11 +12,6 @@ export type { FeatureSettingsSchema, FeatureSettingsRegistration } from './setti
 export interface AppSettings {
   theme: 'light' | 'dark';  // Theme preference
   projectFolder?: string;  // Single folder containing project subfolders
-  notepadSaveLocation?: string;  // Quick notepad save location (optional)
-  snippetSaveLocation?: string | null;  // Snippet save location (optional)
-  clipboardHistorySaveLocation?: string;  // Clipboard history save location (optional)
-  defaultModelConfigId?: string;  // Default model config for Quick AI
-  defaultProviderId?: string;  // Default provider for Quick AI
   /** Feature-specific settings stored as key-value pairs */
   features?: Record<string, any>;
 }

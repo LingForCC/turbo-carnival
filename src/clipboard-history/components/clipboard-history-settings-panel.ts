@@ -104,9 +104,6 @@ export class ClipboardHistorySettingsPanel extends HTMLElement {
           saveLocation: location
         });
 
-        // Also update legacy settings for backwards compatibility
-        await this.api.updateSettings({ clipboardHistorySaveLocation: location });
-
         this.settings = { ...this.settings, saveLocation: location };
 
         // Update input field
