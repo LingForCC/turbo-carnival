@@ -26,6 +26,62 @@ The codebase is organized into **feature modules**, where all related files for 
 5. Expose preload functions in `src/preload.ts`
 6. Update CLAUDE.md to document the new module
 
+## Feature-Based Settings System
+
+Settings are managed through a pluggable system where features register their own settings panels.
+
+### Registration
+
+Features register settings in two places:
+
+**Main Process** (`src/main.ts`):
+```typescript
+registerFeatureSettings<MyFeatureSettings>({
+  featureId: 'my-feature',
+  displayName: 'My Feature',
+  order: 50,
+  defaults: { /* default settings */ },
+  panelTagName: 'my-feature-settings-panel',
+  parentTab: 'ai'  // Optional: register as child tab under parent
+});
+```
+
+**Renderer** (in component file):
+```typescript
+registerFeatureSettingsRenderer<MyFeatureSettings>({
+  featureId: 'my-feature',
+  displayName: 'My Feature',
+  order: 50,
+  defaults: { /* default settings */ },
+  panelTagName: 'my-feature-settings-panel',
+  parentTab: 'ai'
+});
+```
+
+### Settings Tab Hierarchy
+
+- **Core Tabs**: `general`, `ai` (defined in `settings-dialog.ts`)
+- **Child Tabs**: Features with `parentTab: 'ai'` appear as sub-tabs (e.g., `llm-providers`, `llm-model-configs`, `custom-tools`, `mcp-tools`)
+- **Standalone Tabs**: Features without `parentTab` appear as top-level tabs (e.g., `notepad`, `snippets`)
+
+### Storage
+
+All feature settings are stored in `settings.json` under `features[featureId]`. Use the settings API:
+
+```typescript
+// Load settings
+const settings = await settingsAPI.getFeatureSettings<FeatureSettings>('feature-id');
+
+// Save settings
+await settingsAPI.updateFeatureSettings<FeatureSettings>('feature-id', { /* updates */ });
+```
+
+### Key Files
+
+- `src/settings/main/settings-registry.ts` - Main process registry
+- `src/settings/components/settings-dialog.ts` - Settings dialog with child tab support
+- `src/settings/types/settings-registry.ts` - Type definitions
+
 ### Preload Script (`src/preload.ts`)
 - Bridges main and renderer via contextBridge
 - Imports from feature preload modules
