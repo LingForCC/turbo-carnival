@@ -1,6 +1,6 @@
 import '../project/components/project-detail-panel';
 import '../settings/components/settings-dialog';
-import '../settings/components/tools-settings-panel';
+import '../tools/components'; // Import tools settings panels (custom-tools, mcp-tools)
 import '../agent/components/agent-template-dialog';
 import '../agent/components/app-panel';
 import '../tasks/components/tasks-dialog';

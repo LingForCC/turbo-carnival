@@ -15,7 +15,7 @@ describe('SettingsDialog Web Component', () => {
     mockElectronAPI('getSettings', jest.fn().mockResolvedValue(settings));
     mockElectronAPI('getProviders', jest.fn().mockResolvedValue([]));
     mockElectronAPI('getModelConfigs', jest.fn().mockResolvedValue([]));
-    // Mock tools API calls for the tools-settings-panel
+    // Mock tools API calls for the custom-tools-settings-panel and mcp-tools-settings-panel
     mockElectronAPI('getTools', jest.fn().mockResolvedValue([]));
     mockElectronAPI('getMCPServers', jest.fn().mockResolvedValue([]));
     // Mock feature settings API
@@ -75,7 +75,7 @@ describe('SettingsDialog Web Component', () => {
       cleanup();
     });
 
-    it('should render core tabs (General, AI, Tools)', async () => {
+    it('should render core tabs (General, AI)', async () => {
       setupMocks({ theme: 'light', notepadSaveLocation: '' });
 
       const { element, cleanup } = mountComponent<SettingsDialog>('settings-dialog');
@@ -87,7 +87,6 @@ describe('SettingsDialog Web Component', () => {
 
       expect(tabLabels).toContain('General');
       expect(tabLabels).toContain('AI');
-      expect(tabLabels).toContain('Tools');
 
       cleanup();
     });

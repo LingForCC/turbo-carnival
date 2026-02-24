@@ -28,6 +28,7 @@ import type { SnippetSettings } from './snippets/components/snippet-settings-pan
 import type { ClipboardHistorySettings } from './clipboard-history/components/clipboard-history-settings-panel';
 import type { QuickAISettings } from './quick-ai/components/quick-ai-settings-panel';
 import type { LLMProviderFeatureSettings, LLMModelFeatureSettings } from './llm/types';
+import type { CustomToolsFeatureSettings, MCPToolsFeatureSettings } from './tools/types';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -136,6 +137,29 @@ app.whenReady().then(async () => {
       modelConfigs: []
     },
     panelTagName: 'llm-model-configs-settings-panel',
+    parentTab: 'ai'
+  });
+
+  // Register Tools child tab features under 'ai' parent tab
+  registerFeatureSettings<CustomToolsFeatureSettings>({
+    featureId: 'custom-tools',
+    displayName: 'Custom Tools',
+    order: 30,
+    defaults: {
+      tools: []
+    },
+    panelTagName: 'custom-tools-settings-panel',
+    parentTab: 'ai'
+  });
+
+  registerFeatureSettings<MCPToolsFeatureSettings>({
+    featureId: 'mcp-tools',
+    displayName: 'MCP Tools',
+    order: 40,
+    defaults: {
+      servers: []
+    },
+    panelTagName: 'mcp-tools-settings-panel',
     parentTab: 'ai'
   });
 

@@ -1,19 +1,16 @@
 import { getSettingsManagementAPI } from '../api';
 import type { AppSettings } from '../types';
 import type { FeatureSettingsRegistration } from '../types';
-// Core panels - only General is truly core, others are registered dynamically
-import './tools-settings-panel';
 
 // Core tabs that are always present in the navigation
 // Content for these tabs is provided by registered child panels
-type CoreSettingsTab = 'general' | 'ai' | 'tools';
+type CoreSettingsTab = 'general' | 'ai';
 type SettingsTab = CoreSettingsTab | string; // Core tabs plus dynamic feature tabs
 
 // Core tab definitions with order - defines navigation structure only
 const CORE_TABS: Array<{ id: CoreSettingsTab; displayName: string; order: number }> = [
   { id: 'general', displayName: 'General', order: 0 },
   { id: 'ai', displayName: 'AI', order: 10 },
-  { id: 'tools', displayName: 'Tools', order: 20 },
 ];
 
 // Module-level storage for feature registrations (set from renderer side)
@@ -216,11 +213,6 @@ export class SettingsDialog extends HTMLElement {
             <!-- AI Tab - content provided by registered child panels -->
             <div id="tab-ai" class="tab-content ${this.currentTab === 'ai' ? '' : 'hidden'}">
               ${this.currentTab === 'ai' ? this.renderTabWithChildren('ai') : ''}
-            </div>
-
-            <!-- Tools Tab -->
-            <div id="tab-tools" class="tab-content ${this.currentTab === 'tools' ? '' : 'hidden'}">
-              <tools-settings-panel></tools-settings-panel>
             </div>
 
             <!-- Feature-specific tab containers will be rendered here -->

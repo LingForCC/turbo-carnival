@@ -215,3 +215,19 @@ export interface MCPServerConfig {
 export interface MCPStorage {
   mcpServers: MCPServerConfig[];
 }
+
+/**
+ * Custom Tools Feature Settings
+ * Stored in feature settings under 'custom-tools'
+ */
+export interface CustomToolsFeatureSettings {
+  tools: Tool[];
+}
+
+/**
+ * MCP Tools Feature Settings
+ * Stored in feature settings under 'mcp-tools'
+ */
+export interface MCPToolsFeatureSettings {
+  servers: MCPServerConfig[];
+}

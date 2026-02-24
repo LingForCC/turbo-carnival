@@ -1,6 +1,4 @@
 import { ipcMain } from 'electron';
-import * as fs from 'fs';
-import { getStoragePath } from '../../core/storage-resolver';
 import { executeToolInWorker } from './tool-worker-executor';
 import {
   connectToMCPServer,
@@ -12,51 +10,42 @@ import {
   isMCPServerConnected,
   getCachedToolCount
 } from './mcp-client';
-import {
-  loadMCPServers,
-  saveMCPServers,
-  addMCPServer,
-  updateMCPServer,
-  removeMCPServer,
-  getMCPServerByName,
-  validateMCPServerConfig
-} from './mcp-storage';
+import { loadSettings } from '../../settings/main/settings-management';
+import { getFeatureDefaults } from '../../settings/main/settings-registry';
 import type {
   Tool,
   ToolExecutionRequest,
   ToolExecutionResult,
   JSONSchema,
   BrowserToolExecutionRequest,
-  MCPServerConfig
+  MCPServerConfig,
+  CustomToolsFeatureSettings,
+  MCPToolsFeatureSettings
 } from '../types';
 
 // ============ TOOL STORAGE HELPERS ============
 
 /**
- * Get the file path for tools storage
+ * Load all custom tools from settings
  */
-function getToolsPath(): string {
-  return getStoragePath('tools.json');
+function loadCustomTools(): Tool[] {
+  const settings = loadSettings();
+  const defaults = getFeatureDefaults();
+  const featureSettings = settings.features?.['custom-tools'] || defaults['custom-tools'] || {};
+  return (featureSettings.tools || []).map((t: Tool) => ({
+    ...t,
+    toolType: t.toolType || 'custom'
+  }));
 }
 
 /**
- * Load all tools from storage (custom tools only)
+ * Load MCP server configurations from settings
  */
-function loadCustomTools(): Tool[] {
-  const toolsPath = getToolsPath();
-  if (fs.existsSync(toolsPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(toolsPath, 'utf-8'));
-      return (data.tools || []).map((t: Tool) => ({
-        ...t,
-        toolType: t.toolType || 'custom'
-      }));
-    } catch (error) {
-      console.error('Failed to load tools:', error);
-      return [];
-    }
-  }
-  return [];
+function loadMCPServerConfigs(): MCPServerConfig[] {
+  const settings = loadSettings();
+  const defaults = getFeatureDefaults();
+  const featureSettings = settings.features?.['mcp-tools'] || defaults['mcp-tools'] || {};
+  return featureSettings.servers || [];
 }
 
 /**
@@ -72,7 +61,7 @@ function discoverMCPTools(): Tool[] {
  * Connects to all saved MCP servers and caches their tools
  */
 export async function initializeMCPServers(): Promise<void> {
-  const servers = loadMCPServers();
+  const servers = loadMCPServerConfigs();
 
   for (const server of servers) {
     try {
@@ -91,19 +80,6 @@ export function loadTools(): Tool[] {
   const customTools = loadCustomTools();
   const mcpTools = discoverMCPTools();
   return [...customTools, ...mcpTools];
-}
-
-/**
- * Save tools to storage
- */
-function saveTools(tools: Tool[]): void {
-  const toolsPath = getToolsPath();
-  const data = { tools };
-  try {
-    fs.writeFileSync(toolsPath, JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error('Failed to save tools:', error);
-  }
 }
 
 /**
@@ -154,6 +130,64 @@ export function validateJSONSchema(params: Record<string, any>, schema: JSONSche
   return null; // Validation passed
 }
 
+// ============ MCP CONFIG VALIDATOR ============
+
+/**
+ * Validate MCP server configuration
+ */
+function validateMCPServerConfig(config: any): string | null {
+  if (!config.name || typeof config.name !== 'string') {
+    return 'Server name is required and must be a string';
+  }
+
+  if (!config.transport || typeof config.transport !== 'string') {
+    return 'Transport type is required and must be a string';
+  }
+
+  if (config.transport !== 'stdio' && config.transport !== 'streamable-http') {
+    return 'Transport must be either "stdio" or "streamable-http"';
+  }
+
+  if (config.transport === 'stdio') {
+    if (!config.command || typeof config.command !== 'string') {
+      return 'stdio transport requires a command';
+    }
+    if (config.args && !Array.isArray(config.args)) {
+      return 'args must be an array';
+    }
+  }
+
+  if (config.transport === 'streamable-http') {
+    if (!config.url || typeof config.url !== 'string') {
+      return 'streamable-http transport requires a url';
+    }
+    try {
+      new URL(config.url);
+    } catch {
+      return 'url must be a valid URL';
+    }
+  }
+
+  if (config.env && typeof config.env !== 'object') {
+    return 'env must be an object';
+  }
+
+  if (config.headers && typeof config.headers !== 'object') {
+    return 'headers must be an object';
+  }
+
+  // Validate header values are strings
+  if (config.headers && typeof config.headers === 'object') {
+    for (const [key, value] of Object.entries(config.headers)) {
+      if (typeof value !== 'string') {
+        return `Header value for "${key}" must be a string`;
+      }
+    }
+  }
+
+  return null; // Validation passed
+}
+
 // ============ TOOL IPC HANDLERS ============
 
 /**
@@ -163,93 +197,6 @@ export function registerToolIPCHandlers(): void {
   // Handler: Get all tools
   ipcMain.handle('tools:get', () => {
     return loadTools();
-  });
-
-  // Handler: Add a new tool
-  ipcMain.handle('tools:add', async (_event, tool: Tool) => {
-    // Validate tool data
-    if (!tool.name || !tool.description || !tool.code) {
-      throw new Error('Tool must have name, description, and code');
-    }
-
-    if (!tool.parameters || tool.parameters.type !== 'object') {
-      throw new Error('Tool parameters must be a valid JSON Schema object');
-    }
-
-    // Check for duplicate tool names
-    const tools = loadCustomTools();  // Only need custom tools here
-    if (tools.some((t: Tool) => t.name === tool.name)) {
-      throw new Error(`Tool with name "${tool.name}" already exists`);
-    }
-
-    // Validate tool code by attempting to create a function
-    try {
-      new Function('params', `"use strict"; ${tool.code}`);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`Invalid tool code: ${message}`);
-    }
-
-    // Initialize with defaults
-    const newTool: Tool = {
-      name: tool.name,
-      description: tool.description,
-      code: tool.code,
-      parameters: tool.parameters,
-      returns: tool.returns, // Optional
-      timeout: tool.timeout || 30000,
-      enabled: tool.enabled !== undefined ? tool.enabled : true,
-      environment: tool.environment || 'node',
-      createdAt: Date.now()
-    };
-
-    tools.push(newTool);
-    saveTools(tools);
-    return tools;
-  });
-
-  // Handler: Update an existing tool
-  ipcMain.handle('tools:update', async (_event, toolName: string, updatedTool: Tool) => {
-    const tools = loadCustomTools();  // Only need custom tools here
-    const existingTool = tools.find((t: Tool) => t.name === toolName);
-
-    if (!existingTool) {
-      throw new Error(`Tool "${toolName}" not found`);
-    }
-
-    // If name changed, check for conflicts
-    if (updatedTool.name !== toolName) {
-      if (tools.some((t: Tool) => t.name === updatedTool.name)) {
-        throw new Error(`Tool with name "${updatedTool.name}" already exists`);
-      }
-    }
-
-    // Validate updated tool code
-    try {
-      new Function('params', `"use strict"; ${updatedTool.code}`);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`Invalid tool code: ${message}`);
-    }
-
-    // Update tool
-    const index = tools.findIndex((t: Tool) => t.name === toolName);
-    tools[index] = {
-      ...updatedTool,
-      createdAt: existingTool.createdAt, // Preserve creation time
-      updatedAt: Date.now()
-    };
-
-    saveTools(tools);
-    return tools[index];
-  });
-
-  // Handler: Remove a tool
-  ipcMain.handle('tools:remove', async (_event, toolName: string) => {
-    const tools = loadCustomTools();  // Only need custom tools here
-    const filtered = tools.filter((t: Tool) => t.name !== toolName);
-    saveTools(filtered);
-    return filtered;
   });
 
   // Handler: Execute a tool
@@ -332,52 +279,13 @@ export function registerToolIPCHandlers(): void {
 
   // Handler: Get all MCP server configurations (with runtime connection status)
   ipcMain.handle('mcp:getServers', () => {
-    const servers = loadMCPServers();
+    const servers = loadMCPServerConfigs();
     // Add runtime connection status and tool count to each server
     return servers.map(server => ({
       ...server,
       connected: isMCPServerConnected(server.name),
       toolCount: getCachedToolCount(server.name)
     }));
-  });
-
-  // Handler: Add a new MCP server configuration
-  ipcMain.handle('mcp:addServer', async (_event, config: MCPServerConfig) => {
-    addMCPServer(config);
-
-    // Auto-connect to discover tools and cache them
-    try {
-      await connectToMCPServer(config);
-      return loadMCPServers();
-    } catch (error: any) {
-      throw new Error(`Failed to connect to MCP server: ${error.message}`);
-    }
-  });
-
-  // Handler: Update an existing MCP server configuration
-  ipcMain.handle('mcp:updateServer', async (_event, name: string, config: MCPServerConfig) => {
-    const oldServer = getMCPServerByName(name);
-    if (oldServer) {
-      // Disconnect from old server (also clears cache)
-      await disconnectMCPServer(name);
-    }
-
-    updateMCPServer(name, config);
-
-    // Reconnect to discover tools and cache them
-    try {
-      await connectToMCPServer(config);
-      return loadMCPServers();
-    } catch (error: any) {
-      throw new Error(`Failed to connect to MCP server: ${error.message}`);
-    }
-  });
-
-  // Handler: Remove an MCP server configuration
-  ipcMain.handle('mcp:removeServer', async (_event, name: string) => {
-    // Disconnect from server first (also clears cache)
-    await disconnectMCPServer(name);
-    return removeMCPServer(name);
   });
 
   // Handler: Test connection to an MCP server (without saving)
@@ -397,7 +305,8 @@ export function registerToolIPCHandlers(): void {
 
   // Handler: Reconnect to an MCP server
   ipcMain.handle('mcp:reconnectServer', async (_event, name: string) => {
-    const server = getMCPServerByName(name);
+    const servers = loadMCPServerConfigs();
+    const server = servers.find(s => s.name === name);
     if (!server) {
       throw new Error(`MCP server "${name}" not found`);
     }
@@ -416,7 +325,8 @@ export function registerToolIPCHandlers(): void {
 
   // Handler: Disconnect from an MCP server
   ipcMain.handle('mcp:disconnectServer', async (_event, name: string) => {
-    const server = getMCPServerByName(name);
+    const servers = loadMCPServerConfigs();
+    const server = servers.find(s => s.name === name);
     if (!server) {
       throw new Error(`MCP server "${name}" not found`);
     }
