@@ -48,7 +48,7 @@ export class QuickAISettingsPanel extends HTMLElement {
     // Load providers and model configs
     try {
       this.providers = await this.providerApi.getProviders();
-      this.modelConfigs = await this.providerApi.getModelConfigs();
+      this.modelConfigs = await this.providerApi.getLLMModelSettingss();
     } catch (e) {
       console.error('Failed to load providers:', e);
       this.providers = [];

@@ -255,7 +255,7 @@ export class ProjectAgentDashboard extends HTMLElement {
    */
   private async loadModelConfigs(): Promise<void> {
     try {
-      this.modelConfigs = await this.providerAPI.getModelConfigs();
+      this.modelConfigs = await this.providerAPI.getLLMModelSettingss();
     } catch (error) {
       console.error('Failed to load model configs:', error);
       this.modelConfigs = [];

@@ -16,6 +16,9 @@ npm run build        # Full production build
 npm start            # Build and launch the Electron app
 npm run preview      # Preview Vite production build
 
+# Type Checking
+npx tsc --noEmit     # Run TypeScript type checking without emitting files
+
 # Testing
 npm run test:no-coverage  # Run tests without coverage (fastest)
 npm test                 # Run tests with coverage report
@@ -25,7 +28,7 @@ npm run test:watch       # Run tests in watch mode
 # Use /e2e-test skill with a scenario file or description
 ```
 
-**After any code change, run tests for affected modules.**
+**After any code change, run `npx tsc --noEmit` to check for type errors, then run tests for affected modules.**
 
 ## Documentation
 

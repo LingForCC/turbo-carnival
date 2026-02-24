@@ -1,5 +1,5 @@
 import type { AgentTemplate } from '../types';
-import type { LLMModelSettings, LLMProviderSettingsSettings } from '../../llm/types';
+import type { LLMModelSettings, LLMProviderSettings } from '../../llm/types';
 import { getAgentTemplateManagementAPI } from '../api';
 import { getProviderManagementAPI } from '../../llm/api';
 
