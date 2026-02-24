@@ -1,4 +1,4 @@
-import type { LLMProvider, LLMProviderType, LLMProviderFeatureSettings } from '../types';
+import type { LLMProviderSettings, LLMProviderType, LLMProviderFeatureSettings } from '../types';
 import { getSettingsManagementAPI } from '../../settings/api';
 import { registerFeatureSettingsRenderer } from '../../settings/components/settings-dialog';
 
@@ -13,17 +13,17 @@ registerFeatureSettingsRenderer({
 });
 
 /**
- * LLMProvidersSettingsPanel Web Component
+ * LLMProviderSettingssSettingsPanel Web Component
  * Panel for managing LLM providers as a child tab within AI Settings
  */
-export class LLMProvidersSettingsPanel extends HTMLElement {
-  private providers: LLMProvider[] = [];
+export class LLMProviderSettingssSettingsPanel extends HTMLElement {
+  private providers: LLMProviderSettings[] = [];
   private settingsAPI = getSettingsManagementAPI();
   private isLoading = true;
 
   // Provider form state
   private mode: 'list' | 'add' | 'edit' = 'list';
-  private editingProvider?: LLMProvider;
+  private editingProvider?: LLMProviderSettings;
 
   async connectedCallback(): Promise<void> {
     this.renderLoading();
@@ -330,7 +330,7 @@ export class LLMProvidersSettingsPanel extends HTMLElement {
     const form = event.target as HTMLFormElement;
     const formData = new FormData(form);
 
-    const newProvider: LLMProvider = {
+    const newProvider: LLMProviderSettings = {
       id: formData.get('id') as string,
       type: formData.get('type') as LLMProviderType,
       name: formData.get('name') as string,
@@ -390,4 +390,4 @@ export class LLMProvidersSettingsPanel extends HTMLElement {
   }
 }
 
-customElements.define('llm-providers-settings-panel', LLMProvidersSettingsPanel);
+customElements.define('llm-providers-settings-panel', LLMProviderSettingssSettingsPanel);

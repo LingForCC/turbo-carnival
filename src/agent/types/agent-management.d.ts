@@ -21,7 +21,7 @@ export interface Agent {
  * Agent model configuration
  */
 export interface AgentConfig {
-  modelId?: string;              // Reference to ModelConfig (NEW - primary way)
+  modelId?: string;              // Reference to LLMModelSettings (NEW - primary way)
   providerId?: string;           // Reference to LLM provider by ID
   model?: string;                // Direct model string (DEPRECATED - use modelId instead)
   temperature?: number;          // DEPRECATED - use modelId instead

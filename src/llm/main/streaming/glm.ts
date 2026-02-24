@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { getDefaultBaseURL } from '../llm-settings';
-import type { ModelConfig, LLMProvider } from '../../types';
+import type { LLMModelSettings, LLMProviderSettings } from '../../types';
 import type { Tool } from '../../../tools/types';
 import type { Agent } from '../../../agent/types';
 import { getToolByName, validateJSONSchema } from '../../../tools/main/tool-management';
@@ -293,8 +293,8 @@ function convertToolToGLMFormat(tool: Tool): any {
  */
 async function streamGLMSingle(
   messages: GLMMessage[],
-  modelConfig: ModelConfig,
-  provider: LLMProvider,
+  modelConfig: LLMModelSettings,
+  provider: LLMProviderSettings,
   webContents: Electron.WebContents,
   timeout: number = 60000,
   tools?: Tool[]

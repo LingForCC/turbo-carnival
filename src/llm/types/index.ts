@@ -12,7 +12,7 @@ export type LLMProviderType = 'openai' | 'glm' | 'azure' | 'custom';
  * LLM Provider configuration
  * Represents a single provider with its credentials and settings
  */
-export interface LLMProvider {
+export interface LLMProviderSettings {
   id: string;                    // Unique identifier (e.g., "openai-main")
   type: LLMProviderType;         // Provider type discriminator
   name: string;                  // Display name
@@ -23,9 +23,9 @@ export interface LLMProvider {
 }
 
 /**
- * Model configuration for reusing model settings across agents
+ * LLM Model configuration for reusing model settings across agents
  */
-export interface ModelConfig {
+export interface LLMModelSettings {
   id: string;                    // Unique identifier (e.g., "gpt4-creative")
   name: string;                  // Display name (e.g., "GPT-4 Creative")
   model: string;                 // Model identifier (e.g., "gpt-4", "claude-3.5")
@@ -43,7 +43,7 @@ export interface ModelConfig {
  * Stored in feature settings under 'llm-providers'
  */
 export interface LLMProviderFeatureSettings {
-  providers: LLMProvider[];
+  providers: LLMProviderSettings[];
 }
 
 /**
@@ -51,9 +51,5 @@ export interface LLMProviderFeatureSettings {
  * Stored in feature settings under 'llm-model-configs'
  */
 export interface LLMModelFeatureSettings {
-  modelConfigs: ModelConfig[];
+  modelConfigs: LLMModelSettings[];
 }
-
-// Type aliases for settings registration
-export type LLMProviderSettings = LLMProvider;
-export type LLMModelSettings = ModelConfig;

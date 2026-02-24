@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import type { LLMProvider, ModelConfig } from '../../types';
+import type { LLMProviderSettings, LLMModelSettings } from '../../types';
 import type { Tool } from '../../../tools/types';
 import type { Agent } from '../../../agent/types';
 import { streamOpenAI } from './openai';
@@ -12,8 +12,8 @@ export interface StreamLLMOptions {
   systemPrompt: string;
   filePaths?: string[];  // File paths to include as context
   userMessage: string;  // Current user message
-  provider: LLMProvider;
-  modelConfig: ModelConfig;
+  provider: LLMProviderSettings;
+  modelConfig: LLMModelSettings;
   tools: Tool[];
   webContents: Electron.WebContents;
   enableTools?: boolean;

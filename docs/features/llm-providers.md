@@ -38,7 +38,7 @@ Turbo Carnival supports multiple LLM (Large Language Model) providers through a 
 Each provider has the following structure:
 
 ```typescript
-interface LLMProvider {
+interface LLMProviderSettings {
   id: string;                    // Unique identifier (e.g., "openai-main")
   type: LLMProviderType;         // Provider type discriminator
   name: string;                  // Display name
@@ -189,39 +189,39 @@ When creating or editing an agent, you configure both:
 
 When the agent executes a request:
 
-1. System looks up the `ModelConfig` by `modelId`
-2. System looks up the `Provider` by `providerId`
+1. System looks up the `LLMModelSettings` by `modelId`
+2. System looks up the `LLMProviderSettings` by `providerId`
 3. Configs are merged:
-   - Model parameters from ModelConfig (model, temperature, maxTokens, topP, extra)
-   - Provider credentials from Provider (apiKey, baseURL)
+   - Model parameters from LLMModelSettings (model, temperature, maxTokens, topP, extra)
+   - Provider credentials from LLMProviderSettings (apiKey, baseURL)
 4. API request is made with combined configuration
 
 ### Benefits of Separation
 
-**Flexibility**: Use the same ModelConfig with different providers
+**Flexibility**: Use the same LLMModelSettings with different providers
 ```
-ModelConfig: "GPT-4 Creative" (temperature: 0.9)
+LLMModelSettings: "GPT-4 Creative" (temperature: 0.9)
 ├── Provider: "OpenAI Production" → Uses production API key
 └── Provider: "OpenAI Dev" → Uses dev API key (same behavior, different endpoint)
 ```
 
 **Reusability**: Share model settings across agents
 ```
-ModelConfig: "Code Review" (temperature: 0.3, model: claude-3.5)
+LLMModelSettings: "Code Review" (temperature: 0.3, model: claude-3.5)
 ├── Agent: "Frontend Review" + Provider: "Anthropic"
 ├── Agent: "Backend Review" + Provider: "Anthropic"
 └── Agent: "Security Review" + Provider: "Custom Provider"
 ```
 
 **Easy Updates**: Change model settings in one place
-- Update "GPT-4 Creative" ModelConfig to change temperature
+- Update "GPT-4 Creative" LLMModelSettings to change temperature
 - All agents using that config automatically get the new settings
 
 ### Migration Note
 
 If you have agents created before Model Configurations was introduced:
-- Legacy inline model settings (model, temperature, etc.) were automatically migrated to ModelConfigs
-- Your agents now reference these new ModelConfigs via `modelId`
+- Legacy inline model settings (model, temperature, etc.) were automatically migrated to LLMModelSettings
+- Your agents now reference these new LLMModelSettings via `modelId`
 - Provider configuration remains separate in `providerId`
 
 For more details, see **[Model Configurations](./model-configs.md)**.

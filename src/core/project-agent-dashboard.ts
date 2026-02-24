@@ -1,5 +1,5 @@
 import type { Agent } from '../agent/types';
-import type { ModelConfig } from '../llm/types';
+import type { LLMModelSettings } from '../llm/types';
 import type { Project } from '../project/types';
 import { getAgentManagementAPI } from '../agent/api';
 import { getProviderManagementAPI } from '../llm/api';
@@ -13,7 +13,7 @@ export class ProjectAgentDashboard extends HTMLElement {
   private currentProject: Project | null = null;
   private agents: Agent[] = [];
   private selectedAgent: Agent | null = null;
-  private modelConfigs: ModelConfig[] = [];
+  private modelConfigs: LLMModelSettings[] = [];
   private agentAPI: AgentManagementAPI;
   private providerAPI = getProviderManagementAPI();
 

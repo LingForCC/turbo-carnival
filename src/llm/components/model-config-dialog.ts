@@ -1,22 +1,22 @@
-import type { ModelConfig } from '../types';
+import type { LLMModelSettings } from '../types';
 import { getProviderManagementAPI } from '../api';
 
 /**
- * ModelConfigDialog Web Component
+ * LLMModelSettingsDialog Web Component
  * Modal dialog for managing model configurations
  */
-export class ModelConfigDialog extends HTMLElement {
-  private modelConfigs: ModelConfig[] = [];
+export class LLMModelSettingsDialog extends HTMLElement {
+  private modelConfigs: LLMModelSettings[] = [];
   private api = getProviderManagementAPI();
   private mode: 'list' | 'add' | 'edit' = 'list';
-  private editingModelConfig?: ModelConfig;
+  private editingLLMModelSettings?: LLMModelSettings;
 
   constructor() {
     super();
   }
 
   async connectedCallback(): Promise<void> {
-    await this.loadModelConfigs();
+    await this.loadLLMModelSettingss();
     this.render();
   }
 
@@ -43,7 +43,7 @@ export class ModelConfigDialog extends HTMLElement {
 
           <!-- Content Area -->
           <div class="p-6">
-            ${this.mode === 'list' ? this.renderModelConfigList() : this.renderModelConfigForm()}
+            ${this.mode === 'list' ? this.renderLLMModelSettingsList() : this.renderLLMModelSettingsForm()}
           </div>
         </div>
       </div>
@@ -52,7 +52,7 @@ export class ModelConfigDialog extends HTMLElement {
     this.attachEventListeners();
   }
 
-  private renderModelConfigList(): string {
+  private renderLLMModelSettingsList(): string {
     if (this.modelConfigs.length === 0) {
       return `
         <div class="text-center py-8">
@@ -78,12 +78,12 @@ export class ModelConfigDialog extends HTMLElement {
       </div>
 
       <div id="model-configs-list" class="space-y-2">
-        ${this.renderModelConfigs()}
+        ${this.renderLLMModelSettingss()}
       </div>
     `;
   }
 
-  private renderModelConfigs(): string {
+  private renderLLMModelSettingss(): string {
     return this.modelConfigs.map(config => `
       <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
         <div class="flex-1 min-w-0">
@@ -116,9 +116,9 @@ export class ModelConfigDialog extends HTMLElement {
     `).join('');
   }
 
-  private renderModelConfigForm(): string {
+  private renderLLMModelSettingsForm(): string {
     const isEdit = this.mode === 'edit';
-    const config = this.editingModelConfig;
+    const config = this.editingLLMModelSettings;
 
     return `
       <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-4 m-0">
@@ -263,10 +263,10 @@ export class ModelConfigDialog extends HTMLElement {
     }
 
     // Add model config button
-    const addModelConfigBtn = this.querySelector('#add-model-config-btn');
-    if (addModelConfigBtn) {
-      const newBtn = addModelConfigBtn.cloneNode(true);
-      addModelConfigBtn.replaceWith(newBtn);
+    const addLLMModelSettingsBtn = this.querySelector('#add-model-config-btn');
+    if (addLLMModelSettingsBtn) {
+      const newBtn = addLLMModelSettingsBtn.cloneNode(true);
+      addLLMModelSettingsBtn.replaceWith(newBtn);
       (newBtn as HTMLElement).addEventListener('click', () => this.showAddForm());
     }
 
@@ -303,13 +303,13 @@ export class ModelConfigDialog extends HTMLElement {
 
       const newBtn = btn.cloneNode(true);
       btn.replaceWith(newBtn);
-      (newBtn as HTMLElement).addEventListener('click', () => this.deleteModelConfig(configId));
+      (newBtn as HTMLElement).addEventListener('click', () => this.deleteLLMModelSettings(configId));
     });
   }
 
-  private async loadModelConfigs(): Promise<void> {
+  private async loadLLMModelSettingss(): Promise<void> {
     try {
-      this.modelConfigs = await this.api.getModelConfigs();
+      this.modelConfigs = await this.api.getLLMModelSettingss();
     } catch (error) {
       console.error('Failed to load model configs:', error);
     }
@@ -317,13 +317,13 @@ export class ModelConfigDialog extends HTMLElement {
 
   private showList(): void {
     this.mode = 'list';
-    this.editingModelConfig = undefined;
+    this.editingLLMModelSettings = undefined;
     this.render();
   }
 
   private showAddForm(): void {
     this.mode = 'add';
-    this.editingModelConfig = undefined;
+    this.editingLLMModelSettings = undefined;
     this.render();
   }
 
@@ -332,7 +332,7 @@ export class ModelConfigDialog extends HTMLElement {
     if (!config) return;
 
     this.mode = 'edit';
-    this.editingModelConfig = config;
+    this.editingLLMModelSettings = config;
     this.render();
   }
 
@@ -354,7 +354,7 @@ export class ModelConfigDialog extends HTMLElement {
       }
     }
 
-    const newModelConfig: ModelConfig = {
+    const newLLMModelSettings: LLMModelSettings = {
       id: formData.get('id') as string,
       name: formData.get('name') as string,
       model: formData.get('model') as string,
@@ -363,15 +363,15 @@ export class ModelConfigDialog extends HTMLElement {
       maxTokens: formData.get('maxTokens') ? parseInt(formData.get('maxTokens') as string) : undefined,
       topP: formData.get('topP') ? parseFloat(formData.get('topP') as string) : undefined,
       extra: extra,
-      createdAt: this.editingModelConfig?.createdAt || Date.now(),
+      createdAt: this.editingLLMModelSettings?.createdAt || Date.now(),
       updatedAt: Date.now(),
     };
 
     try {
-      if (this.mode === 'edit' && this.editingModelConfig) {
-        this.modelConfigs = await this.api.updateModelConfig(this.editingModelConfig.id, newModelConfig);
+      if (this.mode === 'edit' && this.editingLLMModelSettings) {
+        this.modelConfigs = await this.api.updateLLMModelSettings(this.editingLLMModelSettings.id, newLLMModelSettings);
       } else {
-        this.modelConfigs = await this.api.addModelConfig(newModelConfig);
+        this.modelConfigs = await this.api.addLLMModelSettings(newLLMModelSettings);
       }
       this.showList();
     } catch (error: any) {
@@ -379,7 +379,7 @@ export class ModelConfigDialog extends HTMLElement {
     }
   }
 
-  private async deleteModelConfig(id: string): Promise<void> {
+  private async deleteLLMModelSettings(id: string): Promise<void> {
     const config = this.modelConfigs.find(c => c.id === id);
     if (!config) return;
 
@@ -390,7 +390,7 @@ export class ModelConfigDialog extends HTMLElement {
     if (!confirmed) return;
 
     try {
-      this.modelConfigs = await this.api.removeModelConfig(id);
+      this.modelConfigs = await this.api.removeLLMModelSettings(id);
       this.render();
     } catch (error: any) {
       alert(`Failed to delete model configuration: ${error.message}`);
@@ -413,4 +413,4 @@ export class ModelConfigDialog extends HTMLElement {
 }
 
 // Register the custom element
-customElements.define('model-config-dialog', ModelConfigDialog);
+customElements.define('model-config-dialog', LLMModelSettingsDialog);

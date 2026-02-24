@@ -3,14 +3,14 @@
  * Provides access to LLM provider and model configuration data from settings
  */
 
-import type { LLMProvider, ModelConfig, LLMProviderFeatureSettings, LLMModelFeatureSettings, LLMProviderType } from '../types';
+import type { LLMProviderSettings, LLMModelSettings, LLMProviderFeatureSettings, LLMModelFeatureSettings, LLMProviderType } from '../types';
 import { loadSettings } from '../../settings/main/settings-management';
 import { getFeatureDefaults } from '../../settings/main/settings-registry';
 
 /**
  * Get all providers from settings
  */
-export function getProviders(): LLMProvider[] {
+export function getProviders(): LLMProviderSettings[] {
   const settings = loadSettings();
   const defaults = getFeatureDefaults();
   const featureSettings = settings.features?.['llm-providers'] || defaults['llm-providers'] || {};
@@ -20,7 +20,7 @@ export function getProviders(): LLMProvider[] {
 /**
  * Get a provider by ID from settings
  */
-export function getProviderById(id: string): LLMProvider | undefined {
+export function getProviderById(id: string): LLMProviderSettings | undefined {
   const providers = getProviders();
   return providers.find(p => p.id === id);
 }
@@ -28,7 +28,7 @@ export function getProviderById(id: string): LLMProvider | undefined {
 /**
  * Get all model configs from settings
  */
-export function getModelConfigs(): ModelConfig[] {
+export function getModelConfigs(): LLMModelSettings[] {
   const settings = loadSettings();
   const defaults = getFeatureDefaults();
   const featureSettings = settings.features?.['llm-model-configs'] || defaults['llm-model-configs'] || {};
@@ -38,7 +38,7 @@ export function getModelConfigs(): ModelConfig[] {
 /**
  * Get a model config by ID from settings
  */
-export function getModelConfigById(id: string): ModelConfig | undefined {
+export function getModelConfigById(id: string): LLMModelSettings | undefined {
   const modelConfigs = getModelConfigs();
   return modelConfigs.find(c => c.id === id);
 }

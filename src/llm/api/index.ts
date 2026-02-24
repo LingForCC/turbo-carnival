@@ -1,4 +1,4 @@
-import type { LLMProvider, ModelConfig, LLMProviderFeatureSettings, LLMModelFeatureSettings } from '../types';
+import type { LLMProviderSettings, LLMModelSettings, LLMProviderFeatureSettings, LLMModelFeatureSettings } from '../types';
 import { getSettingsManagementAPI } from '../../settings/api';
 
 /**
@@ -30,7 +30,7 @@ export const providerManagementAPI = {
   /**
    * Get all providers
    */
-  getProviders: async (): Promise<LLMProvider[]> => {
+  getProviders: async (): Promise<LLMProviderSettings[]> => {
     const settings = await settingsAPI.getFeatureSettings<LLMProviderFeatureSettings>('llm-providers');
     return settings.providers || [];
   },
@@ -38,7 +38,7 @@ export const providerManagementAPI = {
   /**
    * Add a new provider
    */
-  addProvider: async (provider: LLMProvider): Promise<LLMProvider[]> => {
+  addProvider: async (provider: LLMProviderSettings): Promise<LLMProviderSettings[]> => {
     const settings = await settingsAPI.getFeatureSettings<LLMProviderFeatureSettings>('llm-providers');
     const providers = settings.providers || [];
 
@@ -58,7 +58,7 @@ export const providerManagementAPI = {
   /**
    * Update an existing provider
    */
-  updateProvider: async (id: string, provider: LLMProvider): Promise<LLMProvider[]> => {
+  updateProvider: async (id: string, provider: LLMProviderSettings): Promise<LLMProviderSettings[]> => {
     const settings = await settingsAPI.getFeatureSettings<LLMProviderFeatureSettings>('llm-providers');
     const providers = settings.providers || [];
     const index = providers.findIndex(p => p.id === id);
@@ -79,7 +79,7 @@ export const providerManagementAPI = {
   /**
    * Remove a provider
    */
-  removeProvider: async (id: string): Promise<LLMProvider[]> => {
+  removeProvider: async (id: string): Promise<LLMProviderSettings[]> => {
     const settings = await settingsAPI.getFeatureSettings<LLMProviderFeatureSettings>('llm-providers');
     const providers = settings.providers || [];
     const filtered = providers.filter(p => p.id !== id);
@@ -90,7 +90,7 @@ export const providerManagementAPI = {
   /**
    * Get provider by ID
    */
-  getProviderById: async (id: string): Promise<LLMProvider> => {
+  getProviderById: async (id: string): Promise<LLMProviderSettings> => {
     const settings = await settingsAPI.getFeatureSettings<LLMProviderFeatureSettings>('llm-providers');
     const providers = settings.providers || [];
     const provider = providers.find(p => p.id === id);
@@ -105,7 +105,7 @@ export const providerManagementAPI = {
   /**
    * Get all model configs
    */
-  getModelConfigs: async (): Promise<ModelConfig[]> => {
+  getLLMModelSettingss: async (): Promise<LLMModelSettings[]> => {
     const settings = await settingsAPI.getFeatureSettings<LLMModelFeatureSettings>('llm-model-configs');
     return settings.modelConfigs || [];
   },
@@ -113,7 +113,7 @@ export const providerManagementAPI = {
   /**
    * Add a new model config
    */
-  addModelConfig: async (config: ModelConfig): Promise<ModelConfig[]> => {
+  addLLMModelSettings: async (config: LLMModelSettings): Promise<LLMModelSettings[]> => {
     const settings = await settingsAPI.getFeatureSettings<LLMModelFeatureSettings>('llm-model-configs');
     const modelConfigs = settings.modelConfigs || [];
 
@@ -133,7 +133,7 @@ export const providerManagementAPI = {
   /**
    * Update an existing model config
    */
-  updateModelConfig: async (id: string, config: ModelConfig): Promise<ModelConfig[]> => {
+  updateLLMModelSettings: async (id: string, config: LLMModelSettings): Promise<LLMModelSettings[]> => {
     const settings = await settingsAPI.getFeatureSettings<LLMModelFeatureSettings>('llm-model-configs');
     const modelConfigs = settings.modelConfigs || [];
     const index = modelConfigs.findIndex(c => c.id === id);
@@ -154,7 +154,7 @@ export const providerManagementAPI = {
   /**
    * Remove a model config
    */
-  removeModelConfig: async (id: string): Promise<ModelConfig[]> => {
+  removeLLMModelSettings: async (id: string): Promise<LLMModelSettings[]> => {
     const settings = await settingsAPI.getFeatureSettings<LLMModelFeatureSettings>('llm-model-configs');
     const modelConfigs = settings.modelConfigs || [];
     const filtered = modelConfigs.filter(c => c.id !== id);
@@ -165,7 +165,7 @@ export const providerManagementAPI = {
   /**
    * Get model config by ID
    */
-  getModelConfigById: async (id: string): Promise<ModelConfig> => {
+  getModelConfigById: async (id: string): Promise<LLMModelSettings> => {
     const settings = await settingsAPI.getFeatureSettings<LLMModelFeatureSettings>('llm-model-configs');
     const modelConfigs = settings.modelConfigs || [];
     const config = modelConfigs.find(c => c.id === id);

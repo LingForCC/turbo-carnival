@@ -10,13 +10,14 @@ Model Configurations allow you to:
 - Share configurations across multiple agents
 - Update settings in one place to affect all agents using that configuration
 
-## ModelConfig Structure
+## LLMModelSettings Structure
 
 ```typescript
-interface ModelConfig {
+interface LLMModelSettings {
   id: string;                    // Unique identifier (e.g., "gpt4-creative")
   name: string;                  // Display name (e.g., "GPT-4 Creative")
   model: string;                 // Model identifier (e.g., "gpt-4", "claude-3.5")
+  type: LLMProviderType;         // Provider type discriminator
   temperature?: number;          // Optional temperature (0-2)
   maxTokens?: number;            // Optional max tokens
   topP?: number;                 // Optional top_p (0-1)

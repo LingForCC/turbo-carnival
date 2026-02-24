@@ -217,7 +217,7 @@ conversation.setAssistantMessageFactory(createAssistantMessage);
 3. Parent component (`chat-panel`) listens for `message-sent` event
 4. `chat-panel` calls `chat-agent:streamMessage` via IPC
 5. `chat-agent-management` module:
-   - Loads agent, validates ModelConfig and Provider
+   - Loads agent, validates LLMModelSettings and LLMProviderSettings
    - Builds system prompt
    - Calls `streamLLM()` from `llm/index.ts` with `filePaths`, `userMessage`, `agent`, and `enableTools: true`
 6. `llm/index.ts` routes to provider-specific implementation based on `modelConfig.type`
@@ -545,7 +545,7 @@ Each provider requires:
 - Stored in `app.getPath('userData')/providers.json`
 
 ### Model Configuration
-ModelConfig allows reusing model settings across agents:
+LLMModelSettings allows reusing model settings across agents:
 - `type` - Provider type (required)
 - `name` - Display name
 - `model` - Model identifier (e.g., 'gpt-4', 'glm-4')
@@ -569,16 +569,16 @@ Agents reference providers and model configurations:
 {
   "name": "Chat Assistant",
   "config": {
-    "modelId": "gpt4-creative",  // References ModelConfig
+    "modelId": "gpt4-creative",  // References LLMModelSettings
     "providerId": "openai-main"  // References LLM Provider
   }
 }
 ```
 
 When `modelId` is set:
-- ModelConfig.type determines which provider implementation to use
-- ModelConfig.model, temperature, maxTokens, etc. are used for API requests
-- Provider determined by ModelConfig → providerId → LLM Provider lookup
+- LLMModelSettings.type determines which provider implementation to use
+- LLMModelSettings.model, temperature, maxTokens, etc. are used for API requests
+- Provider determined by LLMModelSettings → providerId → LLM Provider lookup
 
 ## Streaming Implementation
 

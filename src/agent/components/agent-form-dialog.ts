@@ -1,5 +1,5 @@
 import type { Agent } from '../types';
-import type { ModelConfig, LLMProvider } from '../../llm/types';
+import type { LLMModelSettings, LLMProviderSettingsSettings } from '../../llm/types';
 import type { AgentTemplate } from '../types';
 import { getProviderManagementAPI } from '../../llm/api';
 import { getAgentTemplateManagementAPI } from '../api';
@@ -13,11 +13,11 @@ export class AgentFormDialog extends HTMLElement {
   private mode: 'create' | 'edit' = 'create';
   private agent: Agent | null = null;
   private form: HTMLFormElement | null = null;
-  private modelConfigs: ModelConfig[] = [];
+  private modelConfigs: LLMModelSettings[] = [];
   private templates: AgentTemplate[] = [];
   private api = getProviderManagementAPI();
   private templateAPI = getAgentTemplateManagementAPI();
-  private selectedModelConfig?: ModelConfig;
+  private selectedLLMModelSettings?: LLMModelSettings;
 
   constructor() {
     super();
@@ -40,7 +40,7 @@ export class AgentFormDialog extends HTMLElement {
     this.render();
     this.attachEventListeners();
     this.loadProviders();
-    this.loadModelConfigs();
+    this.loadLLMModelSettingss();
     this.loadTemplates();
   }
 
@@ -269,7 +269,7 @@ export class AgentFormDialog extends HTMLElement {
       modelConfigSelect.replaceWith(newSelect);
       (newSelect as HTMLSelectElement).addEventListener('change', (e) => {
         const select = e.target as HTMLSelectElement;
-        this.onModelConfigChange(select.value);
+        this.onLLMModelSettingsChange(select.value);
       });
     }
 
@@ -280,7 +280,7 @@ export class AgentFormDialog extends HTMLElement {
       manageModelsLink.replaceWith(newLink);
       (newLink as HTMLElement).addEventListener('click', (e) => {
         e.preventDefault();
-        this.openModelConfigDialog();
+        this.openLLMModelSettingsDialog();
       });
     }
 
@@ -354,7 +354,7 @@ export class AgentFormDialog extends HTMLElement {
       // Populate options
       select.innerHTML = `
         <option value="">No provider selected</option>
-        ${providers.map((provider: LLMProvider) => `
+        ${providers.map((provider: LLMProviderSettings) => `
           <option value="${this.escapeHtml(provider.id)}" ${provider.id === currentValue ? 'selected' : ''} class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
             ${this.escapeHtml(provider.name)} (${provider.type.toUpperCase()})
           </option>
@@ -365,9 +365,9 @@ export class AgentFormDialog extends HTMLElement {
     }
   }
 
-  private async loadModelConfigs(): Promise<void> {
+  private async loadLLMModelSettingss(): Promise<void> {
     try {
-      this.modelConfigs = await this.api.getModelConfigs();
+      this.modelConfigs = await this.api.getLLMModelSettingss();
       const select = this.querySelector('#model-config-ref') as HTMLSelectElement;
       if (!select) return;
 
@@ -386,16 +386,16 @@ export class AgentFormDialog extends HTMLElement {
 
       // If editing and has a modelId selected, show the details
       if (currentValue) {
-        this.onModelConfigChange(currentValue);
+        this.onLLMModelSettingsChange(currentValue);
       }
     } catch (error) {
       console.error('Failed to load model configs:', error);
     }
   }
 
-  private onModelConfigChange(modelConfigId: string): void {
+  private onLLMModelSettingsChange(modelConfigId: string): void {
     const modelConfig = this.modelConfigs.find(c => c.id === modelConfigId);
-    this.selectedModelConfig = modelConfig;
+    this.selectedLLMModelSettings = modelConfig;
 
     const detailsDiv = this.querySelector('#model-details') as HTMLElement;
     if (!detailsDiv) return;
@@ -434,7 +434,7 @@ export class AgentFormDialog extends HTMLElement {
     }
   }
 
-  private openModelConfigDialog(): void {
+  private openLLMModelSettingsDialog(): void {
     const dialog = document.createElement('settings-dialog') as HTMLElement;
     dialog.dataset.tab = 'ai';
     document.body.appendChild(dialog);
@@ -442,7 +442,7 @@ export class AgentFormDialog extends HTMLElement {
     dialog.addEventListener('settings-dialog-close', async () => {
       dialog.remove();
       // Reload model configs when dialog closes
-      await this.loadModelConfigs();
+      await this.loadLLMModelSettingss();
     });
   }
 
@@ -493,7 +493,7 @@ export class AgentFormDialog extends HTMLElement {
         if (modelConfigSelect) {
           if (modelExists) {
             modelConfigSelect.value = template.config.modelId;
-            this.onModelConfigChange(template.config.modelId);
+            this.onLLMModelSettingsChange(template.config.modelId);
           } else {
             alert(`Model config "${template.config.modelId}" from template not found. Please select a different model.`);
             modelConfigSelect.value = '';

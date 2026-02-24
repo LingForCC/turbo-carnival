@@ -1,5 +1,5 @@
 import type { AgentTemplate } from '../types';
-import type { ModelConfig, LLMProvider } from '../../llm/types';
+import type { LLMModelSettings, LLMProviderSettingsSettings } from '../../llm/types';
 import { getAgentTemplateManagementAPI } from '../api';
 import { getProviderManagementAPI } from '../../llm/api';
 
@@ -9,8 +9,8 @@ import { getProviderManagementAPI } from '../../llm/api';
  */
 export class AgentTemplateDialog extends HTMLElement {
   private templates: AgentTemplate[] = [];
-  private modelConfigs: ModelConfig[] = [];
-  private providers: LLMProvider[] = [];
+  private modelConfigs: LLMModelSettings[] = [];
+  private providers: LLMProviderSettings[] = [];
   private templateAPI = getAgentTemplateManagementAPI();
   private providerAPI = getProviderManagementAPI();
   private mode: 'list' | 'add' | 'edit' = 'list';
@@ -22,7 +22,7 @@ export class AgentTemplateDialog extends HTMLElement {
 
   async connectedCallback(): Promise<void> {
     await this.loadTemplates();
-    await this.loadModelConfigs();
+    await this.loadLLMModelSettingss();
     await this.loadProviders();
     this.render();
   }
@@ -325,9 +325,9 @@ export class AgentTemplateDialog extends HTMLElement {
     }
   }
 
-  private async loadModelConfigs(): Promise<void> {
+  private async loadLLMModelSettingss(): Promise<void> {
     try {
-      this.modelConfigs = await this.providerAPI.getModelConfigs();
+      this.modelConfigs = await this.providerAPI.getLLMModelSettingss();
     } catch (error) {
       console.error('Failed to load model configs:', error);
     }
