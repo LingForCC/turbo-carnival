@@ -190,6 +190,7 @@ customElements.define('quick-ai-settings-panel', QuickAISettingsPanel);
 registerFeatureSettingsRenderer<QuickAISettings>({
   featureId: 'quick-ai',
   displayName: 'Quick AI',
+  parentTab: 'ai',
   order: 80,
   defaults: {
     defaultProviderId: undefined,
