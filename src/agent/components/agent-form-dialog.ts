@@ -17,7 +17,6 @@ export class AgentFormDialog extends HTMLElement {
   private templates: AgentTemplate[] = [];
   private api = getProviderManagementAPI();
   private settingsAPI = getSettingsManagementAPI();
-  private selectedLLMModelSettings?: LLMModelSettings;
 
   constructor() {
     super();
@@ -395,7 +394,6 @@ export class AgentFormDialog extends HTMLElement {
 
   private onLLMModelSettingsChange(modelConfigId: string): void {
     const modelConfig = this.modelConfigs.find(c => c.id === modelConfigId);
-    this.selectedLLMModelSettings = modelConfig;
 
     const detailsDiv = this.querySelector('#model-details') as HTMLElement;
     if (!detailsDiv) return;

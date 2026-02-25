@@ -1,6 +1,5 @@
 import { BrowserWindow } from 'electron';
 import * as fs from 'fs';
-import * as path from 'path';
 
 /**
  * Project Folder Watcher Module
@@ -35,7 +34,7 @@ export function startProjectFolderWatcher(folder: string, mainWindow: BrowserWin
     currentWatchedFolder = folder;
 
     // Watch with recursive: false to only watch immediate children
-    watcher = fs.watch(folder, { recursive: false }, (eventType, filename) => {
+    watcher = fs.watch(folder, { recursive: false }, (_eventType, filename) => {
       if (!filename) return;
 
       // Only care about directory changes (add/remove/rename)

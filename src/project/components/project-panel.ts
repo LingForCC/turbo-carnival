@@ -6,7 +6,6 @@ import type { Project, ProjectManagementAPI } from '../types';
  * A collapsible left sidebar panel with project management
  */
 export class ProjectPanel extends HTMLElement {
-  private container: HTMLElement | null = null;
   private isCollapsed: boolean = false;
   private projects: Project[] = [];
   private selectedProject: Project | null = null;
@@ -51,7 +50,6 @@ export class ProjectPanel extends HTMLElement {
       </div>
     `;
 
-    this.container = this.querySelector('div');
     // Re-attach event listeners after re-rendering
     this.attachEventListeners();
     // Re-render projects if they exist

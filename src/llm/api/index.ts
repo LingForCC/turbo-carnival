@@ -9,16 +9,6 @@ import { getSettingsManagementAPI } from '../../settings/api';
  * The data is stored in feature settings under 'llm-providers' and 'llm-model-configs'.
  */
 
-/**
- * Get electronAPI or throw error if not available
- */
-function getElectronAPI() {
-  if (!window.electronAPI) {
-    throw new Error('electronAPI not available');
-  }
-  return window.electronAPI;
-}
-
 const settingsAPI = getSettingsManagementAPI();
 
 /**

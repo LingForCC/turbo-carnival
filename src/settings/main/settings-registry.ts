@@ -1,4 +1,4 @@
-import type { FeatureSettingsSchema, FeatureSettingsRegistration } from '../types';
+import type { FeatureSettingsRegistration } from '../types';
 
 /**
  * Feature Settings Registry

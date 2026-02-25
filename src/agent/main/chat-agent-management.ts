@@ -77,7 +77,7 @@ export function registerChatAgentIPCHandlers(): void {
   });
 
   // Handler: chat-agent:clearHistory
-  ipcMain.handle('chat-agent:clearHistory', async (event, projectPath: string, agentName: string) => {
+  ipcMain.handle('chat-agent:clearHistory', async (_event, projectPath: string, agentName: string) => {
     const agents = loadAgents(projectPath);
     const agent = agents.find(a => a.name === agentName);
 

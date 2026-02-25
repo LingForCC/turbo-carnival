@@ -140,7 +140,7 @@ export async function executeMCPToolStream(
   serverName: string,
   toolName: string,
   parameters: Record<string, any>,
-  onChunk: (chunk: string) => void
+  _onChunk: (chunk: string) => void
 ): Promise<any> {
   const client = activeClients.get(serverName);
   if (!client) {

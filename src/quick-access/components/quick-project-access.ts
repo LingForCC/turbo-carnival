@@ -276,8 +276,8 @@ export class QuickProjectAccess extends HTMLElement {
   /**
    * Navigate down in the list
    */
-  private navigateDown(projects: Project[]): void {
-    if (this.selectedIndex < projects.length - 1) {
+  private navigateDown(_projects: Project[]): void {
+    if (this.selectedIndex < this.projects.length - 1) {
       this.selectedIndex++;
       this.renderProjectList();
       this.scrollSelectedItemIntoView();
@@ -287,7 +287,7 @@ export class QuickProjectAccess extends HTMLElement {
   /**
    * Navigate up in the list
    */
-  private navigateUp(projects: Project[]): void {
+  private navigateUp(_projects: Project[]): void {
     if (this.selectedIndex > 0) {
       this.selectedIndex--;
       this.renderProjectList();

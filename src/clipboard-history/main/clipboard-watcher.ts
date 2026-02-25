@@ -1,4 +1,4 @@
-import { clipboard, nativeImage } from 'electron';
+import { clipboard } from 'electron';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -11,8 +11,6 @@ const CLIPBOARD_CHECK_INTERVAL = 500;
 // Minimum content length to save (avoid saving very short snippets)
 const MIN_CONTENT_LENGTH = 3;
 
-// Supported image extensions
-const SUPPORTED_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'];
 
 // Store the last content hash to detect changes
 let lastTextHash: string | null = null;

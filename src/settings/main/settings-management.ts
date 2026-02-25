@@ -144,7 +144,7 @@ export function registerSettingsIPCHandlers(): void {
   });
 
   // Handler: Update settings (partial update supported)
-  ipcMain.handle('settings:update', async (event, updates: Partial<AppSettings>) => {
+  ipcMain.handle('settings:update', async (_event, updates: Partial<AppSettings>) => {
     const oldSettings = loadSettings();
     const newSettings = updateSettingsFields(updates);
 
@@ -159,12 +159,12 @@ export function registerSettingsIPCHandlers(): void {
   });
 
   // Handler: Get settings for a specific feature
-  ipcMain.handle('settings:getFeature', (event, featureId: string) => {
+  ipcMain.handle('settings:getFeature', (_event, featureId: string) => {
     return getFeatureSettings(featureId);
   });
 
   // Handler: Update settings for a specific feature
-  ipcMain.handle('settings:updateFeature', (event, featureId: string, updates: Record<string, any>) => {
+  ipcMain.handle('settings:updateFeature', (_event, featureId: string, updates: Record<string, any>) => {
     return updateFeatureSettings(featureId, updates);
   });
 

@@ -1,4 +1,4 @@
-import { escapeHtml, renderMarkdown, renderReasoningSection } from './utils';
+import { escapeHtml, renderReasoningSection } from './utils';
 import type { ToolCallData } from './conversation-panel';
 
 /**
@@ -8,12 +8,11 @@ import type { ToolCallData } from './conversation-panel';
  */
 
 export class ToolCallMessage extends HTMLElement {
-  private content: string = '';
   private reasoning: string = '';
   private toolCall: ToolCallData;
 
   static get observedAttributes(): string[] {
-    return ['content', 'reasoning', 'tool-call-data'];
+    return ['reasoning', 'tool-call-data'];
   }
 
   constructor(toolCall: ToolCallData) {
@@ -41,12 +40,11 @@ export class ToolCallMessage extends HTMLElement {
    * their specific tool call data.
    */
   static createWithHandlers(
-    content: string,
+    _content: string,
     toolCall: ToolCallData,
     reasoning?: string
   ): ToolCallMessage {
     const element = document.createElement('tool-call-message') as ToolCallMessage;
-    element.setAttribute('content', content);
     element.setAttribute('tool-call-data', JSON.stringify(toolCall));
     if (reasoning) {
       element.setAttribute('reasoning', reasoning);
@@ -55,7 +53,6 @@ export class ToolCallMessage extends HTMLElement {
   }
 
   private parseAttributes(): void {
-    this.content = this.getAttribute('content') || '';
     this.reasoning = this.getAttribute('reasoning') || '';
 
     const toolCallDataAttr = this.getAttribute('tool-call-data');

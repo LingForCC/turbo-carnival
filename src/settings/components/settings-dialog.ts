@@ -112,7 +112,6 @@ export class SettingsDialog extends HTMLElement {
     // Generate tab buttons
     const tabButtonsHtml = allTabs.map(tab => {
       const isActive = this.currentTab === tab.id;
-      const hasChildren = hasChildTabs(tab.id);
       return `
         <button data-tab="${tab.id}" class="tab-btn px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300'}">
           ${this.escapeHtml(tab.displayName)}

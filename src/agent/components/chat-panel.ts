@@ -275,10 +275,6 @@ export class ChatPanel extends HTMLElement {
     }));
   }
 
-  private showError(message: string): void {
-    alert(message);
-  }
-
   private escapeHtml(text: string): string {
     const div = document.createElement('div');
     div.textContent = text;

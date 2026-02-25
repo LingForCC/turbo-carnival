@@ -1,8 +1,7 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { Agent } from './agent/types';
-import { registerAgentIPCHandlers, loadAgents, saveAgent } from './agent/main/agent-management';
+import { registerAgentIPCHandlers } from './agent/main/agent-management';
 import { registerToolIPCHandlers, initializeMCPServers } from './tools/main/tool-management';
 import { registerProjectIPCHandlers } from './project/main/project-management';
 import { registerChatAgentIPCHandlers } from './agent/main/chat-agent-management';

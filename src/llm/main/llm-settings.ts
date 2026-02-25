@@ -3,7 +3,7 @@
  * Provides access to LLM provider and model configuration data from settings
  */
 
-import type { LLMProviderSettings, LLMModelSettings, LLMProviderFeatureSettings, LLMModelFeatureSettings, LLMProviderType } from '../types';
+import type { LLMProviderSettings, LLMModelSettings, LLMProviderType } from '../types';
 import { loadSettings } from '../../settings/main/settings-management';
 import { getFeatureDefaults } from '../../settings/main/settings-registry';
 

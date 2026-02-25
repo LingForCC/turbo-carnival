@@ -40,7 +40,7 @@ export class CustomToolsSettingsPanel extends HTMLElement {
     }
 
     const customTools = this.tools.filter(t => (t.toolType || 'custom') === 'custom');
-    const isAdding = this.editingToolIndex === -1 && this.editingTool !== null;
+    // Note: this.editingToolIndex === -1 && this.editingTool !== null indicates adding a new tool
 
     this.innerHTML = `
       <div>

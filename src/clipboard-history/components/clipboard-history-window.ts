@@ -675,8 +675,8 @@ export class ClipboardHistoryWindow extends HTMLElement {
   /**
    * Navigate down in the list
    */
-  private navigateDown(items: ClipboardHistoryItem[]): void {
-    if (this.selectedIndex < items.length - 1) {
+  private navigateDown(_items: ClipboardHistoryItem[]): void {
+    if (this.selectedIndex < this.items.length - 1) {
       this.selectItem(this.selectedIndex + 1);
       this.scrollSelectedItemIntoView();
     }
@@ -685,7 +685,7 @@ export class ClipboardHistoryWindow extends HTMLElement {
   /**
    * Navigate up in the list
    */
-  private navigateUp(items: ClipboardHistoryItem[]): void {
+  private navigateUp(_items: ClipboardHistoryItem[]): void {
     if (this.selectedIndex > 0) {
       this.selectItem(this.selectedIndex - 1);
       this.scrollSelectedItemIntoView();

@@ -35,7 +35,7 @@ export interface StreamResult {
  * Delegates to provider-specific streaming functions which handle tool calls internally
  */
 export async function streamLLM(options: StreamLLMOptions): Promise<StreamResult> {
-  const { provider, modelConfig } = options;
+  const { modelConfig } = options;
 
   switch (modelConfig.type) {
     case 'openai':

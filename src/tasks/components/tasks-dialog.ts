@@ -1,7 +1,6 @@
 import { getTaskManagementAPI } from '../api';
 import {
   isTaskAvailable,
-  isTaskToday,
   isTaskDueWithinDays,
   countAllTasks,
   countIncompleteTasks,

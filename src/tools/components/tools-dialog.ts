@@ -74,7 +74,7 @@ export class ToolsDialog extends HTMLElement {
 
   private renderCustomTab(): string {
     const customTools = this.tools.filter(t => (t.toolType || 'custom') === 'custom');
-    const isAdding = this.editingToolIndex === -1 && this.editingTool !== null;
+    // Note: this.editingToolIndex === -1 && this.editingTool !== null indicates adding a new tool
 
     return `
       <div>

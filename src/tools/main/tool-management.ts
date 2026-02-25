@@ -4,9 +4,7 @@ import {
   connectToMCPServer,
   disconnectMCPServer,
   testMCPServerConnection,
-  disconnectAllMCPServers,
   getAllCachedMCPTools,
-  clearMCPToolsCache,
   isMCPServerConnected,
   getCachedToolCount
 } from './mcp-client';
@@ -18,9 +16,7 @@ import type {
   ToolExecutionResult,
   JSONSchema,
   BrowserToolExecutionRequest,
-  MCPServerConfig,
-  CustomToolsFeatureSettings,
-  MCPToolsFeatureSettings
+  MCPServerConfig
 } from '../types';
 
 // ============ TOOL STORAGE HELPERS ============

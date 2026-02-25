@@ -1,5 +1,5 @@
 import type { ChatMessage, ToolCallData } from '../components/conversation-panel';
-import type { OpenAIMessage, OpenAIToolCall } from '../../llm/main/streaming/openai';
+import type { OpenAIMessage } from '../../llm/main/streaming/openai';
 
 /**
  * Transformer for OpenAI message format

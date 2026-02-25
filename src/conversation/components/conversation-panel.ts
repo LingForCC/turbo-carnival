@@ -96,7 +96,7 @@ export class ConversationPanel extends HTMLElement {
     });
   }
 
-  attributeChangedCallback(name: string, oldValue: string, newValue: string): void {
+  attributeChangedCallback(_name: string, oldValue: string, newValue: string): void {
     if (oldValue !== newValue) {
       this.parseAttributes();
       this.render();

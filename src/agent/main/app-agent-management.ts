@@ -74,7 +74,7 @@ export function registerAppAgentIPCHandlers(): void {
   });
 
   // Handler: app-agent:clearHistory
-  ipcMain.handle('app-agent:clearHistory', async (event, projectPath: string, agentName: string) => {
+  ipcMain.handle('app-agent:clearHistory', async (_event, projectPath: string, agentName: string) => {
     const agents = loadAgents(projectPath);
     const agent = agents.find(a => a.name === agentName);
 

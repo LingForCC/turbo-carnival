@@ -1,4 +1,4 @@
-import { escapeHtml, renderMarkdown, renderReasoningSection } from './utils';
+import { renderMarkdown, renderReasoningSection } from './utils';
 
 /**
  * AppCodeMessage Web Component

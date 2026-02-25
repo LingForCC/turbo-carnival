@@ -573,7 +573,7 @@ export class SnippetWindow extends HTMLElement {
     const now = new Date();
     const dateRegex = /\{date(?:\s+"([^"]+)")?\}/g;
 
-    return content.replace(dateRegex, (match, format) => {
+    return content.replace(dateRegex, (_match, format) => {
       if (!format) {
         // Default format: yyyy-MM-dd (ISO date)
         return now.toISOString().split('T')[0];
