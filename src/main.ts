@@ -9,7 +9,6 @@ import { registerChatAgentIPCHandlers } from './agent/main/chat-agent-management
 import { registerAppAgentIPCHandlers } from './agent/main/app-agent-management';
 import { registerSettingsIPCHandlers } from './settings/main/settings-management';
 import { registerNotepadIPCHandlers } from './notepad/main/notepad-management';
-import { registerAgentTemplateIPCHandlers } from './agent/main/agent-template-management';
 import { registerGlobalShortcut, unregisterGlobalShortcut, closeNotepadWindow } from './notepad/main/notepad-window';
 import { registerQuickAIPCHandlers } from './quick-ai/main/quick-ai-management';
 import { registerQuickAIGlobalShortcut, unregisterQuickAIGlobalShortcut, closeQuickAIWindow } from './quick-ai/main/quick-ai-window';
@@ -234,9 +233,6 @@ function registerIPCHandlers(): void {
 
   // ============ NOTEPAD IPC HANDLERS ============
   registerNotepadIPCHandlers();
-
-  // ============ AGENT TEMPLATE IPC HANDLERS ============
-  registerAgentTemplateIPCHandlers();
 
   // ============ QUICK AI IPC HANDLERS ============
   registerQuickAIPCHandlers();

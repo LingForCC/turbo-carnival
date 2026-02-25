@@ -4,7 +4,6 @@ import { agentManagement } from './agent/preload/agent-management';
 import { toolManagement } from './tools/preload';
 import { settingsManagement } from './settings/preload';
 import { notepadManagement } from './notepad/preload/notepad-management';
-import { agentTemplateManagement } from './agent/preload/agent-template-management';
 import { quickAIManagement } from './quick-ai/preload/quick-ai-management';
 import { snippetManagement } from './snippets/preload/snippet-management';
 import { clipboardHistoryManagement } from './clipboard-history/preload/clipboard-history-management';
@@ -25,8 +24,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ...settingsManagement,
 
   ...notepadManagement,
-
-  ...agentTemplateManagement,
 
   // Quick AI management
   getQuickAIAgent: quickAIManagement.getAgent,

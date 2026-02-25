@@ -22,9 +22,6 @@ import type { AppSettings } from './settings-management';
 // Import notepad types for use in ElectronAPI interface
 import type { NotepadFile } from './notepad-management';
 
-// Import agent template types for use in ElectronAPI interface
-import type { AgentTemplate } from './agent-template';
-
 // Import Quick AI types for use in ElectronAPI interface
 import type { QuickAISettingsValidation } from './quick-ai-management';
 
@@ -104,23 +101,6 @@ interface ElectronAPI {
 
   // Listen for streaming tool execution chunks
   onToolStreamChunk: (callback: (chunk: { toolName: string; chunk: string }) => void) => void;
-
-  // ============ AGENT TEMPLATE METHODS ============
-
-  // Get all agent templates
-  getTemplates: () => Promise<AgentTemplate[]>;
-
-  // Add a new template
-  addTemplate: (template: AgentTemplate) => Promise<void>;
-
-  // Update an existing template
-  updateTemplate: (id: string, template: AgentTemplate) => Promise<void>;
-
-  // Remove a template
-  removeTemplate: (id: string) => Promise<void>;
-
-  // Get template by ID
-  getTemplateById: (id: string) => Promise<AgentTemplate | null>;
 
   // ============ NOTEPAD METHODS ============
 
