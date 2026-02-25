@@ -1,8 +1,8 @@
 import type { Agent } from '../types';
 import type { LLMModelSettings, LLMProviderSettings } from '../../llm/types';
-import type { AgentTemplate } from '../types';
+import type { AgentTemplate, AgentTemplateFeatureSettings } from '../types';
 import { getProviderManagementAPI } from '../../llm/api';
-import { getAgentTemplateManagementAPI } from '../api';
+import { getSettingsManagementAPI } from '../../settings/api';
 import '../../settings/components/settings-dialog';
 
 /**
@@ -16,7 +16,7 @@ export class AgentFormDialog extends HTMLElement {
   private modelConfigs: LLMModelSettings[] = [];
   private templates: AgentTemplate[] = [];
   private api = getProviderManagementAPI();
-  private templateAPI = getAgentTemplateManagementAPI();
+  private settingsAPI = getSettingsManagementAPI();
   private selectedLLMModelSettings?: LLMModelSettings;
 
   constructor() {
@@ -448,7 +448,8 @@ export class AgentFormDialog extends HTMLElement {
 
   private async loadTemplates(): Promise<void> {
     try {
-      this.templates = await this.templateAPI.getTemplates();
+      const settings = await this.settingsAPI.getFeatureSettings<AgentTemplateFeatureSettings>('agent-templates');
+      this.templates = settings.templates || [];
       const select = this.querySelector('#template-select') as HTMLSelectElement;
       if (!select) return;
 
@@ -469,55 +470,51 @@ export class AgentFormDialog extends HTMLElement {
   private async handleTemplateChange(templateId: string): Promise<void> {
     if (!templateId) return;
 
-    try {
-      const template = await this.templateAPI.getTemplateById(templateId);
-      if (!template) return;
+    // Find template locally (already loaded)
+    const template = this.templates.find(t => t.id === templateId);
+    if (!template) return;
 
-      // Get form elements
-      const typeSelect = this.querySelector('#agent-type') as HTMLSelectElement;
-      const descriptionTextarea = this.querySelector('#agent-description') as HTMLTextAreaElement;
-      const modelConfigSelect = this.querySelector('#model-config-ref') as HTMLSelectElement;
-      const providerSelect = this.querySelector('#provider-ref') as HTMLSelectElement;
-      const systemPromptTextarea = this.querySelector('#agent-system-prompt') as HTMLTextAreaElement;
-      const userPromptTextarea = this.querySelector('#agent-user-prompt') as HTMLTextAreaElement;
+    // Get form elements
+    const typeSelect = this.querySelector('#agent-type') as HTMLSelectElement;
+    const descriptionTextarea = this.querySelector('#agent-description') as HTMLTextAreaElement;
+    const modelConfigSelect = this.querySelector('#model-config-ref') as HTMLSelectElement;
+    const providerSelect = this.querySelector('#provider-ref') as HTMLSelectElement;
+    const systemPromptTextarea = this.querySelector('#agent-system-prompt') as HTMLTextAreaElement;
+    const userPromptTextarea = this.querySelector('#agent-user-prompt') as HTMLTextAreaElement;
 
-      // Fill form fields from template
-      if (typeSelect) typeSelect.value = template.type;
-      if (descriptionTextarea) descriptionTextarea.value = template.description || '';
-      if (systemPromptTextarea) systemPromptTextarea.value = template.prompts.system || '';
-      if (userPromptTextarea) userPromptTextarea.value = template.prompts.user || '';
+    // Fill form fields from template
+    if (typeSelect) typeSelect.value = template.type;
+    if (descriptionTextarea) descriptionTextarea.value = template.description || '';
+    if (systemPromptTextarea) systemPromptTextarea.value = template.prompts.system || '';
+    if (userPromptTextarea) userPromptTextarea.value = template.prompts.user || '';
 
-      // Handle model config
-      if (template.config.modelId) {
-        const modelExists = this.modelConfigs.some(m => m.id === template.config.modelId);
-        if (modelConfigSelect) {
-          if (modelExists) {
-            modelConfigSelect.value = template.config.modelId;
-            this.onLLMModelSettingsChange(template.config.modelId);
-          } else {
-            alert(`Model config "${template.config.modelId}" from template not found. Please select a different model.`);
-            modelConfigSelect.value = '';
-          }
-        }
-      }
-
-      // Handle provider
-      if (template.config.providerId && providerSelect) {
-        const providers = await this.api.getProviders();
-        const providerExists = providers.some(p => p.id === template.config.providerId);
-        if (providerExists) {
-          providerSelect.value = template.config.providerId;
+    // Handle model config
+    if (template.config.modelId) {
+      const modelExists = this.modelConfigs.some(m => m.id === template.config.modelId);
+      if (modelConfigSelect) {
+        if (modelExists) {
+          modelConfigSelect.value = template.config.modelId;
+          this.onLLMModelSettingsChange(template.config.modelId);
         } else {
-          alert(`Provider "${template.config.providerId}" from template not found. Please select a different provider.`);
-          providerSelect.value = '';
+          alert(`Model config "${template.config.modelId}" from template not found. Please select a different model.`);
+          modelConfigSelect.value = '';
         }
       }
-
-      // Note: We intentionally leave agent name empty - user must enter a unique name
-    } catch (error: any) {
-      console.error('Failed to load template:', error);
-      alert(`Failed to load template: ${error.message}`);
     }
+
+    // Handle provider
+    if (template.config.providerId && providerSelect) {
+      const providers = await this.api.getProviders();
+      const providerExists = providers.some(p => p.id === template.config.providerId);
+      if (providerExists) {
+        providerSelect.value = template.config.providerId;
+      } else {
+        alert(`Provider "${template.config.providerId}" from template not found. Please select a different provider.`);
+        providerSelect.value = '';
+      }
+    }
+
+    // Note: We intentionally leave agent name empty - user must enter a unique name
   }
 }
 

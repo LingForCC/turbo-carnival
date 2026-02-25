@@ -29,6 +29,7 @@ import type { ClipboardHistorySettings } from './clipboard-history/components/cl
 import type { QuickAISettings } from './quick-ai/components/quick-ai-settings-panel';
 import type { LLMProviderFeatureSettings, LLMModelFeatureSettings } from './llm/types';
 import type { CustomToolsFeatureSettings, MCPToolsFeatureSettings } from './tools/types';
+import type { AgentTemplateFeatureSettings } from './agent/types/agent-template';
 
 
 let mainWindow: BrowserWindow | null = null;
@@ -137,6 +138,17 @@ app.whenReady().then(async () => {
       modelConfigs: []
     },
     panelTagName: 'llm-model-configs-settings-panel',
+    parentTab: 'ai'
+  });
+
+  registerFeatureSettings<AgentTemplateFeatureSettings>({
+    featureId: 'agent-templates',
+    displayName: 'Templates',
+    order: 25,
+    defaults: {
+      templates: []
+    },
+    panelTagName: 'agent-templates-settings-panel',
     parentTab: 'ai'
   });
 

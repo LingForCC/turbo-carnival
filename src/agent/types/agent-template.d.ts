@@ -25,6 +25,14 @@ export interface AgentTemplate {
 }
 
 /**
+ * Agent Template Feature Settings
+ * Settings structure for storing templates in feature settings
+ */
+export interface AgentTemplateFeatureSettings {
+  templates: AgentTemplate[];
+}
+
+/**
  * Agent Template Management API interface
  * Defines the contract for agent template operations
  * Used by renderer components to interact with agent template functionality
