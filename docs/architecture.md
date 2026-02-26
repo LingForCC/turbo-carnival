@@ -18,14 +18,6 @@ The codebase is organized into **feature modules**, where all related files for 
 - `api/` - Renderer-safe API wrappers
 - `types/` - TypeScript type definitions
 
-### Pattern for Creating New Modules
-1. Create a new feature directory under `src/` (e.g., `src/new-feature/`)
-2. Create subdirectories: `main/`, `components/`, `preload/`, `api/`, `types/`
-3. Export storage/helper functions and a `registerFeatureIPCHandlers()` function in `main/`
-4. Import and call the registration function in `src/main.ts`
-5. Expose preload functions in `src/preload.ts`
-6. Update CLAUDE.md to document the new module
-
 ## Feature-Based Settings System
 
 Settings are managed through a pluggable system where features register their own settings panels.

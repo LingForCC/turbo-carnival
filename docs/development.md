@@ -2,6 +2,14 @@
 
 ## Critical Patterns
 
+### Pattern for Creating New Modules
+1. Create a new feature directory under `src/` (e.g., `src/new-feature/`)
+2. Create subdirectories: `main/`, `components/`, `preload/`, `api/`, `types/`
+3. Export storage/helper functions and a `registerFeatureIPCHandlers()` function in `main/`
+4. Import and call the registration function in `src/main.ts`
+5. Expose preload functions in `src/preload.ts`
+6. Update CLAUDE.md to document the new module
+
 ### Event Listener Management (CRITICAL)
 
 Web Components use a unique pattern to prevent duplicate event listeners: after rendering, buttons are cloned and replaced before attaching new listeners.
