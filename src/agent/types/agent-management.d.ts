@@ -86,6 +86,16 @@ export interface AgentManagementAPI {
   updateAgent(projectPath: string, agentName: string, agent: Agent): Promise<Agent>;
 
   /**
+   * Archive agent conversation history
+   * Creates a duplicate of the agent file with timestamp in the name,
+   * then clears the history in the current agent
+   * @param projectPath - Full path to the project folder
+   * @param agentName - Name of the agent
+   * @returns Promise resolving to the archived file name
+   */
+  archiveAgentHistory(projectPath: string, agentName: string): Promise<{ archivedFileName: string }>;
+
+  /**
    * Clear chat-agent history
    * @param projectPath - Full path to the project folder
    * @param agentName - Name of the agent

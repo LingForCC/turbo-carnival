@@ -52,6 +52,7 @@ interface ElectronAPI {
   addAgent: (projectPath: string, agent: Agent) => Promise<Agent[]>;
   removeAgent: (projectPath: string, agentName: string) => Promise<Agent[]>;
   updateAgent: (projectPath: string, agentName: string, agent: Agent) => Promise<Agent>;
+  archiveAgentHistory: (projectPath: string, agentName: string) => Promise<{ archivedFileName: string }>;
 
   // Tool management
   getTools: () => Promise<Tool[]>;

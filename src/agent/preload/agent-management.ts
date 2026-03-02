@@ -22,6 +22,10 @@ export const agentManagement = {
   updateAgent: (projectPath: string, agentName: string, agent: Agent) =>
     ipcRenderer.invoke('agents:update', projectPath, agentName, agent),
 
+  // Archive agent conversation history
+  archiveAgentHistory: (projectPath: string, agentName: string) =>
+    ipcRenderer.invoke('agents:archive-history', projectPath, agentName),
+
   // Clear chat-agent history
   clearChatAgentHistory: (projectPath: string, agentName: string) =>
     ipcRenderer.invoke('chat-agent:clearHistory', projectPath, agentName),

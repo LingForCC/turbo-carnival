@@ -50,6 +50,13 @@ const apiInstance: AgentManagementAPI = {
   },
 
   /**
+   * Archive agent conversation history
+   */
+  archiveAgentHistory: (projectPath: string, agentName: string) => {
+    return getElectronAPI().archiveAgentHistory(projectPath, agentName);
+  },
+
+  /**
    * Clear chat-agent history
    */
   clearChatAgentHistory: (projectPath: string, agentName: string) => {

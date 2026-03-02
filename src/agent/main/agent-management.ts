@@ -121,6 +121,82 @@ export function deleteAgent(projectPath: string, agentName: string): void {
   }
 }
 
+/**
+ * Archive agent conversation history to a separate file
+ * Creates a duplicate of the agent file with timestamp in the name,
+ * then clears the history in the current agent
+ */
+export function archiveAgentHistory(projectPath: string, agentName: string): { archivedFileName: string } {
+  // Verify project folder exists
+  if (!fs.existsSync(projectPath)) {
+    throw new Error(`Project folder does not exist: ${projectPath}`);
+  }
+
+  const filePath = getAgentFilePath(projectPath, agentName);
+
+  // Check if agent file exists
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Agent file not found: ${filePath}`);
+  }
+
+  // Read the current agent data
+  let agent: Agent;
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    agent = JSON.parse(content) as Agent;
+  } catch (error) {
+    console.error(`Failed to read agent file ${filePath}:`, error);
+    throw error;
+  }
+
+  // Check if there's any history to archive
+  if (!agent.history || agent.history.length === 0) {
+    throw new Error('No conversation history to archive');
+  }
+
+  // Generate timestamp for archive filename (e.g., 2026-03-02T10-30-45)
+  const now = new Date();
+  const timestamp = now.toISOString()
+    .replace(/:/g, '-')  // Replace colons with hyphens for filename compatibility
+    .replace(/\.\d{3}Z$/, '');  // Remove milliseconds and Z suffix
+
+  // Create archived filename
+  const sanitizedName = sanitizeAgentName(agentName);
+  const archivedFileName = `agent-${sanitizedName}-archived-${timestamp}.json`;
+  const archivedFilePath = path.join(projectPath, archivedFileName);
+
+  // Save the archived copy (with original history)
+  try {
+    const archivedAgent = {
+      ...agent,
+      name: `${agent.name} (Archived ${timestamp.replace('T', ' ')})`,
+      updatedAt: now.toISOString()
+    };
+    fs.writeFileSync(archivedFilePath, JSON.stringify(archivedAgent, null, 2), 'utf-8');
+  } catch (error) {
+    console.error(`Failed to create archived agent file ${archivedFilePath}:`, error);
+    throw error;
+  }
+
+  // Clear history in the current agent and save
+  try {
+    agent.history = [];
+    agent.updatedAt = now.toISOString();
+    fs.writeFileSync(filePath, JSON.stringify(agent, null, 2), 'utf-8');
+  } catch (error) {
+    console.error(`Failed to update agent file ${filePath}:`, error);
+    // Try to clean up the archived file if we failed to update the original
+    try {
+      fs.unlinkSync(archivedFilePath);
+    } catch (cleanupError) {
+      console.error(`Failed to clean up archived file:`, cleanupError);
+    }
+    throw error;
+  }
+
+  return { archivedFileName };
+}
+
 // ============ AGENT IPC HANDLERS ============
 
 /**
@@ -191,5 +267,10 @@ export function registerAgentIPCHandlers(): void {
     const savedAgent = { ...updatedAgent };
     saveAgent(projectPath, savedAgent);
     return savedAgent;
+  });
+
+  // Handler: Archive agent conversation history
+  ipcMain.handle('agents:archive-history', async (_event, projectPath: string, agentName: string) => {
+    return archiveAgentHistory(projectPath, agentName);
   });
 }
