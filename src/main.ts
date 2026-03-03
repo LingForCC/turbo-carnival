@@ -19,6 +19,7 @@ import { startClipboardWatcher, stopClipboardWatcher } from './clipboard-history
 import { startProjectFolderWatcher, stopProjectFolderWatcher, updateWatcherFolder } from './project/main/project-folder-watcher';
 import { loadSettings, setOnProjectFolderChangedCallback } from './settings/main/settings-management';
 import { registerTaskIPCHandlers } from './tasks/main/task-management';
+import { registerExternalLinksIPCHandlers } from './core/external-links';
 import { logStorageConfig } from './core/storage-resolver';
 import { registerFeatureSettings } from './settings/main/settings-registry';
 import type { NotepadSettings } from './notepad/components/notepad-settings-panel';
@@ -244,6 +245,9 @@ function registerIPCHandlers(): void {
 
   // ============ TASK IPC HANDLERS ============
   registerTaskIPCHandlers();
+
+  // ============ EXTERNAL LINKS IPC HANDLERS ============
+  registerExternalLinksIPCHandlers();
 }
 
 // Quit when all windows are closed, except on macOS

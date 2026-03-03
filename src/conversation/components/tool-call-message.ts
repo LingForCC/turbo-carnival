@@ -160,6 +160,25 @@ export class ToolCallMessage extends HTMLElement {
   }
 
   private attachEventListeners(): void {
+    // Handle link clicks - open in system browser
+    const links = this.querySelectorAll('a[href]');
+    links.forEach((link) => {
+      const newLink = link.cloneNode(true);
+      link.replaceWith(newLink);
+      (newLink as HTMLElement).addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const href = (e.currentTarget as HTMLAnchorElement).getAttribute('href');
+        if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+          try {
+            await (window as any).electronAPI.openExternalURL(href);
+          } catch (error) {
+            console.error('Failed to open external URL:', error);
+          }
+        }
+      });
+    });
+
     // Tool call toggle button
     const toggleBtn = this.querySelector('.tool-call-toggle-btn');
     if (toggleBtn) {
