@@ -166,6 +166,7 @@ export class ConversationPanel extends HTMLElement {
 
     this.render();
     this.scrollToBottom();
+    this.focusInput();
   }
 
   /**
@@ -258,6 +259,10 @@ export class ConversationPanel extends HTMLElement {
     this.updateStreamingControls();
     this.updateMessagesViewportPadding();
 
+    // Re-focus the input after streaming completes
+    const chatInput = this.querySelector('#chat-input') as HTMLTextAreaElement;
+    chatInput?.focus();
+
     // Emit stream-complete event for consistency
     this.dispatchEvent(new CustomEvent('stream-complete', {
       detail: { content },
@@ -294,6 +299,10 @@ export class ConversationPanel extends HTMLElement {
     this.chatHistory.pop(); // Remove user message
     this.showError(error);
     this.render();
+
+    // Re-focus the input after error
+    const chatInput = this.querySelector('#chat-input') as HTMLTextAreaElement;
+    chatInput?.focus();
   }
 
   /**
