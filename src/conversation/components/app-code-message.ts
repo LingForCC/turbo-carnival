@@ -177,10 +177,10 @@ export class AppCodeMessage extends HTMLElement {
 
     this.innerHTML = `
       <div class="flex justify-start group relative">
-        <div class="max-w-[85%] rounded-lg px-4 py-2 text-gray-800 dark:text-white">
+        <div class="max-w-[85%] min-w-0 rounded-lg px-4 py-2 text-gray-800 dark:text-white overflow-hidden">
           ${reasoningSection}
           ${appCodeCallouts}
-          ${renderedContent ? `<div class="text-sm prose prose-sm max-w-none break-words">${renderedContent}</div>` : ''}
+          ${renderedContent ? `<div class="text-sm prose prose-sm break-words">${renderedContent}</div>` : ''}
           ${actionButtons}
         </div>
       </div>

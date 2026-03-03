@@ -68,6 +68,7 @@ conversation-panel > div {
   padding: 0.75rem;
   overflow-x: auto;
   margin: 0.5em 0;
+  max-width: 600px;
 }
 
 .prose pre code {

@@ -446,7 +446,7 @@ export class ConversationPanel extends HTMLElement {
     this.innerHTML = `
       <div class="flex flex-col h-full">
         <!-- Chat Messages Area -->
-        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-gray-900" style="padding-bottom: ${this.getMessagesBottomPaddingPx()}px;">
+        <div id="chat-messages" class="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 bg-white dark:bg-gray-900" style="padding-bottom: ${this.getMessagesBottomPaddingPx()}px;">
           <!-- Messages will be rendered here by renderChatMessages() -->
         </div>
 

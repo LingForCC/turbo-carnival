@@ -51,7 +51,7 @@ export function renderReasoningSection(reasoning: string): string {
         <span>Thinking Process</span>
       </button>
       <div class="reasoning-content hidden mt-2 p-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-md">
-        <div class="text-sm text-gray-700 prose prose-sm max-w-none">
+        <div class="text-sm text-gray-700 prose prose-sm">
           ${renderMarkdown(reasoning)}
         </div>
       </div>
