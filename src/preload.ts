@@ -8,7 +8,7 @@ import { quickAIManagement } from './quick-ai/preload/quick-ai-management';
 import { snippetManagement } from './snippets/preload/snippet-management';
 import { clipboardHistoryManagement } from './clipboard-history/preload/clipboard-history-management';
 import { taskManagement } from './tasks/preload';
-import { externalLinksManagement } from './core/preload';
+import { coreManagement } from './core/preload';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -43,6 +43,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Task management
   ...taskManagement,
 
-  // External links management
-  ...externalLinksManagement,
+  // Core management (external links, etc.)
+  ...coreManagement,
 });

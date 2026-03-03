@@ -284,6 +284,11 @@ interface ElectronAPI {
 
   // Add a new task
   addTask: (newTask: NewTask) => Promise<{ projectTasks: ProjectTasks; newTaskId: string }>;
+
+  // ============ CORE METHODS ============
+
+  // Open a URL in the system's default browser
+  openExternalURL: (url: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 declare global {

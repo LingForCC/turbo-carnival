@@ -1,4 +1,5 @@
 import { renderMarkdown, renderReasoningSection } from './utils';
+import { openExternalURL } from '../../core/api';
 
 /**
  * AssistantMessage Web Component
@@ -119,7 +120,7 @@ export class AssistantMessage extends HTMLElement {
         const href = (e.currentTarget as HTMLAnchorElement).getAttribute('href');
         if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
           try {
-            await (window as any).electronAPI.openExternalURL(href);
+            await openExternalURL(href);
           } catch (error) {
             console.error('Failed to open external URL:', error);
           }
