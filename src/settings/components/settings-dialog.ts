@@ -101,7 +101,7 @@ export class SettingsDialog extends HTMLElement {
       ...featureTabs.map(t => ({ id: t.featureId, displayName: t.displayName, order: t.order ?? 100, isFeature: true, panelTagName: t.panelTagName }))
     ].sort((a, b) => a.order - b.order);
 
-    const projectFolder = this.settings.projectFolder || '';
+    const rootFolder = this.settings.rootFolder || '';
 
     // Auto-select first child tab if current tab has children but no child selected
     const childTabs = getChildTabs(this.currentTab);
@@ -150,29 +150,29 @@ export class SettingsDialog extends HTMLElement {
           <div class="flex-1 overflow-y-auto p-6">
             <!-- General Tab -->
             <div id="tab-general" class="tab-content ${this.currentTab === 'general' ? '' : 'hidden'} space-y-6">
-              <!-- Project Folder -->
+              <!-- Root Folder -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="project-folder">
-                  Project Folder
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" for="root-folder">
+                  Root Folder
                 </label>
                 <div class="flex gap-2">
                   <input
                     type="text"
-                    id="project-folder-input"
+                    id="root-folder-input"
                     readonly
                     class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm"
                     placeholder="Not configured"
-                    value="${this.escapeHtml(projectFolder)}"
+                    value="${this.escapeHtml(rootFolder)}"
                   >
                   <button
-                    id="browse-project-folder-btn"
+                    id="browse-root-folder-btn"
                     class="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer border-0"
                   >
                     Browse...
                   </button>
                 </div>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  All immediate subfolders will appear as projects in the sidebar.
+                  Select a root folder to browse its files and folders in the sidebar.
                 </p>
               </div>
 
@@ -413,12 +413,12 @@ export class SettingsDialog extends HTMLElement {
       });
     });
 
-    // Browse button for project folder
-    const browseProjectFolderBtn = this.querySelector('#browse-project-folder-btn');
-    if (browseProjectFolderBtn) {
-      const newBtn = browseProjectFolderBtn.cloneNode(true);
-      browseProjectFolderBtn.replaceWith(newBtn);
-      (newBtn as HTMLElement).addEventListener('click', () => this.browseProjectFolder());
+    // Browse button for root folder
+    const browseRootFolderBtn = this.querySelector('#browse-root-folder-btn');
+    if (browseRootFolderBtn) {
+      const newBtn = browseRootFolderBtn.cloneNode(true);
+      browseRootFolderBtn.replaceWith(newBtn);
+      (newBtn as HTMLElement).addEventListener('click', () => this.browseRootFolder());
     }
   }
 
@@ -476,17 +476,17 @@ export class SettingsDialog extends HTMLElement {
     }
   }
 
-  private async browseProjectFolder(): Promise<void> {
+  private async browseRootFolder(): Promise<void> {
     try {
       // Use the settings API to open folder dialog
       const location = await this.api.openFolderDialog();
       if (location) {
         // Update settings
-        await this.api.updateSettings({ projectFolder: location });
-        this.settings = { ...this.settings!, projectFolder: location };
+        await this.api.updateSettings({ rootFolder: location });
+        this.settings = { ...this.settings!, rootFolder: location };
 
         // Update input field
-        const input = this.querySelector('#project-folder-input') as HTMLInputElement;
+        const input = this.querySelector('#root-folder-input') as HTMLInputElement;
         if (input) {
           input.value = location;
         }

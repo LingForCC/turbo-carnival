@@ -73,28 +73,30 @@ export interface FileListOptions {
  */
 export interface ProjectManagementAPI {
   /**
-   * Get all projects from the configured project folder
-   * @returns Promise resolving to array of projects
-   */
-  getProjects(): Promise<Project[]>;
-
-  /**
-   * Refresh projects (manual refresh trigger)
-   * @returns Promise resolving to array of projects
-   */
-  refreshProjects(): Promise<Project[]>;
-
-  /**
-   * Get file tree for a project
-   * @param projectPath - Full path to the project folder
+   * Get file tree for the configured root folder
    * @param options - Optional file tree traversal options
    * @returns Promise resolving to file tree nodes
    */
-  getFileTree(projectPath: string, options?: FileTreeOptions): Promise<FileTreeNode[]>;
+  getFileTree(options?: FileTreeOptions): Promise<FileTreeNode[]>;
 
   /**
-   * List all .txt and .md files in project
-   * @param projectPath - Full path to the project folder
+   * Refresh file tree (manual refresh trigger)
+   * @param options - Optional file tree traversal options
+   * @returns Promise resolving to file tree nodes
+   */
+  refreshFileTree(options?: FileTreeOptions): Promise<FileTreeNode[]>;
+
+  /**
+   * Get file tree for a specific directory
+   * @param dirPath - Full path to the directory
+   * @param options - Optional file tree traversal options
+   * @returns Promise resolving to file tree nodes
+   */
+  getDirectoryFileTree(dirPath: string, options?: FileTreeOptions): Promise<FileTreeNode[]>;
+
+  /**
+   * List all .txt and .md files in a directory
+   * @param projectPath - Full path to the directory
    * @param options - Optional file listing options
    * @returns Promise resolving to array of file references
    */
@@ -122,8 +124,8 @@ export interface ProjectManagementAPI {
   onProjectFileUpdated(callback: (data: { projectPath: string; filePath: string }) => void): void;
 
   /**
-   * Listen for project list changes (when subfolders are added/removed)
-   * @param callback - Function to call when project list changes
+   * Listen for file tree changes (when files/folders are added/removed)
+   * @param callback - Function to call when file tree changes
    */
   onProjectsChanged(callback: () => void): void;
 }

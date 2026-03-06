@@ -20,28 +20,28 @@ function getElectronAPI() {
  */
 const apiInstance: ProjectManagementAPI = {
   /**
-   * Get all projects from the configured project folder
+   * Get file tree for the root folder
    */
-  getProjects: () => {
-    return getElectronAPI().getProjects();
+  getFileTree: (options?: FileTreeOptions) => {
+    return getElectronAPI().getFileTree(options);
   },
 
   /**
-   * Refresh projects (manual refresh trigger)
+   * Refresh file tree (manual refresh trigger)
    */
-  refreshProjects: () => {
-    return getElectronAPI().refreshProjects();
+  refreshFileTree: (options?: FileTreeOptions) => {
+    return getElectronAPI().refreshFileTree(options);
   },
 
   /**
-   * Get file tree for a project
+   * Get file tree for a specific directory
    */
-  getFileTree: (projectPath: string, options?: FileTreeOptions) => {
-    return getElectronAPI().getFileTree(projectPath, options);
+  getDirectoryFileTree: (dirPath: string, options?: FileTreeOptions) => {
+    return getElectronAPI().getDirectoryFileTree(dirPath, options);
   },
 
   /**
-   * List all .txt and .md files in project
+   * List all .txt and .md files in directory
    */
   listProjectFiles: (projectPath: string, options?: FileListOptions) => {
     return getElectronAPI().listProjectFiles(projectPath, options);
@@ -69,7 +69,7 @@ const apiInstance: ProjectManagementAPI = {
   },
 
   /**
-   * Listen for project list changes
+   * Listen for file tree changes
    */
   onProjectsChanged: (callback: () => void) => {
     return getElectronAPI().onProjectsChanged(callback);

@@ -6,26 +6,28 @@ import type { Project } from '../types';
 // ============ SETTINGS GETTER (injectable for testing) ============
 
 /**
- * Function to get project folder from settings
+ * Function to get root folder from settings
  * Can be overridden for testing
  */
-let _getProjectFolder: () => string | undefined | Promise<string | undefined> = async () => {
+let _getRootFolder: () => string | undefined | null | Promise<string | undefined | null> = async () => {
   const { loadSettings } = await import('../../settings/main/settings-management');
-  return loadSettings().projectFolder;
+  return loadSettings().rootFolder;
 };
 
 /**
- * Set a custom function to get the project folder (for testing)
+ * Set a custom function to get the root folder (for testing)
  */
-export function setProjectFolderGetter(getter: () => string | undefined | Promise<string | undefined>): void {
-  _getProjectFolder = getter;
+export function setRootFolderGetter(getter: () => string | undefined | null | Promise<string | undefined | null>): void {
+  _getRootFolder = getter;
 }
 
 /**
- * Get the project folder from settings
+ * Get the root folder from settings
  */
-export async function getProjectFolder(): Promise<string | undefined> {
-  return await _getProjectFolder();
+export async function getRootFolder(): Promise<string | undefined> {
+  const result = await _getRootFolder();
+  // Convert null to undefined for consistency
+  return result ?? undefined;
 }
 
 // ============ PROJECT FOLDER HELPERS ============
@@ -253,26 +255,51 @@ export function listFilesRecursive(
  * Register all project-related IPC handlers
  */
 export function registerProjectIPCHandlers(): void {
-  // Handler: Get all projects from the configured project folder
-  ipcMain.handle('projects:get', async () => {
-    const projectFolder = await getProjectFolder();
+  // Handler: Get file tree for the root folder
+  ipcMain.handle('projects:getFileTree', async (_event, options?: any) => {
+    const rootFolder = await getRootFolder();
 
-    if (!projectFolder) {
+    if (!rootFolder) {
       return [];
     }
 
-    return loadProjectsFromFolder(projectFolder);
+    // Default options
+    const fileTreeOptions: any = {
+      maxDepth: options?.maxDepth,
+      excludeHidden: options?.excludeHidden ?? true,
+      includeExtensions: options?.includeExtensions
+    };
+
+    try {
+      const fileTree = buildFileTree(rootFolder, fileTreeOptions);
+      return fileTree;
+    } catch (error) {
+      console.error('Failed to build file tree:', error);
+      throw error;
+    }
   });
 
-  // Handler: Refresh projects (manual refresh trigger)
-  ipcMain.handle('projects:refresh', async () => {
-    const projectFolder = await getProjectFolder();
+  // Handler: Refresh file tree (manual refresh trigger)
+  ipcMain.handle('projects:refreshFileTree', async (_event, options?: any) => {
+    const rootFolder = await getRootFolder();
 
-    if (!projectFolder) {
+    if (!rootFolder) {
       return [];
     }
 
-    return loadProjectsFromFolder(projectFolder);
+    const fileTreeOptions: any = {
+      maxDepth: options?.maxDepth,
+      excludeHidden: options?.excludeHidden ?? true,
+      includeExtensions: options?.includeExtensions
+    };
+
+    try {
+      const fileTree = buildFileTree(rootFolder, fileTreeOptions);
+      return fileTree;
+    } catch (error) {
+      console.error('Failed to build file tree:', error);
+      throw error;
+    }
   });
 
   // ============ PROJECT DETAIL IPC HANDLERS ============

@@ -9,7 +9,6 @@ import './core/project-agent-dashboard';
 import './core/app-container';
 import './agent/components/agent-form-dialog';
 import './llm/components/provider-dialog';
-import './project/components/project-detail-panel';
 import './conversation/components/conversation-panel';
 import './quick-access/components/quick-project-access';
 import './tasks/components/tasks-dialog';

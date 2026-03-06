@@ -1,5 +1,5 @@
 import { getProjectManagementAPI } from '../../project/api';
-import type { Project, ProjectManagementAPI } from '../../project/types';
+import type { FileTreeNode, ProjectManagementAPI } from '../../project/types';
 
 /**
  * QuickProjectAccess - Quick project search popup component
@@ -13,10 +13,12 @@ import type { Project, ProjectManagementAPI } from '../../project/types';
  */
 export class QuickProjectAccess extends HTMLElement {
   private api: ProjectManagementAPI;
-  private projects: Project[] = [];
+  private fileTree: FileTreeNode[] = [];
   private selectedIndex: number = 0;
   private searchQuery: string = '';
   private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
+
+  private flattenedFolders: { path: string; name: string }[] = [];
 
   constructor() {
     super();
@@ -24,7 +26,7 @@ export class QuickProjectAccess extends HTMLElement {
   }
 
   async connectedCallback(): Promise<void> {
-    await this.loadProjects();
+    await this.loadFileTree();
     this.render();
     this.attachEventListeners();
     this.attachKeyboardHandler();
@@ -47,28 +49,48 @@ export class QuickProjectAccess extends HTMLElement {
   }
 
   /**
-   * Load projects from API
+   * Load file tree from API
    */
-  private async loadProjects(): Promise<void> {
+  private async loadFileTree(): Promise<void> {
     try {
-      this.projects = await this.api.getProjects();
+      this.fileTree = await this.api.getFileTree({ excludeHidden: true });
+      this.flattenFoldersList();
       this.selectedIndex = 0;
     } catch (error) {
-      console.error('Failed to load projects:', error);
-      this.projects = [];
+      console.error('Failed to load file tree:', error);
+      this.fileTree = [];
     }
   }
 
   /**
-   * Get filtered projects based on search query
+   * Recursively flatten file tree to get all folders at */
+  private flattenFoldersList(): void {
+    this.flattenedFolders = [];
+
+    const flatten = (nodes: FileTreeNode[]) => {
+      for (const node of nodes) {
+        if (node.type === 'directory') {
+          this.flattenedFolders.push({ path: node.path, name: node.name });
+          if (node.children) {
+            flatten(node.children);
+          }
+        }
+      }
+    };
+
+    flatten(this.fileTree);
+  }
+
+  /**
+   * Get filtered folders based on search query
    */
-  private get filteredProjects(): Project[] {
+  private get filteredFolders(): { path: string; name: string }[] {
     if (!this.searchQuery.trim()) {
-      return this.projects;
+      return this.flattenedFolders;
     }
     const query = this.searchQuery.toLowerCase();
-    return this.projects.filter(project =>
-      project.name.toLowerCase().includes(query)
+    return this.flattenedFolders.filter(folder =>
+      folder.name.toLowerCase().includes(query)
     );
   }
 
@@ -76,8 +98,8 @@ export class QuickProjectAccess extends HTMLElement {
    * Render the quick project access popup
    */
   private render(): void {
-    const displayProjects = this.filteredProjects;
-    const hasNoResults = this.projects.length > 0 && displayProjects.length === 0 && this.searchQuery.trim() !== '';
+    const displayFolders = this.filteredFolders;
+    const hasNoResults = this.fileTree.length > 0 && displayFolders.length === 0 && this.searchQuery.trim() !== '';
 
     this.innerHTML = `
       <!-- Backdrop overlay -->
@@ -90,24 +112,24 @@ export class QuickProjectAccess extends HTMLElement {
               <input
                 id="search-input"
                 type="text"
-                placeholder="Search projects..."
+                placeholder="Search folders..."
                 value="${this.escapeHtml(this.searchQuery)}"
                 class="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none focus:border-blue-400 dark:focus:border-blue-500"
               />
               <!-- Search icon -->
               <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7-7 7z"/>
               </svg>
             </div>
           </div>
 
-          <!-- Project List (scrollable) -->
-          <div id="project-list" class="flex-1 overflow-y-auto">
-            ${this.projects.length === 0
-              ? '<div class="p-8 text-center text-gray-500 dark:text-gray-400">No projects available</div>'
+          <!-- Folder List (scrollable) -->
+          <div id="folder-list" class="flex-1 overflow-y-auto">
+            ${this.fileTree.length === 0
+              ? '<div class="p-8 text-center text-gray-500 dark:text-gray-400">No root folder configured</div>'
               : hasNoResults
-              ? '<div class="p-8 text-center text-gray-500 dark:text-gray-400">No projects found</div>'
-              : this.renderProjectListItems()
+              ? '<div class="p-8 text-center text-gray-500 dark:text-gray-400">No folders found</div>'
+              : this.renderFolderListItems()
             }
           </div>
         </div>
@@ -118,22 +140,24 @@ export class QuickProjectAccess extends HTMLElement {
   }
 
   /**
-   * Generate HTML for project list items
+   * Generate HTML for folder list items
    */
-  private renderProjectListItems(): string {
-    const displayProjects = this.filteredProjects;
-    return displayProjects.map((project, index) => `
+  private renderFolderListItems(): string {
+    const displayFolders = this.filteredFolders;
+    return displayFolders.map((folder, index) => `
       <div
-        class="project-item flex items-center gap-2 px-4 py-3 cursor-pointer ${this.selectedIndex === index
+        class="folder-item flex items-center gap-2 px-4 py-3 cursor-pointer ${this.selectedIndex === index
           ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
           : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
         }"
         data-index="${index}"
+        data-path="${this.escapeHtml(folder.path)}"
       >
         <svg class="w-4 h-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-        </svg>
-        <span class="flex-1 text-sm truncate">${this.escapeHtml(project.name)}</span>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2V9a414 2-2 2-2H5a5a2z"/>
+        </ <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16l87 7-7-7-7-7-7 7z"/>
+        </ </svg>
+        <span class="flex-1 text-sm truncate">${this.escapeHtml(folder.name)}</span>
       </div>
     `).join('');
   }
@@ -166,49 +190,49 @@ export class QuickProjectAccess extends HTMLElement {
       });
     }
 
-    // Project items
-    this.attachProjectListListeners();
+    // Folder items
+    this.attachFolderListListeners();
   }
 
   /**
-   * Attach listeners to project list items
+   * Attach listeners to folder list items
    */
-  private attachProjectListListeners(): void {
-    const projectItems = this.querySelectorAll('.project-item');
-    projectItems.forEach(item => {
+  private attachFolderListListeners(): void {
+    const folderItems = this.querySelectorAll('.folder-item');
+    folderItems.forEach(item => {
       const newItem = item.cloneNode(true);
       item.replaceWith(newItem);
 
       const index = parseInt((newItem as Element).getAttribute('data-index') || '-1');
       if (index >= 0) {
         (newItem as HTMLElement).addEventListener('click', () => {
-          this.selectProject(index);
+          this.selectFolder(index);
         });
 
         (newItem as HTMLElement).addEventListener('mouseenter', () => {
           this.selectedIndex = index;
-          this.renderProjectList();
+          this.renderFolderList();
         });
       }
     });
   }
 
   /**
-   * Re-render the project list
+   * Re-render the folder list
    */
-  private renderProjectList(): void {
-    const projectList = this.querySelector('#project-list');
-    if (projectList) {
-      const displayProjects = this.filteredProjects;
-      const hasNoResults = this.projects.length > 0 && displayProjects.length === 0 && this.searchQuery.trim() !== '';
+  private renderFolderList(): void {
+    const folderList = this.querySelector('#folder-list');
+    if (folderList) {
+      const displayFolders = this.filteredFolders;
+      const hasNoResults = this.fileTree.length > 0 && displayFolders.length === 0 && this.searchQuery.trim() !== '';
 
-      projectList.innerHTML = this.projects.length === 0
-        ? '<div class="p-8 text-center text-gray-500 dark:text-gray-400">No projects available</div>'
+      folderList.innerHTML = this.fileTree.length === 0
+        ? '<div class="p-8 text-center text-gray-500 dark:text-gray-400">No root folder configured</div>'
         : hasNoResults
-        ? '<div class="p-8 text-center text-gray-500 dark:text-gray-400">No projects found</div>'
-        : this.renderProjectListItems();
+        ? '<div class="p-8 text-center text-gray-500 dark:text-gray-400">No folders found</div>'
+        : this.renderFolderListItems();
 
-      this.attachProjectListListeners();
+      this.attachFolderListListeners();
     }
   }
 
@@ -216,17 +240,17 @@ export class QuickProjectAccess extends HTMLElement {
    * Handle search input changes
    */
   private handleSearch(): void {
-    const displayProjects = this.filteredProjects;
+    const displayFolders = this.filteredFolders;
 
     // Reset selection to first item when search changes
-    if (displayProjects.length > 0) {
+    if (displayFolders.length > 0) {
       this.selectedIndex = 0;
     } else {
       this.selectedIndex = -1;
     }
 
-    // Re-render project list
-    this.renderProjectList();
+    // Re-render folder list
+    this.renderFolderList();
   }
 
   /**
@@ -236,10 +260,11 @@ export class QuickProjectAccess extends HTMLElement {
     // Remove existing handler
     if (this.keyboardHandler) {
       document.removeEventListener('keydown', this.keyboardHandler);
+      this.keyboardHandler = null;
     }
 
     this.keyboardHandler = (e: KeyboardEvent) => {
-      const displayProjects = this.filteredProjects;
+      const displayFolders = this.filteredFolders;
 
       // Allow navigation and action keys even when search input is focused
       const isNavigationKey = e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === 'Escape';
@@ -251,16 +276,16 @@ export class QuickProjectAccess extends HTMLElement {
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          this.navigateDown(displayProjects);
+          this.navigateDown(displayFolders);
           break;
         case 'ArrowUp':
           e.preventDefault();
-          this.navigateUp(displayProjects);
+          this.navigateUp(displayFolders);
           break;
         case 'Enter':
           e.preventDefault();
-          if (this.selectedIndex >= 0 && displayProjects.length > 0) {
-            this.selectProject(this.selectedIndex);
+          if (this.selectedIndex >= 0 && displayFolders.length > 0) {
+            this.selectFolder(this.selectedIndex);
           }
           break;
         case 'Escape':
@@ -274,23 +299,23 @@ export class QuickProjectAccess extends HTMLElement {
   }
 
   /**
-   * Navigate down in the list
+   * Navigate down in the folder list
    */
-  private navigateDown(_projects: Project[]): void {
-    if (this.selectedIndex < this.projects.length - 1) {
+  private navigateDown(_folders: { path: string; name: string }[]): void {
+    if (this.selectedIndex < _folders.length - 1) {
       this.selectedIndex++;
-      this.renderProjectList();
+      this.renderFolderList();
       this.scrollSelectedItemIntoView();
     }
   }
 
   /**
-   * Navigate up in the list
+   * Navigate up in the folder list
    */
-  private navigateUp(_projects: Project[]): void {
+  private navigateUp(_folders: { path: string; name: string }[]): void {
     if (this.selectedIndex > 0) {
       this.selectedIndex--;
-      this.renderProjectList();
+      this.renderFolderList();
       this.scrollSelectedItemIntoView();
     }
   }
@@ -299,26 +324,27 @@ export class QuickProjectAccess extends HTMLElement {
    * Scroll selected item into view
    */
   private scrollSelectedItemIntoView(): void {
-    const selectedItem = this.querySelector('.project-item.bg-blue-50, .project-item.dark\\:bg-blue-900\\/30');
+    const selectedItem = this.querySelector('.folder-item.bg-blue-50, .folder-item.dark\\:bg-blue-900\\/30');
     if (selectedItem) {
       selectedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }
 
   /**
-   * Select a project by index and dispatch event
+   * Select a folder by index and dispatch event
    */
-  private selectProject(index: number): void {
-    const displayProjects = this.filteredProjects;
-    if (index < 0 || index >= displayProjects.length) {
+  private selectFolder(index: number): void {
+    const displayFolders = this.filteredFolders;
+    if (index < 0 || index >= displayFolders.length) {
       return;
     }
 
-    const project = displayProjects[index];
+    const folder = displayFolders[index];
 
     // Dispatch project-selected event (same format as ProjectPanel)
+    // The folder has both path and name properties
     this.dispatchEvent(new CustomEvent('project-selected', {
-      detail: { project },
+      detail: { project: { path: folder.path, name: folder.name } },
       bubbles: true,
       composed: true
     }));

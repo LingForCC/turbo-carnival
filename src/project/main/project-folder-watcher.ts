@@ -2,8 +2,8 @@ import { BrowserWindow } from 'electron';
 import * as fs from 'fs';
 
 /**
- * Project Folder Watcher Module
- * Watches a folder for subfolder changes and notifies the renderer
+ * Root Folder Watcher Module
+ * Watches a folder for file changes and notifies the renderer
  */
 
 let watcher: fs.FSWatcher | null = null;
@@ -16,8 +16,8 @@ let currentWatchedFolder: string | null = null;
 const DEBOUNCE_MS = 500;
 
 /**
- * Start watching a project folder for changes
- * @param folder - The parent folder to watch
+ * Start watching a root folder for changes
+ * @param folder - The root folder to watch
  * @param mainWindow - The main browser window to send IPC events to
  * @param notifyOnStart - Whether to send an initial notification (default: true)
  */
@@ -26,34 +26,33 @@ export function startProjectFolderWatcher(folder: string, mainWindow: BrowserWin
   stopProjectFolderWatcher();
 
   if (!folder || !fs.existsSync(folder)) {
-    console.warn(`Project folder does not exist: ${folder}`);
+    console.warn(`Root folder does not exist: ${folder}`);
     return;
   }
 
   try {
     currentWatchedFolder = folder;
 
-    // Watch with recursive: false to only watch immediate children
-    watcher = fs.watch(folder, { recursive: false }, (_eventType, filename) => {
+    // Watch with recursive: true to watch all subdirectories
+    watcher = fs.watch(folder, { recursive: true }, (_eventType, filename) => {
       if (!filename) return;
 
-      // Only care about directory changes (add/remove/rename)
-      // We'll debounce and then send notification
+      // Debounce and send notification
       handleWatcherEvent(mainWindow);
     });
 
     watcher.on('error', (error) => {
-      console.error('Project folder watcher error:', error);
+      console.error('Root folder watcher error:', error);
     });
 
-    console.log(`Started watching project folder: ${folder}`);
+    console.log(`Started watching root folder: ${folder}`);
 
-    // Send initial notification to refresh project list
+    // Send initial notification to refresh file tree
     if (notifyOnStart) {
       notifyProjectsChanged(mainWindow);
     }
   } catch (error) {
-    console.error('Failed to start project folder watcher:', error);
+    console.error('Failed to start root folder watcher:', error);
     watcher = null;
     currentWatchedFolder = null;
   }

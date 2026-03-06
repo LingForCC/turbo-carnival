@@ -100,17 +100,17 @@ describe('Settings Management - Storage Helpers', () => {
     it('should merge with existing settings', () => {
       const mockFiles: Record<string, string> = {
         [`${STORAGE_DIR}/settings.json`]: JSON.stringify({
-          settings: { theme: 'light', projectFolder: '/some/path' }
+          settings: { theme: 'light', rootFolder: '/some/path' }
         }),
       };
       const { cleanup } = setupMockFS(mockFiles);
 
       const updated = updateSettingsFields({ theme: 'dark' });
-      expect(updated).toEqual({ theme: 'dark', projectFolder: '/some/path' });
+      expect(updated).toEqual({ theme: 'dark', rootFolder: '/some/path' });
 
       // Verify it was saved
       const loaded = loadSettings();
-      expect(loaded).toEqual({ theme: 'dark', projectFolder: '/some/path' });
+      expect(loaded).toEqual({ theme: 'dark', rootFolder: '/some/path' });
 
       cleanup();
     });
@@ -119,14 +119,14 @@ describe('Settings Management - Storage Helpers', () => {
       // This test verifies that partial updates preserve existing fields
       const mockFiles: Record<string, string> = {
         [`${STORAGE_DIR}/settings.json`]: JSON.stringify({
-          settings: { theme: 'light', projectFolder: '/test/path' }
+          settings: { theme: 'light', rootFolder: '/test/path' }
         }),
       };
       const { cleanup } = setupMockFS(mockFiles);
 
       // Update only theme field
       const updated = updateSettingsFields({ theme: 'dark' });
-      expect(updated).toEqual({ theme: 'dark', projectFolder: '/test/path' });
+      expect(updated).toEqual({ theme: 'dark', rootFolder: '/test/path' });
 
       cleanup();
     });

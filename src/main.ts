@@ -16,8 +16,8 @@ import { registerSnippetShortcut, unregisterSnippetShortcut, closeSnippetWindow 
 import { registerClipboardHistoryIPCHandlers } from './clipboard-history/main/clipboard-history-management';
 import { registerClipboardHistoryShortcut, unregisterClipboardHistoryShortcut, closeClipboardHistoryWindow } from './clipboard-history/main/clipboard-history-window';
 import { startClipboardWatcher, stopClipboardWatcher } from './clipboard-history/main/clipboard-watcher';
-import { startProjectFolderWatcher, stopProjectFolderWatcher, updateWatcherFolder } from './project/main/project-folder-watcher';
-import { loadSettings, setOnProjectFolderChangedCallback } from './settings/main/settings-management';
+import { startProjectFolderWatcher, stopProjectFolderWatcher, updateWatcherFolder, getWatchedFolder } from './project/main/project-folder-watcher';
+import { loadSettings, setOnRootFolderChangedCallback } from './settings/main/settings-management';
 import { registerTaskIPCHandlers } from './tasks/main/task-management';
 import { registerExternalLinksIPCHandlers } from './core/main/external-links';
 import { logStorageConfig } from './core/storage-resolver';
@@ -192,14 +192,14 @@ app.whenReady().then(async () => {
   // Register global shortcut for Clipboard History
   registerClipboardHistoryShortcut();
 
-  // Start project folder watcher if projectFolder is configured
+  // Start project folder watcher if rootFolder is configured
   const settings = loadSettings();
-  if (settings.projectFolder) {
-    startProjectFolderWatcher(settings.projectFolder, mainWindow);
+  if (settings.rootFolder) {
+    startProjectFolderWatcher(settings.rootFolder, mainWindow);
   }
 
-  // Set up callback for projectFolder changes
-  setOnProjectFolderChangedCallback((newFolder) => {
+  // Set up callback for rootFolder changes
+  setOnRootFolderChangedCallback((newFolder) => {
     updateWatcherFolder(newFolder, mainWindow);
   });
 

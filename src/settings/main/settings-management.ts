@@ -4,14 +4,14 @@ import { getStoragePath } from '../../core/storage-resolver';
 import type { AppSettings } from '../types';
 import { getFeatureDefaults, getFeatureRegistration } from './settings-registry';
 
-// Callback for projectFolder changes
-let onProjectFolderChangedCallback: ((newFolder: string | undefined) => void) | null = null;
+// Callback for rootFolder changes
+let onRootFolderChangedCallback: ((newFolder: string | undefined) => void) | null = null;
 
 /**
- * Register a callback to be called when projectFolder setting changes
+ * Register a callback to be called when rootFolder setting changes
  */
-export function setOnProjectFolderChangedCallback(callback: (newFolder: string | undefined) => void): void {
-  onProjectFolderChangedCallback = callback;
+export function setOnRootFolderChangedCallback(callback: (newFolder: string | undefined) => void): void {
+  onRootFolderChangedCallback = callback;
 }
 
 // ============ SETTINGS STORAGE HELPERS ============
@@ -32,7 +32,17 @@ export function loadSettings(): AppSettings {
   if (fs.existsSync(settingsPath)) {
     try {
       const data = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-      const settings = data.settings || { theme: 'light' };
+      let settings = data.settings || { theme: 'light' };
+
+      // Migration: projectFolder -> rootFolder
+      if (settings.projectFolder !== undefined && settings.rootFolder === undefined) {
+        settings.rootFolder = settings.projectFolder;
+        delete settings.projectFolder;
+        // Save migrated settings
+        saveSettings(settings);
+        console.log('Migrated projectFolder to rootFolder in settings');
+      }
+
       // Merge feature defaults with loaded settings
       return mergeFeatureDefaults(settings);
     } catch (error) {
@@ -148,10 +158,10 @@ export function registerSettingsIPCHandlers(): void {
     const oldSettings = loadSettings();
     const newSettings = updateSettingsFields(updates);
 
-    // Notify main process if projectFolder changed
-    if (oldSettings.projectFolder !== newSettings.projectFolder) {
-      if (onProjectFolderChangedCallback) {
-        onProjectFolderChangedCallback(newSettings.projectFolder);
+    // Notify main process if rootFolder changed
+    if (oldSettings.rootFolder !== newSettings.rootFolder) {
+      if (onRootFolderChangedCallback) {
+        onRootFolderChangedCallback(newSettings.rootFolder);
       }
     }
 

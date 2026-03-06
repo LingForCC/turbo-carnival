@@ -7,7 +7,7 @@ import { ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { loadProjectsFromFolder } from '../../project/main/project-management';
-import { getProjectFolder } from '../../project/main/project-management';
+import { getRootFolder } from '../../project/main/project-management';
 import {
   parseTaskPaper,
   serializeTaskPaper,
@@ -58,7 +58,7 @@ function saveTasksFile(projectPath: string, tasks: Task[]): void {
  * Get all tasks from all projects
  */
 async function getAllTasks(): Promise<AllTasksData> {
-  const projectFolder = await getProjectFolder();
+  const projectFolder = await getRootFolder();
 
   if (!projectFolder) {
     return { projects: [], totalCount: 0, incompleteCount: 0 };

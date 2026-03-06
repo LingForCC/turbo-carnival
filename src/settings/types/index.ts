@@ -11,7 +11,7 @@ export type { FeatureSettingsSchema, FeatureSettingsRegistration } from './setti
  */
 export interface AppSettings {
   theme: 'light' | 'dark';  // Theme preference
-  projectFolder?: string;  // Single folder containing project subfolders
+  rootFolder?: string;  // Root folder for file browser
   /** Feature-specific settings stored as key-value pairs */
   features?: Record<string, any>;
 }

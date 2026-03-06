@@ -2,10 +2,10 @@
 import * as electron from 'electron';
 import * as path from 'path';
 import { setupMockFS, clearMockFiles } from '../../helpers/file-system';
-import type { Project } from '../../../project/types';
+import type { FileTreeNode } from '../../../project/types';
 
 // Import and use the injectable getter
-import { registerProjectIPCHandlers, setProjectFolderGetter } from '../../../project/main/project-management';
+import { registerProjectIPCHandlers, setRootFolderGetter } from '../../../project/main/project-management';
 
 describe('Project Management - IPC Handlers', () => {
   let mockHandlers: Map<string, Function>;
@@ -13,8 +13,8 @@ describe('Project Management - IPC Handlers', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Set up mock project folder getter
-    setProjectFolderGetter(() => '/project-folder');
+    // Set up mock root folder getter
+    setRootFolderGetter(() => '/root-folder');
 
     // Set up mock handler storage
     mockHandlers = new Map();
@@ -33,62 +33,83 @@ describe('Project Management - IPC Handlers', () => {
     clearMockFiles();
   });
 
-  describe('projects:get', () => {
-    it('should return projects from project folder', async () => {
+  describe('projects:getFileTree', () => {
+    it('should return file tree from root folder', async () => {
       const { cleanup } = setupMockFS({
-        '/project-folder/project1/.gitkeep': '',
-        '/project-folder/project2/.gitkeep': '',
+        '/root-folder/folder1/.gitkeep': '',
+        '/root-folder/folder1/file.txt': 'content',
+        '/root-folder/folder2/.gitkeep': '',
       });
 
-      const handler = mockHandlers.get('projects:get')!;
-      const projects = await handler();
+      const handler = mockHandlers.get('projects:getFileTree')!;
+      const fileTree = await handler();
 
-      expect(projects).toHaveLength(2);
-      const names = projects.map((p: Project) => p.name).sort();
-      expect(names).toEqual(['project1', 'project2']);
+      expect(Array.isArray(fileTree)).toBe(true);
+      expect(fileTree.length).toBeGreaterThan(0);
 
       cleanup();
     });
 
-    it('should return empty array when no projects', async () => {
-      const { cleanup } = setupMockFS({});
+    it('should return empty array when no root folder', async () => {
+      // Override getter to return null
+      setRootFolderGetter(() => null);
 
-      const handler = mockHandlers.get('projects:get')!;
-      const projects = await handler();
+      const handler = mockHandlers.get('projects:getFileTree')!;
+      const fileTree = await handler();
 
-      expect(projects).toEqual([]);
+      expect(fileTree).toEqual([]);
+
+      // Restore
+      setRootFolderGetter(() => '/root-folder');
+    });
+
+    it('should exclude hidden files by default', async () => {
+      const { cleanup } = setupMockFS({
+        '/root-folder/folder1/.gitkeep': '',
+        '/root-folder/folder1/file.txt': 'content',
+        '/root-folder/.hidden/file.txt': 'hidden content',
+      });
+
+      const handler = mockHandlers.get('projects:getFileTree')!;
+      const fileTree = await handler();
+
+      // Should have folder1 but not .hidden at root level
+      const folderNames = fileTree.map((n: FileTreeNode) => n.name);
+      expect(folderNames).toContain('folder1');
+      expect(folderNames).not.toContain('.hidden');
 
       cleanup();
     });
 
-    it('should exclude hidden folders', async () => {
+    it('should include hidden files when excludeHidden is false', async () => {
       const { cleanup } = setupMockFS({
-        '/project-folder/project1/.gitkeep': '',
-        '/project-folder/.git/config': '',
-        '/project-folder/.vscode/settings.json': '',
+        '/root-folder/folder1/file.txt': 'content',
+        '/root-folder/.hidden/file.txt': 'hidden content',
       });
 
-      const handler = mockHandlers.get('projects:get')!;
-      const projects = await handler();
+      const handler = mockHandlers.get('projects:getFileTree')!;
+      const fileTree = await handler({ excludeHidden: false, maxDepth: 2 });
 
-      expect(projects).toHaveLength(1);
-      expect(projects[0].name).toBe('project1');
+      // Should have both folder1 and .hidden
+      const folderNames = fileTree.map((n: FileTreeNode) => n.name);
+      expect(folderNames).toContain('folder1');
+      expect(folderNames).toContain('.hidden');
 
       cleanup();
     });
   });
 
-  describe('projects:refresh', () => {
-    it('should refresh projects from project folder', async () => {
+  describe('projects:refreshFileTree', () => {
+    it('should refresh file tree from root folder', async () => {
       const { cleanup } = setupMockFS({
-        '/project-folder/project1/.gitkeep': '',
+        '/root-folder/folder1/.gitkeep': '',
       });
 
-      const handler = mockHandlers.get('projects:refresh')!;
-      const projects = await handler();
+      const handler = mockHandlers.get('projects:refreshFileTree')!;
+      const fileTree = await handler();
 
-      expect(projects).toHaveLength(1);
-      expect(projects[0].name).toBe('project1');
+      expect(Array.isArray(fileTree)).toBe(true);
+      expect(fileTree.length).toBeGreaterThan(0);
 
       cleanup();
     });

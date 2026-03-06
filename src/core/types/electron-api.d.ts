@@ -36,8 +36,15 @@ import type { AllTasksData, ProjectTasks, TaskUpdate, NewTask } from '../../task
 
 interface ElectronAPI {
   platform: string;
-  getProjects: () => Promise<Project[]>;
-  refreshProjects: () => Promise<Project[]>;
+
+  // File tree methods
+  getFileTree: (options?: FileTreeOptions) => Promise<FileTreeNode[]>;
+  refreshFileTree: (options?: FileTreeOptions) => Promise<FileTreeNode[]>;
+  getDirectoryFileTree: (dirPath: string, options?: FileTreeOptions) => Promise<FileTreeNode[]>;
+  listProjectFiles: (projectPath: string, options?: FileListOptions) => Promise<FileReference[]>;
+  readFileContents: (filePaths: string[]) => Promise<FileContent[]>;
+  saveMessageToFile: (projectPath: string, content: string) => Promise<string | null>;
+  onProjectFileUpdated: (callback: (data: { projectPath: string; filePath: string }) => void) => void;
   onProjectsChanged: (callback: () => void) => void;
 
   // Settings management
