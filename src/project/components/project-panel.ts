@@ -11,7 +11,6 @@ export class ProjectPanel extends HTMLElement {
   private expandedNodes: Set<string> = new Set();
   private selectedFolder: FileTreeNode | null = null;
   private api: ProjectManagementAPI;
-  private clickTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
   constructor() {
     super();
@@ -111,7 +110,7 @@ export class ProjectPanel extends HTMLElement {
         childrenHtml = `<div class="directory-children">${node.children!.map(child => this.renderTreeNode(child, depth + 1)).join('')}</div>`;
       }
 
-      return `<div class="tree-node" data-path="${escapedPath}"><div class="${rowClass}" style="${rowStyle}" data-type="directory-toggle" data-path="${escapedPath}"><svg class="${chevronClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7M5 5l7 7-7 7"></path></svg><svg class="${folderIconClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2z"></path></svg><span class="${nameClass}">${escapedName}</span></div>${childrenHtml}</div>`;
+      return `<div class="tree-node" data-path="${escapedPath}"><div class="${rowClass}" style="${rowStyle}"><button class="p-0 bg-transparent border-0 cursor-pointer flex items-center justify-center" data-type="directory-toggle" data-path="${escapedPath}" aria-label="Toggle ${escapedName}"><svg class="${chevronClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7M5 5l7 7-7 7"></path></svg></button><div class="flex items-center gap-1 flex-1 min-w-0 cursor-pointer" data-type="directory-select" data-path="${escapedPath}"><svg class="${folderIconClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2z"></path></svg><span class="${nameClass}">${escapedName}</span></div></div>${childrenHtml}</div>`;
     } else {
       // File node
       const fileRowClass = `flex items-center gap-1 py-1 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded`;
@@ -122,39 +121,28 @@ export class ProjectPanel extends HTMLElement {
   }
 
   private attachTreeNodeListeners(): void {
+    // Chevron click toggles expand/collapse
     this.querySelectorAll('[data-type="directory-toggle"]').forEach(element => {
       const newElement = element.cloneNode(true);
       element.replaceWith(newElement);
       const path = (newElement as HTMLElement).getAttribute('data-path');
       if (!path) return;
 
-      // Single click to toggle expand/collapse (with delay to distinguish from double-click)
       (newElement as HTMLElement).addEventListener('click', (e) => {
         e.stopPropagation();
-        const existingTimer = this.clickTimers.get(path);
-        if (existingTimer) {
-          // Second click within delay period - this is part of a double-click, don't toggle
-          clearTimeout(existingTimer);
-          this.clickTimers.delete(path);
-          return;
-        }
-        // First click - set timer to toggle after delay
-        const timer = setTimeout(() => {
-          this.clickTimers.delete(path);
-          this.toggleDirectory(path);
-        }, 250);
-        this.clickTimers.set(path, timer);
+        this.toggleDirectory(path);
       });
+    });
 
-      // Double click to select folder (cancels pending toggle)
-      (newElement as HTMLElement).addEventListener('dblclick', (e) => {
+    // Folder name/icon click selects the folder
+    this.querySelectorAll('[data-type="directory-select"]').forEach(element => {
+      const newElement = element.cloneNode(true);
+      element.replaceWith(newElement);
+      const path = (newElement as HTMLElement).getAttribute('data-path');
+      if (!path) return;
+
+      (newElement as HTMLElement).addEventListener('click', (e) => {
         e.stopPropagation();
-        // Clear any pending toggle timer
-        const existingTimer = this.clickTimers.get(path);
-        if (existingTimer) {
-          clearTimeout(existingTimer);
-          this.clickTimers.delete(path);
-        }
         const node = this.findNodeByPath(path, this.fileTree);
         if (node) {
           this.selectFolder(node);
