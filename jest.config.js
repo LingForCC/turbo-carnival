@@ -23,7 +23,6 @@ module.exports = {
       clearMocks: true,
       resetMocks: true,
       restoreMocks: false,
-      verbose: true,
     },
     {
       // Web component tests (feature-based structure)
@@ -44,7 +43,22 @@ module.exports = {
       clearMocks: true,
       resetMocks: true,
       restoreMocks: false,
-      verbose: true,
+    },
+    {
+      // Architecture tests using tsarch
+      displayName: 'architecture',
+      testMatch: ['<rootDir>/src/__tests__/architecture/**/*.test.ts'],
+      testEnvironment: 'node',
+      preset: 'ts-jest',
+      transform: {
+        '^.+\\.ts$': 'ts-jest',
+      },
+      moduleNameMapper: {
+        '^(\\.{1,2}/.*)\\.js$': '$1',
+      },
+      clearMocks: true,
+      resetMocks: true,
+      restoreMocks: false,
     },
   ],
 

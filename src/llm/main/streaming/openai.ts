@@ -5,23 +5,13 @@ import type { LLMModelSettings, LLMProviderSettings } from '../../types';
 import type { Tool } from '../../../tools/types';
 import type { Agent } from '../../../agent/types';
 import { getToolByName, validateJSONSchema } from '../../../tools/main/tool-management';
-import { executeToolWithRouting } from './index';
-import type { StreamLLMOptions, StreamResult } from './index';
+import { executeToolWithRouting } from './tool-executor';
+import type { StreamLLMOptions, StreamResult, OpenAIToolCall, OpenAIMessage } from './types';
+
+// Re-export types for backward compatibility
+export type { OpenAIToolCall, OpenAIMessage } from './types';
 
 // ============ TYPE DEFINITIONS ============
-
-/**
- * OpenAI native tool call format
- * Represents a tool call in OpenAI's native response format (used for conversation history)
- */
-export interface OpenAIToolCall {
-  id: string;
-  type: 'function';
-  function: {
-    name: string;
-    arguments: string;  // JSON stringified arguments
-  };
-}
 
 /**
  * Internal tool call format for processing (during streaming)
@@ -31,15 +21,6 @@ interface InternalOpenAIToolCall {
   parameters: Record<string, any>;
   toolCallId?: string;
   _argumentsBuffer?: string;  // Temporary buffer for streaming arguments
-}
-
-export interface OpenAIMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
-  name?: string;
-  tool_call_id?: string;
-  tool_calls?: OpenAIToolCall[];
-  timestamp?: number;
 }
 
 interface OpenAIRequest {

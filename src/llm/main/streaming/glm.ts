@@ -5,23 +5,13 @@ import type { LLMModelSettings, LLMProviderSettings } from '../../types';
 import type { Tool } from '../../../tools/types';
 import type { Agent } from '../../../agent/types';
 import { getToolByName, validateJSONSchema } from '../../../tools/main/tool-management';
-import { executeToolWithRouting } from './index';
-import type { StreamLLMOptions, StreamResult } from './index';
+import { executeToolWithRouting } from './tool-executor';
+import type { StreamLLMOptions, StreamResult, GLMToolCall, GLMMessage } from './types';
+
+// Re-export types for backward compatibility
+export type { GLMToolCall, GLMMessage } from './types';
 
 // ============ TYPE DEFINITIONS ============
-
-/**
- * GLM native tool call format
- * GLM uses OpenAI-compatible tool calling format
- */
-export interface GLMToolCall {
-  id: string;
-  type: 'function';
-  function: {
-    name: string;
-    arguments: string;  // JSON stringified arguments
-  };
-}
 
 /**
  * Internal tool call format for processing (during streaming)
@@ -31,15 +21,6 @@ interface InternalGLMToolCall {
   parameters: Record<string, any>;
   toolCallId?: string;
   _argumentsBuffer?: string;  // Temporary buffer for streaming arguments
-}
-
-export interface GLMMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
-  tool_call_id?: string;
-  tool_calls?: GLMToolCall[];
-  reasoning_content?: string;  // GLM thinking/reasoning content
-  timestamp?: number;
 }
 
 interface GLMRequest {

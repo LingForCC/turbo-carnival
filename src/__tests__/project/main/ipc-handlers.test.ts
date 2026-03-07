@@ -88,7 +88,8 @@ describe('Project Management - IPC Handlers', () => {
       });
 
       const handler = mockHandlers.get('projects:getFileTree')!;
-      const fileTree = await handler({ excludeHidden: false, maxDepth: 2 });
+      // Handler expects (_event, options) - pass null for event
+      const fileTree = await handler(null, { excludeHidden: false, maxDepth: 2 });
 
       // Should have both folder1 and .hidden
       const folderNames = fileTree.map((n: FileTreeNode) => n.name);

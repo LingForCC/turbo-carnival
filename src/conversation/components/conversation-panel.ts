@@ -3,36 +3,10 @@ import type { LLMProviderType } from '../../llm/types';
 import type { Project } from '../../project/types';
 import { getProviderManagementAPI } from '../../llm/api';
 import { createTransformer } from '../transformers';
+import type { ChatMessage, ToolCallData } from '../types';
 
-/**
- * ConversationPanel Web Component
- * Reusable chat interface with optional file tagging
- *
- * NOTE: This component dispatches 'message-sent' events that bubble up to parent components.
- * Parent components (chat-panel, app-panel) should listen for this event and handle IPC calls.
- */
-
-/**
- * Tool call data for conversation panel display
- */
-export interface ToolCallData {
-  toolName: string;
-  parameters: Record<string, any>;
-  result?: any;
-  executionTime?: number;
-  status: 'pending' | 'executing' | 'completed' | 'failed';
-  error?: string;
-}
-
-/**
- * Chat message for UI display in conversation-panel
- */
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  toolCall?: ToolCallData;
-  reasoning?: string;  // GLM reasoning/thinking content
-}
+// Re-export types for backward compatibility
+export type { ChatMessage, ToolCallData } from '../types';
 
 export class ConversationPanel extends HTMLElement {
   // Core state
