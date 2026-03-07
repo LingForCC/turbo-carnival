@@ -226,6 +226,58 @@ export class ProjectPanel extends HTMLElement {
   public getSelectedFolder(): FileTreeNode | null {
     return this.selectedFolder;
   }
+
+  /**
+   * Navigate to a specific folder path
+   * Expands all parent folders and selects the target folder
+   */
+  public async navigateToFolder(path: string): Promise<void> {
+    // Find the target node
+    const targetNode = this.findNodeByPath(path, this.fileTree);
+    if (!targetNode) return;
+
+    // Expand all parent folders
+    this.expandPathToFolder(path);
+
+    // Select the folder
+    this.selectedFolder = targetNode;
+    this.renderFileTree();
+
+    // Scroll into view after render
+    requestAnimationFrame(() => {
+      const element = this.querySelector(`[data-path="${this.escapeHtml(path)}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
+
+  /**
+   * Expand all parent folders leading to a path
+   */
+  private expandPathToFolder(targetPath: string): void {
+    // Get all parent paths
+    const pathsToExpand: string[] = [];
+    let currentPath = targetPath;
+
+    // Walk up the path tree to find all parent directories
+    while (currentPath.includes('/') || currentPath.includes('\\')) {
+      const lastSep = Math.max(currentPath.lastIndexOf('/'), currentPath.lastIndexOf('\\'));
+      if (lastSep === -1) break;
+      currentPath = currentPath.substring(0, lastSep);
+      if (currentPath) {
+        pathsToExpand.unshift(currentPath);
+      }
+    }
+
+    // Expand each parent path if it exists in the tree
+    for (const path of pathsToExpand) {
+      const node = this.findNodeByPath(path, this.fileTree);
+      if (node && node.type === 'directory') {
+        this.expandedNodes.add(path);
+      }
+    }
+  }
 }
 
 customElements.define('project-panel', ProjectPanel);

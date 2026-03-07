@@ -1,4 +1,5 @@
 import { getProjectManagementAPI } from '../../project/api';
+import { getSettingsManagementAPI } from '../../settings/api';
 import type { FileTreeNode, ProjectManagementAPI } from '../../project/types';
 
 /**
@@ -13,7 +14,9 @@ import type { FileTreeNode, ProjectManagementAPI } from '../../project/types';
  */
 export class QuickProjectAccess extends HTMLElement {
   private api: ProjectManagementAPI;
+  private settingsApi = getSettingsManagementAPI();
   private fileTree: FileTreeNode[] = [];
+  private rootFolderPath: string = '';
   private selectedIndex: number = 0;
   private searchQuery: string = '';
   private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -53,6 +56,8 @@ export class QuickProjectAccess extends HTMLElement {
    */
   private async loadFileTree(): Promise<void> {
     try {
+      const settings = await this.settingsApi.getSettings();
+      this.rootFolderPath = settings.rootFolder || '';
       this.fileTree = await this.api.getFileTree({ excludeHidden: true });
       this.flattenFoldersList();
       this.selectedIndex = 0;
@@ -60,6 +65,20 @@ export class QuickProjectAccess extends HTMLElement {
       console.error('Failed to load file tree:', error);
       this.fileTree = [];
     }
+  }
+
+  /**
+   * Get relative path from root folder
+   */
+  private getRelativePath(fullPath: string): string {
+    if (!this.rootFolderPath || !fullPath.startsWith(this.rootFolderPath)) {
+      return fullPath;
+    }
+    const relativePath = fullPath.slice(this.rootFolderPath.length);
+    // Remove leading slash if present
+    return relativePath.startsWith('/') || relativePath.startsWith('\\')
+      ? relativePath.slice(1)
+      : relativePath;
   }
 
   /**
@@ -146,18 +165,20 @@ export class QuickProjectAccess extends HTMLElement {
     const displayFolders = this.filteredFolders;
     return displayFolders.map((folder, index) => `
       <div
-        class="folder-item flex items-center gap-2 px-4 py-3 cursor-pointer ${this.selectedIndex === index
+        class="folder-item flex items-start gap-2 px-4 py-2 cursor-pointer ${this.selectedIndex === index
           ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
           : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
         }"
         data-index="${index}"
         data-path="${this.escapeHtml(folder.path)}"
       >
-        <svg class="w-4 h-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2V9a414 2-2 2-2H5a5a2z"/>
-        </ <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16l87 7-7-7-7-7-7 7z"/>
-        </ </svg>
-        <span class="flex-1 text-sm truncate">${this.escapeHtml(folder.name)}</span>
+        <svg class="w-4 h-4 flex-shrink-0 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+        </svg>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium truncate">${this.escapeHtml(folder.name)}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 truncate">${this.escapeHtml(this.getRelativePath(folder.path))}</div>
+        </div>
       </div>
     `).join('');
   }

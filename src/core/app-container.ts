@@ -314,6 +314,11 @@ export class AppContainer extends HTMLElement {
         }));
       }
 
+      // Navigate the file tree to the selected folder
+      if (this.projectPanel && customEvent.detail?.project?.path) {
+        this.projectPanel.navigateToFolder(customEvent.detail.project.path);
+      }
+
       // If currently showing chat, switch back to dashboard view
       if (this.showingChat) {
         this.showDashboard();
