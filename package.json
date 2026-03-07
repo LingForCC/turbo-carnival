@@ -22,6 +22,7 @@
   "build": {
     "appId": "com.turbocarnival.app",
     "productName": "Turbo Carnival",
+    "icon": "build/icon.icns",
     "directories": {
       "output": "release"
     },

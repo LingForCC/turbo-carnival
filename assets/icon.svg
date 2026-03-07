@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="50%" style="stop-color:#8b5cf6"/>
+      <stop offset="100%" style="stop-color:#ec4899"/>
+    </linearGradient>
+    <linearGradient id="tentGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#f97316"/>
+    </linearGradient>
+    <linearGradient id="lightningGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fef3c7"/>
+      <stop offset="100%" style="stop-color:#fcd34d"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square - fills entire canvas -->
+  <rect x="0" y="0" width="1024" height="1024" rx="160" ry="160" fill="url(#bgGradient)"/>
+
+  <!-- Carnival tent base shape -->
+  <path d="M512 100 L760 400 L760 800 L264 800 L264 400 Z"
+        fill="url(#tentGradient)"
+        filter="url(#shadow)"/>
+
+  <!-- Tent stripes -->
+  <path d="M512 100 L388 400 L388 800 L264 800 L264 400 Z" fill="#dc2626" opacity="0.9"/>
+  <path d="M512 100 L636 400 L636 800 L512 800 L512 400 Z" fill="#dc2626" opacity="0.9"/>
+
+  <!-- Tent top flag -->
+  <path d="M512 50 L512 100 L580 75 Z" fill="#fef3c7"/>
+
+  <!-- Lightning bolt (Turbo) -->
+  <g filter="url(#glow)">
+    <path d="M550 200 L460 420 L540 420 L420 660 L530 420 L450 420 L550 200 Z"
+          fill="url(#lightningGradient)"/>
+  </g>
+
+  <!-- AI sparkle dots representing features -->
+  <circle cx="280" cy="260" r="16" fill="#fef3c7" opacity="0.9"/>
+  <circle cx="744" cy="280" r="12" fill="#fef3c7" opacity="0.8"/>
+  <circle cx="240" cy="540" r="10" fill="#fef3c7" opacity="0.7"/>
+  <circle cx="784" cy="480" r="18" fill="#fef3c7" opacity="0.85"/>
+  <circle cx="300" cy="760" r="12" fill="#fef3c7" opacity="0.75"/>
+  <circle cx="724" cy="720" r="14" fill="#fef3c7" opacity="0.8"/>
+
+  <!-- Small stars for festive carnival feel -->
+  <polygon points="160,120 168,144 192,144 172,160 180,184 160,168 140,184 148,160 128,144 152,144"
+           fill="#fef3c7" opacity="0.8"/>
+  <polygon points="864,140 870,158 890,158 874,170 880,188 864,176 848,188 854,170 838,158 858,158"
+           fill="#fef3c7" opacity="0.7"/>
+</svg>
